@@ -16,6 +16,9 @@
 |* Added logic for automatic status updation on dmisg134
 |* added a revision field in filter for status update.  14-09-2018
 |******************************************************************************
+|* ID: ISGEC01122, Prasanna Bhuyan, VRC B61U a7 isg, 19/11/2018
+|* Modifications
+|******************************************************************************
 #include <bic_dal2>
 	table	tdmisg133
 	table	tdmisg134
@@ -232,7 +235,8 @@ function boolean get.status.for.dmisg134()				|#ISGEC01087.sn
 	flag = 0
 	if tot.record = tot.record.cler	 and tot.record.sub = 0 then
 
-	select	dmisg134.rcno,dmisg134.stat
+	select	dmisg134.rcno,dmisg134.stat,
+		dmisg134.cprj						|#ISGEC01122.n
 	from	dmisg134		for update
 	where	dmisg134._index1 = {:dmisg136.rcno,:dmisg136.revn}
 	selectdo
@@ -266,7 +270,8 @@ function boolean get.status.for.dmisg134()				|#ISGEC01087.sn
 			and 	(dmisg136.apid = "D" or dmisg136.apid =  "N")
 			as set with 1 rows
 			selectdo
-				select	dmisg134.rcno,dmisg134.stat
+				select	dmisg134.rcno,dmisg134.stat,
+					dmisg134.cprj						|#ISGEC01122.n
 				from	dmisg134		for update
 				where	dmisg134._index1 = {:dmisg136.rcno, :dmisg136.revn}
 				selectdo
@@ -296,7 +301,8 @@ function boolean get.status.for.dmisg134()				|#ISGEC01087.sn
 		and	(dmisg136.apid <> "B" or dmisg136.apid <> "C")
 		selectdo
 		selectempty
-			select	dmisg134.rcno, dmisg134.stat
+			select	dmisg134.rcno, dmisg134.stat,
+				dmisg134.cprj						|#ISGEC01122.n
 			from	dmisg134		for update
 			where	dmisg134._index1 = {:dmisg136.rcno,:dmisg136.revn}
 			selectdo
@@ -330,7 +336,8 @@ function boolean get.status.for.dmisg134()				|#ISGEC01087.sn
 	and	(dmisg136.apid  <> "A" or dmisg136.apid <> "D" or dmisg136.apid <>  "N")
 	selectdo
 	selectempty
-		select	dmisg134.rcno, dmisg134.stat
+		select	dmisg134.rcno, dmisg134.stat,
+			dmisg134.cprj						|#ISGEC01122.n
 		from	dmisg134			for update
 		where	dmisg134._index1 = {:dmisg136.rcno, :dmisg136.revn}
 		selectdo

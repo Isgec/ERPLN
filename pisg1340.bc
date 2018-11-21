@@ -33,6 +33,9 @@
 |* ID: ISGEC01100, Sahil Sharma, VRC B61U a7 isg
 |* PMDL Updated (dmisg140)
 |******************************************************************************
+|* ID: ISGEC01122, Prasanna Bhuyan, VRC B61U a7 isg, 19/11/2018
+|* Modifications
+|******************************************************************************
 
         table	tdmisg134
 	table	ttcmcs050
@@ -54,6 +57,7 @@
 	table	ttpisg229
 	table	ttpisg235
 	table	tdmisg134
+	table	tdmisg231				|#ISGEC01122.n
 	
 	extern	domain	tclogn	login.user		|#ISGEC004020.sn
 	domain	tfgld.sess calling.prog,parent.prog
@@ -694,6 +698,17 @@ function	extern	generate.mail.alert()
 						get.employee(logname$),
 						tdpur400.ccon
 						)
+						
+		select	dmisg231.mail,dmisg231.emno						|#ISGEC01122.sn
+		from	dmisg231
+		where	dmisg231._index1 = {:dmisg134.cprj}
+		as set with 1 rows
+		selectdo
+			dmisg00001.send.mail.alert(
+						get.employee(logname$),
+						dmisg231.emno
+						)
+		endselect									|#ISGEC01122.en
 	endif						
 }
 

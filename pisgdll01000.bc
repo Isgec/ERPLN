@@ -11,7 +11,9 @@
 |*
 |* ID: ISGEC01087, Bharti Garg, 03-07-2018
 |* Added a logic for email for closed status.
-
+|******************************************************************************
+|* ID: ISGEC01122, Prasanna Bhuyan, VRC B61U a7 isg, 19/11/2018
+|* Modifications  
 |******************************************************************************
                                                                                 
 	table	tdmcom010
@@ -19,6 +21,7 @@
 	table	tdmisg162
 	table  	tdmisg133
 	table  	tdmisg135
+	table	tdmisg231			|#ISGEC01122.n
 	table	tdmisg136
 	table	tbpmdm001
 	table	ttccom001
@@ -343,7 +346,8 @@ function determine.department
 							
 function send.email.alert()
 {
-	domain	tcnama		to.nama, from.nama, cc.nama, user.name
+	domain	tcnama		to.nama, from.nama, cc.nama, user.name,
+				nama						|#ISGEC01122.n
 	domain	tcmail		to.mail, from.mail, cc.mail
 	domain	tcemno		to.emno, from.emno, cc.emno
 	domain	tclogn		o.dmisg133.logn
@@ -505,7 +509,21 @@ function send.email.alert()
 			cc.nama,
 			ttcmf.role.cc
 			)
-					
+		
+	select	dmisg231.mail,dmisg231.emno,						|#ISGEC01122.sn
+		tccom001.nama:nama				
+	from	dmisg231, dmisg136, tccom001
+	where	dmisg231._index1 =	{:o.dmisg134.cprj}
+	and	dmisg231.emno refers to tccom001 UNREF CLEAR
+	as set with 1 rows
+	selectdo
+		assign.mail.ID(	message.ID,				
+				dmisg231.mail,
+				nama,
+				ttcmf.role.cc
+				)
+	endselect									|#ISGEC01122.en	
+			
 	|********* Mail Body
 	attachment.ID = cmf.createAttachment(message.ID)
 	ret = cmf.setAttachmentBody(attachment.ID,ttyeno.yes)

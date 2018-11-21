@@ -26,6 +26,9 @@
 |*
 |* ISGECMOD016, IT0478, Atul Ojha, 16-03-2018, VRC B61U a7 isg
 |* Change in Attachment Validation 
+|******************************************************************************
+|* ID: ISGEC01122, Prasanna Bhuyan, VRC B61U a7 isg, 19/11/2018
+|* Modifications  
 |****************************** declaration section ***************************
 declaration:
 #include               <bic_cmf>
@@ -33,6 +36,7 @@ declaration:
   table   tdmisg134
   table   tdmcom010
   table		tdmisg104
+  table		tdmisg231				|#ISGEC01122.n
   table		tdmisg135
   table		tdmisg133
   table		ttccom001
@@ -498,6 +502,7 @@ function check_approval_type()
 					|#ISGEC004021.sn
 function send.email.alert()
 {
+	domain	tcnama	nama		|#ISGEC01122.n
 	string tmp.file(200),line(500)
 	long fp
 	
@@ -633,6 +638,20 @@ function send.email.alert()
 		ret = cmf.setRecipientType(to.ID, "SMTP")
 	selectempty
 	endselect
+	
+	select	dmisg231.mail,dmisg231.emno,						|#ISGEC01122.sn
+		tccom001.nama:nama				
+	from	dmisg231, dmisg136, tccom001
+	where	dmisg231._index1 = {dmisg136.cprj}
+	and	dmisg231.emno	refers	to tccom001	UNREF CLEAR
+	as set with 1 rows
+	selectdo
+		to.ID = cmf.createRecipient(message.ID, ttcmf.role.to)  
+		ret = cmf.setRecipientName(to.ID,nama)
+		ret = cmf.setRecipientAddress(to.ID, dmisg231.mail)	
+		ret = cmf.setRecipientResponsibility(to.ID, "TRUE")		
+		ret = cmf.setRecipientType(to.ID, "SMTP")
+	endselect									|#ISGEC01122.en
 			
 	|********* Mail Body
 	attachment.ID = cmf.createAttachment(message.ID)
