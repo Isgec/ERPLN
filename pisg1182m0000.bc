@@ -20,6 +20,9 @@
 |*
 |* ID ISGEC01077, Priya Jindal, 20/7/2018
 |* Changes for check on forward to payment
+|*
+|* ID ISGEC01132,Prasanna Bhuyan,03-12-2018,VRC B61U a7 isg
+|* Added fields and insertion in document tracking history 
 |****************************** declaration section ***************************
 declaration:
   table   ttfisg182 | Document Tracking
@@ -72,6 +75,38 @@ after.form.read:					|#ISGEC016020.n
 |****************************** form section **********************************
 
 |****************************** choice section *********************************
+choice.select_ir_no:						|#ISGEC01132.sn
+on.choice:
+	select	tfisg182.*
+	from	tfisg182	for update
+	where	tfisg182._index1 = {:tfisg182.irno}
+	selectdo
+		tfisg182.selc = tcyesno.yes
+		db.update(ttfisg182,db.retry,e)
+		if not e then 
+			commit.transaction()
+		else
+			abort.transaction()
+		endif
+	endselect	
+
+choice.deselect_ir_no:
+on.choice:
+	select	tfisg182.*
+	from	tfisg182	for update
+	where	tfisg182._index1 = {:tfisg182.irno}
+	selectdo
+		tfisg182.selc = tcyesno.no
+		db.update(ttfisg182,db.retry,e)
+		if not e then 
+			commit.transaction()
+		else
+			abort.transaction()
+		endif
+	endselect
+								
+								|#ISGEC01132.en
+	
 choice.forward_to_ac:
 before.choice:
 								|#ISGEC016020.sn	
@@ -1106,6 +1141,10 @@ function tfisg183.update.history(
 		tfisg183.docn = tfisg182.docn
 		tfisg183.ptrn = tfisg182.ptrn
 		tfisg183.reas = tfisg182.reas
+		tfisg183.rea2 = tfisg182.rea2				|#ISGEC01132.sn
+		tfisg183.rea3 = tfisg182.rea3				
+		tfisg183.rea4 = tfisg182.rea4				
+		tfisg183.rea5 = tfisg182.rea5				|#ISGEC01132.en
 		tfisg183.stat = tfisg182.stat
 		tfisg183.selc = tfisg182.selc
 		tfisg183.lsta = i.stat
