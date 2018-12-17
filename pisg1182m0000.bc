@@ -76,19 +76,22 @@ after.form.read:					|#ISGEC016020.n
 
 |****************************** choice section *********************************
 choice.select_ir_no:						|#ISGEC01132.sn
+
 on.choice:
 	select	tfisg182.*
 	from	tfisg182	for update
 	where	tfisg182._index1 = {:tfisg182.irno}
 	selectdo
 		tfisg182.selc = tcyesno.yes
+		tfisg182.user = trim$(get.login.code.wise.employee.code())
 		db.update(ttfisg182,db.retry,e)
 		if not e then 
 			commit.transaction()
 		else
 			abort.transaction()
 		endif
-	endselect	
+	endselect
+	
 
 choice.deselect_ir_no:
 on.choice:
@@ -106,7 +109,6 @@ on.choice:
 	endselect
 								
 								|#ISGEC01132.en
-	
 choice.forward_to_ac:
 before.choice:
 								|#ISGEC016020.sn	
