@@ -17,6 +17,12 @@
 |*
 |* ID: ISGECMOD035, Atul Ojha, 05/11/2018, VRC B61U a7 isg
 |* Changes in Outlook Start & Finish Date Updation
+|*
+|* ID: ISGEC01128, Prasanna Bhuyan, VRC B61U a7 isg, 27-11-2018
+|* Code block as per discussion with Veena Mam
+|*
+|* ID: ISGEC01145, Prasanna Bhuyan, VRC B61U a7 isg, 20-12-2018
+|* Update item reference blank in case when it is not present in Project master 
 |****************************** declaration section ***************************
 declaration:
 
@@ -31,7 +37,7 @@ declaration:
 	table	tdmisg156
 	table	ttcmcs036
 	table	ttpisg230	|#Anadi.n
-	table	tdmisg160	|#ISGEC0181.n
+	|table	tdmisg160	|#ISGEC0181.n
 	table	ttpisg220
 	table	ttpisg239
 	
@@ -69,13 +75,13 @@ before.display.object:
 	selectdo
 		disable.fields("dmisg140.bssd", actual.occ)
 		disable.fields("dmisg140.bsfd", actual.occ)
-		disable.fields("dmisg140.rssd", actual.occ)
-		disable.fields("dmisg140.rsfd", actual.occ)
+| 		disable.fields("dmisg140.rssd", actual.occ)			|#ISGEC01128.sn
+| 		disable.fields("dmisg140.rsfd", actual.occ)			|#ISGEC01128.en
 	selectempty
 		enable.fields("dmisg140.bssd", actual.occ)
 		enable.fields("dmisg140.bsfd", actual.occ)
-		enable.fields("dmisg140.rssd", actual.occ)
-		enable.fields("dmisg140.rsfd", actual.occ)
+| 		enable.fields("dmisg140.rssd", actual.occ)			|#ISGEC01128.sn
+| 		enable.fields("dmisg140.rsfd", actual.occ)			|#ISGEC01128.en
 	endselect
 |****************************** zoom section ********************************
 
@@ -105,8 +111,9 @@ on.choice:
 	
 choice.update.baseline:
 on.choice:
+	update.item.reference(dmisg140.pcod,dmisg140.cprj)			|#ISGEC01145.n
 	update.baseline()
-	update.revised.schedule.dates(dmisg140.pcod,dmisg140.cprj)		|#ISGECMOD035.n
+| 	update.revised.schedule.dates(dmisg140.pcod,dmisg140.cprj)		|#ISGECMOD035.n
 	
 |****************************** field section **********************************
 
@@ -145,34 +152,34 @@ before.zoom:
 	tpisg239.cprj = dmisg140.cprj
 	
 check.input:
-	
-	select tpisg220.cprj					|#ISGEC01100.sn
-	from	tpisg220
-	where	tpisg220._index1 = {:dmisg140.cprj}
-	as set with 1 rows
-	selectdo						|#ISGEC01100.en
-		select tpisg232.iref
-		from	tpisg232
-		where	tpisg232._index1 = {:dmisg140.pcod, :dmisg140.iref}
-		selectdo
-		selectempty
-			if (dmisg140.uidn(1;3) <> "BLS") then
-				select	tpisg220.sub1
-				from	tpisg220
-				where	tpisg220._index1 = {:dmisg140.cprj}
-				and	tpisg220.cact =:dmisg140.iref
-				selectdo
-				selectempty
+	if dmisg140.orgn <> "CLI"	then				|#ISGEC01145.n
+		select tpisg220.cprj					|#ISGEC01100.sn
+		from	tpisg220
+		where	tpisg220._index1 = {:dmisg140.cprj}
+		as set with 1 rows
+		selectdo						|#ISGEC01100.en
+			select tpisg232.iref
+			from	tpisg232
+			where	tpisg232._index1 = {:dmisg140.pcod, :dmisg140.iref}
+			selectdo
+			selectempty
+				if (dmisg140.uidn(1;3) <> "BLS") then
+					select	tpisg220.sub1
+					from	tpisg220
+					where	tpisg220._index1 = {:dmisg140.cprj}
+					and	tpisg220.cact =:dmisg140.iref
+					selectdo
+					selectempty
+						message("Invalid Value for Item Reference!")
+						set.input.error("")
+					endselect
+				else
 					message("Invalid Value for Item Reference!")
 					set.input.error("")
-				endselect
-			else
-				message("Invalid Value for Item Reference!")
-				set.input.error("")
-			endif
+				endif
+			endselect
 		endselect
-	endselect
-
+	endif								|#ISGEC01145.n
 
 
 field.dmisg140.cspa:
@@ -474,24 +481,45 @@ function calculate.hours()
 function update.baseline()
 {
 	domain	tcdate		BaselineStart, BaselineFinish,
-				OutlookManualStart, OutlookManualFinish				|#ISGECMOD035.sn
+				OutlookManualStart, OutlookManualFinish,			|#ISGECMOD035.sn
+				OutlookStartdate, OutlookFinishdate				|#prasanna.n.24.12.2018
 	domain	tfgld.date	OutlookStart, OutlookFinish					|#ISGECMOD035.en
-				
+	domain	tcmcs.str50	m.bohd								|#prasanna.n.24.12.2018
+	domain	tcyesno	ItemRefFlag								|#veena.09-01-2019
+	
 	select	dmisg140.bssd, dmisg140.bsfd,
 		dmisg140.rssd, dmisg140.rsfd,
 		dmisg140.cprj, dmisg140.iref,
 		dmisg140.mosd, dmisg140.moed,
-		dmisg140.flag
+		dmisg140.flag, dmisg140.orgn
 	from	dmisg140	for update
 	where	dmisg140._index1 = {:dmisg140.pcod, :dmisg140.cprj}
 	selectdo
+		ItemRefFlag = tcyesno.yes							|#veena.sn.09-01-2019
+		select	tpisg220.cact					
+		from	tpisg220
+		where	tpisg220._index1 = {:dmisg140.cprj}
+		and	tpisg220.cact =:dmisg140.iref
+		selectdo
+			ItemRefFlag = tcyesno.no
+		endselect									
+			
+			
+		|if dmisg140.orgn = "VEN" then						|#prasanna.sn.24.12.2018
+		if dmisg140.orgn = "VEN" and ItemRefFlag = tcyesno.yes	then			|#veena.en.09-01-2019
+			m.bohd = "CT_POSTORDERDRGAPPROVAL"
+		else
+			m.bohd = "CT_DOCUMENTAPPROVED"
+		endif									|#prasanna.en.24.12.2018
+		
 		if not isspace(dmisg140.iref) then
 			select	tpisg220.cprj, tpisg220.sdst, tpisg220.sdfn,
 				tpisg220.oted, tpisg220.otsd,
 				tpisg220.mosd, tpisg220.moed					|#ISGECMOD035.n
 			from	tpisg220
 			where	tpisg220._index1 = {:dmisg140.cprj}
-			and	tpisg220.bohd = "CT_DOCUMENTAPPROVED"
+| 			and	tpisg220.bohd = "CT_DOCUMENTAPPROVED"				|#prasanna.o.24.12.2018
+			and	tpisg220.bohd = :m.bohd						|#prasanna.n.24.12.2018
 			and	(tpisg220.sub1 =:dmisg140.iref
 			or	tpisg220.cact =:dmisg140.iref)
 			as set with 1 rows
@@ -499,17 +527,40 @@ function update.baseline()
 				OutlookStart = tpisg220.otsd
 				OutlookFinish = tpisg220.oted
 				
+				change_from_date_to_utc(OutlookStart, OutlookStartdate)			|#prasanna.sn.24.12.2018	
+				change_from_date_to_utc(OutlookFinish, OutlookFinishdate)		|#prasanna.en.24.12.2018
 				change_from_date_to_utc(tpisg220.sdst, BaselineStart)
 				change_from_date_to_utc(tpisg220.sdfn, BaselineFinish)
+				
 				change_from_date_to_utc(tpisg220.mosd, OutlookManualStart)	|#ISGECMOD035.sn
 				change_from_date_to_utc(tpisg220.moed, OutlookManualFinish)	|#ISGECMOD035.en
 			
 				dmisg140.bssd = BaselineStart
 				dmisg140.bsfd = BaselineFinish
-				dmisg140.mosd = OutlookStart					|#ISGECMOD035.sn
-				dmisg140.moed = OutlookFinish				
-				dmisg140.rssd = OutlookManualStart
-				dmisg140.rsfd = OutlookManualFinish
+				dmisg140.mosd = OutlookStart	|dmisg140.mosd is system outlook start date	|#ISGECMOD035.sn
+				dmisg140.moed = OutlookFinish	|dmisg140.moed is system outlook Finish date
+				
+				if	OutlookManualStart = 0 and OutlookStartdate = 0	then			|#prasanna.sn.24.12.2018
+					dmisg140.rssd = BaselineStart
+				else
+					if	OutlookManualStart > OutlookStartdate	then			
+						dmisg140.rssd = OutlookManualStart
+					else
+						dmisg140.rssd = OutlookStartdate						
+					endif
+				endif
+				
+				
+				if	OutlookManualFinish = 0 and OutlookFinishdate = 0	then
+					dmisg140.rsfd = BaselineFinish
+				else
+					if	OutlookManualFinish > OutlookFinishdate	then			
+						dmisg140.rsfd = OutlookManualFinish
+					else
+						dmisg140.rsfd = OutlookFinishdate						
+					endif
+				endif										|#prasanna.en.24.12.2018
+				
 				dmisg140.flag = dmdateflag.manual
 												|#ISGECMOD035.en
 											
@@ -575,60 +626,89 @@ function change_from_date_to_utc(domain tfgld.date	i.date,
 	endif
 }
 												|#ISEGCMOD035.sn
-function update.revised.schedule.dates(
-		domain	tcorno		in.pcod,
-		domain	tccprj		in.cprj)	
-{
-	domain	tcdate		curr.date,
-				OS.SystemDate,
-				OF.SystemDate
-	
-	found = 0
-	
-	curr.date = utc.num()
-	
-	select	dmisg140.bssd, dmisg140.bsfd,
-		dmisg140.rssd, dmisg140.rsfd,
-		dmisg140.mosd, dmisg140.moed,
-		dmisg140.flag
-	from	dmisg140	for update
-	where	dmisg140._index1 = {:in.pcod, :in.cprj}
-	and	dmisg140.flag = dmdateflag.manual
-	and	dmisg140.iref <> ""
-	selectdo	
-		change_from_date_to_utc(dmisg140.mosd,OS.SystemDate)
-		change_from_date_to_utc(dmisg140.moed,OF.SystemDate)
-		if (dmisg140.rssd > curr.date) then
-			found = 1
-			if OS.SystemDate > dmisg140.bssd then
-				dmisg140.rssd = dmisg140.bssd
-				dmisg140.flag = dmdateflag.baseline
-			else
-				dmisg140.rssd = OS.SystemDate
-				dmisg140.flag = dmdateflag.system
-			endif	
-		endif	
-		
-		if (dmisg140.rsfd > curr.date) then
-			found = 1
-			if OF.SystemDate > dmisg140.bsfd then
-				dmisg140.rsfd = dmisg140.bsfd
-				dmisg140.flag = dmdateflag.baseline
-			else
-				dmisg140.rsfd = OF.SystemDate
-				dmisg140.flag = dmdateflag.system
-			endif	
-		endif	
-		
-		if found then	
-			db.update(tdmisg140,db.retry,e)
-		endif	
-	endselect
+| function update.revised.schedule.dates(
+| 		domain	tcorno		in.pcod,
+| 		domain	tccprj		in.cprj)	
+| {
+| 	domain	tcdate		curr.date,
+| 				OS.SystemDate,
+| 				OF.SystemDate
+| 	
+| 	found = 0
+| 	
+| 	curr.date = utc.num()
+| 	
+| 	select	dmisg140.bssd, dmisg140.bsfd,
+| 		dmisg140.rssd, dmisg140.rsfd,
+| 		dmisg140.mosd, dmisg140.moed,
+| 		dmisg140.flag
+| 	from	dmisg140	for update
+| 	where	dmisg140._index1 = {:in.pcod, :in.cprj}
+| 	and	dmisg140.flag = dmdateflag.manual
+| 	and	dmisg140.iref <> ""
+| 	selectdo	
+| 		change_from_date_to_utc(dmisg140.mosd,OS.SystemDate)
+| 		change_from_date_to_utc(dmisg140.moed,OF.SystemDate)
+| 		if (dmisg140.rssd > curr.date) then
+| 			found = 1
+| 			if OS.SystemDate > dmisg140.bssd then
+| 				dmisg140.rssd = dmisg140.bssd
+| 				dmisg140.flag = dmdateflag.baseline
+| 			else
+| 				dmisg140.rssd = OS.SystemDate
+| 				dmisg140.flag = dmdateflag.system
+| 			endif	
+| 		endif	
+| 		
+| 		if (dmisg140.rsfd > curr.date) then
+| 			found = 1
+| 			if OF.SystemDate > dmisg140.bsfd then
+| 				dmisg140.rsfd = dmisg140.bsfd
+| 				dmisg140.flag = dmdateflag.baseline
+| 			else
+| 				dmisg140.rsfd = OF.SystemDate
+| 				dmisg140.flag = dmdateflag.system
+| 			endif	
+| 		endif	
+| 		
+| 		if found then	
+| 			db.update(tdmisg140,db.retry,e)
+| 		endif	
+| 	endselect
 
-	if not e then
-		commit.transaction()
-	else
-		abort.transaction()
-	endif	
-}
+| 	if not e then
+| 		commit.transaction()
+| 	else
+| 		abort.transaction()
+| 	endif	
+| }
 												|#ISGECMOD035.en
+function update.item.reference(								|#ISGEC01145.sn
+					domain	tcorno	a.pcod,
+					domain	tccprj	a.cprj
+									)
+{
+	select	dmisg140.cprj,
+		dmisg140.pcod,
+		dmisg140.iref
+	from	dmisg140	for update
+	where	dmisg140._index1 = {:a.pcod, :a.cprj}
+	selectdo
+		if not isspace(dmisg140.iref)	then
+			select	tpisg220.cprj
+			from	tpisg220
+			where	tpisg220._index1 = {:dmisg140.cprj, :dmisg140.pcod}
+			and	(tpisg220.sub1 = :dmisg140.iref
+			or	tpisg220.cact = :dmisg140.iref)
+			as set with 1 rows
+			selectdo 
+			selectempty
+				dmisg140.iref = ""
+				db.update(tdmisg140, db.retry, e)
+				if e = 0 then
+					commit.transaction()
+				endif
+			endselect
+		endif
+	endselect
+}												|#ISGEC01145.en	
