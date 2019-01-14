@@ -14,6 +14,9 @@
 |*
 |* ID: ISGEC01139, Prasanna Bhuyan, VRC B61U a7 isg, 12-12-2018
 |* WIP field and Progress percentage field update 
+|*
+|* ID: ISGEC01145, Prasanna Bhuyan, VRC B61U a7 isg, 18-12-2018
+|* Update weight in item reference master and history  
 |****************************** declaration section ***************************
 declaration:
 
@@ -139,6 +142,7 @@ before.choice:
 	check.all.input()
 on.choice:
 	CheckChildExist(i.cprj)
+	update.weight.in.item.reference.master.and.history(i.cprj)	|#ISGEC01145.n
 	update.data.in.pmdl.and.activty.master(i.cprj)
 	update.document.approval.wip(i.cprj)				|#ISGEC01139.n
 	UpdateFinishDateInProjectActivityMaster(i.cprj)
@@ -149,14 +153,59 @@ on.choice:
 |****************************** function section ******************************
 functions:
 
-
+function update.weight.in.item.reference.master.and.history(domain	tccprj	i.cprj)		|#ISGEC01145.sn
+{
+	domain	tcwght	sum.dpwt
+	
+	if update.all = tcyesno.yes then
+		from.bohd = ""
+		to.bohd = "ZZZZZZZ"
+		from.iref = ""
+		to.iref = "ZZZZZZZ"
+	else
+		from.bohd = bohd
+		to.bohd = bohd
+		
+		from.iref = item.ref
+		to.iref = item.ref
+	endif
+	
+	select	tpisg239.pwgt,
+		tpisg239.pcod,
+		tpisg239.cprj,
+		tpisg239.iref
+	from	tpisg239	for update
+	where	tpisg239.cprj = :i.cprj
+	and	tpisg239.iref inrange :from.iref and :to.iref
+	and	tpisg239.wgdr = tcyesno.yes
+	selectdo
+		sum.dpwt = 0
+			
+		select	sum(dmisg140.dpwt):sum.dpwt
+		from	dmisg140
+		where	dmisg140._index1 = {:tpisg239.pcod,:tpisg239.cprj}
+		and	dmisg140.iref = :tpisg239.iref
+		selectdo
+		endselect
+		
+		if	sum.dpwt > tpisg239.pwgt	then
+			
+			tpisg239.pwgt = sum.dpwt
+			
+		endif
+		
+		db.update(ttpisg239,db.retry,e)
+		commit.transaction()
+		
+	endselect
+}													|#ISGEC01145.en
 
 function update.document.approval.wip(domain tccprj	i.cprj)		|#ISGEC01139.sn
 {
 	domain	tcmcs.str50	g.bohd
 	domain	dmdoc.docid	i.docn
 	domain	tcpric		wip.num, wip.den
-	domain	tfgld.date	ValidDate
+	domain	tfgld.date	ValidDate, min.tdat
 	
 	g.bohd = "CT_DOCUMENTAPPROVED                               "
 	ValidDate = date.to.num(2000,01,01)
@@ -173,11 +222,12 @@ function update.document.approval.wip(domain tccprj	i.cprj)		|#ISGEC01139.sn
 	where	tpisg220._index1 = {:i.cprj}
 	and	tpisg220.sub1 inrange :from.iref and :to.iref
 	and	tpisg220.bohd = :g.bohd
+	and	tpisg220.manu = tcyesno.no
+	|and tpisg220.cact = '50990000M1C6'|added by Veena on 20th Dec for checking
 	selectdo
 		wip.num = 0
 		wip.den = 0
-		tpisg220.wipp = 0
-		tpisg220.cpgv = 0
+		tpisg220.wipp = 0		
 		
 		select	sum(dmisg140.dhrs+dmisg140.chrs+dmisg140.ehrs+dmisg140.lmhr):wip.den
 		from	dmisg140
@@ -189,7 +239,8 @@ function update.document.approval.wip(domain tccprj	i.cprj)		|#ISGEC01139.sn
 		selectdo
 		endselect
 		
-		select	sum(tiisg910.hhrs):wip.num
+		select	sum(tiisg910.hhrs):wip.num,
+			min(tiisg910.tdat):min.tdat
 		from	dmisg140, tiisg910
 		where	dmisg140._index1 = {:tpisg220.pcod, :tpisg220.cprj}
 		and	dmisg140.adct < :ValidDate
@@ -206,14 +257,15 @@ function update.document.approval.wip(domain tccprj	i.cprj)		|#ISGEC01139.sn
 			tpisg220.wipp = 0
 		endif
 			
-		if	tpisg220.cpgv < 90	then
-			tpisg220.cpgv = tpisg220.cpgv + tpisg220.wipp
-			if	tpisg220.cpgv	>	90	then
-				tpisg220.cpgv = 90
+		if	tpisg220.cpgv > 90	then
+		else			
+			if	tpisg220.wipp > 0	then
+				tpisg220.cpgv = tpisg220.cpgv + tpisg220.wipp
+				tpisg220.acsd = min.tdat
+				if	tpisg220.cpgv	>	90	then
+					tpisg220.cpgv = 90
+				endif
 			endif
-		else 
-			tpisg220.cpgv = 90 
-			
 		endif
 
 		db.update(ttpisg220,db.retry,e)
@@ -223,17 +275,17 @@ function update.document.approval.wip(domain tccprj	i.cprj)		|#ISGEC01139.sn
 
 function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 {
-	if update.all = tcyesno.yes then
-		from.bohd = ""
-		to.bohd = "ZZZZZZZ"
-		from.iref = ""
-		to.iref = "ZZZZZZZ"
-	else
-		from.bohd = bohd
-		to.bohd = bohd
-		
-		from.iref = item.ref
-		to.iref = item.ref
+| 	if update.all = tcyesno.yes then
+| 		from.bohd = ""
+| 		to.bohd = "ZZZZZZZ"
+| 		from.iref = ""
+| 		to.iref = "ZZZZZZZ"
+| 	else
+| 		from.bohd = bohd
+| 		to.bohd = bohd
+| 		
+| 		from.iref = item.ref
+| 		to.iref = item.ref
 		
 | 		from.bohd = ""
 | 		to.bohd = "ZZZZ"
@@ -241,7 +293,7 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 | 		from.iref = "STEAM COIL AIR PRE HEATER"
 		
 
-	endif
+| 	endif
 
 	db.retry.point()							|#ISGEC01128.n	
 
@@ -253,6 +305,7 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 	and 	tpisg220.manu = tcyesno.no				|#ISGEC01128.n
 | 	and 	tpisg220.cact = "50990000M1C47"			|Prasanna.17|12|2018
 | 	and	tpisg220.bohd = "CT_RESTADVANCERELEASE" or tpisg220.bohd = "CT_FIRSTADVANCERELEASE"
+ |	and 	tpisg220.cact = "50990000M1C6"			|Veena.20|12|2018
 	selectdo
 		if	trim$(tpisg220.bohd) <> "CT_RFQRAISED" and trim$(tpisg220.bohd) <> "CT_RFQOFFERECEIVED" and
 			trim$(tpisg220.bohd) <> "CT_RFQCOMMERCIALFINALISED" and trim$(tpisg220.bohd) <> "CT_MANUFACTURING" and 
@@ -448,12 +501,12 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 											tpisg220.cact)
 			break
 			
-			case "CT_RECEIPTPIIRN":
-				update.receipt.pi.irn.in.tpisg220(
-								tpisg220.cprj,
-								tpisg220.sub1,
-								tpisg220.sitm)
-			break
+| 			case "CT_RECEIPTPIIRN":						|#Not in use	
+| 				update.receipt.pi.irn.in.tpisg220(
+| 								tpisg220.cprj,
+| 								tpisg220.sub1,
+| 								tpisg220.sitm)
+| 			break
 			endcase
 		endif
 		
@@ -466,7 +519,7 @@ function update.activity.master.through.document.approval(domain tcorno		i.pcod,
 						 	   domain tcmcs.s200u		tp.iref,	
 							   domain tcmcs.str30		i.cact)
 {
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = docsapproval.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -483,7 +536,7 @@ function update.activity.master.through.po.approval(domain tcorno		i.pcod,
 						     domain tcmcs.s200u		tp.iref,
 						     domain tcmcs.str30		i.cact)
 {
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = poapproved.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -503,7 +556,7 @@ function update.activity.master.through.posent.for.approval(domain tcorno		i.pco
 							     domain tcmcs.str30		i.cact)
 {
 	
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = posentapproval.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -522,7 +575,7 @@ function update.activity.master.through.indent.approval(domain tcorno		i.pcod,
 							domain tcmcs.str30	i.cact)
 {
 	
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = get.least.indent.date(tp.iref,i.cprj)
 	endif
 	
@@ -541,7 +594,7 @@ function update.activity.master.through.bank.guarentee(domain tcorno		i.pcod,
 							domain tcmcs.str30	i.cact)
 {
 	
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = bankguarantee.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -559,7 +612,7 @@ function update.project.activity.master.through.postorderdrgapproval(	domain tco
 									domain tcmcs.str30	i.cact)
 {
 	
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = postorderapproval.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -578,7 +631,7 @@ function update.project.activity.master.through.postorderdrgsubmit(	domain tcorn
 									domain tcmcs.str30	i.cact)
 {
 	
-	if dm.iref = tp.iref then
+	if trim$(dm.iref) = trim$(tp.iref) then
 		tpisg220.acsd = postordersubmit.least.date(tp.iref,i.cprj)
 	endif
 	
@@ -689,94 +742,105 @@ function manufacturing.progress.update(
 	POManufacturingWeight = 0
 	
 	
-	select	tpisg183.orno
-	from	tpisg183, tdisg002, dmisg140
-	where	tpisg183._index2 = {:i.cprj,:i.cact}
-	and	tpisg183.orno = tdisg002.orno
-	and	tdisg002.docn = dmisg140.docn
-	and	dmisg140.iref = :i.iref
-	group by tpisg183.orno
-	as set with 1 rows
-	selectdo
-		activity.found = 1
-	endselect	
-	
-	|Calculate PO Value denominator
-	if activity.found = 1 then
-		select	tpisg239.icls
-		from	tpisg239
-		where	tpisg239._index1 = {:i.pcod,:i.cprj,:i.iref}
-| 		and	tpisg239.pwgt <> 0
-		selectdo		
-			on case etol(tpisg239.icls)	
-			case 1:
-			case 3:
-				tot.val.po = tot.value.of.po(i.cprj,i.iref)
-				break	
-			endcase
-		endselect
-		
-		domain	tcorno		a.sitm
-		t.cpgv = 0
-		i.oamt = 0
-		
-		select	sum(tpisg183.tpgv):sum.tpgv,
-			tpisg183.orno, atpisg220.sitm:a.sitm
-		from	tpisg183, tpisg220 atpisg220
+	if shiftl$(strip$(tpisg220.dept)) = "ISGYNR" then 	|#veena.11-01-2019.sn
+		select	sum(tpisg183.tpgv):sum.tpgv
+		from	tpisg183
 		where	tpisg183._index2 = {:i.cprj,:i.cact}
-		and	atpisg220._index1 = {tpisg183.cprj}
-		and	atpisg220.cact = tpisg183.atid
-		and	tpisg183.orno <> ""
-		group by tpisg183.orno, atpisg220.sitm
-		selectdo	
-			|Weight Denominator
-			select	tpisg239.pwgt,
-				tpisg239.icls
+		selectdo endselect
+		tpisg220.cpgv = sum.tpgv
+		db.update(ttpisg220,db.retry,e)
+		commit.transaction()
+	else							|#veena.11-01-2019.en
+
+		select	tpisg183.orno
+		from	tpisg183, tdisg002, dmisg140
+		where	tpisg183._index2 = {:i.cprj,:i.cact}
+		and	tpisg183.orno = tdisg002.orno
+		and	tdisg002.docn = dmisg140.docn
+		and	dmisg140.iref = :i.iref
+		group by tpisg183.orno
+		as set with 1 rows
+		selectdo
+			activity.found = 1
+		endselect	
+
+		
+		|Calculate PO Value denominator
+		if activity.found = 1 then
+			select	tpisg239.icls
 			from	tpisg239
 			where	tpisg239._index1 = {:i.pcod,:i.cprj,:i.iref}
-| 			and	tpisg239.pwgt <> 0
-			selectdo	
+	| 		and	tpisg239.pwgt <> 0
+			selectdo		
 				on case etol(tpisg239.icls)	
 				case 1:
 				case 3:
-					if tot.val.po <> 0 then
-						calc.po.perc(i.cprj, i.iref, i.sitm, i.po.perc)
-| 						if isspace(a.sitm) then
-							i.oamt = order.amnt.of.po(tpisg183.orno,i.iref)
-							POManufacturingVal = (sum.tpgv * i.oamt)/100
-							TotalPOManufacturingPerc = (POManufacturingVal/tot.val.po) * 100
-| 						else
-| 							TotalPOManufacturingPerc = sum.tpgv
-| 						endif
-						
-						t.cpgv = t.cpgv + (TotalPOManufacturingPerc / i.po.perc)*100
-						
-						tpisg220.cpgv = t.cpgv
-						db.update(ttpisg220,db.retry,e)
-| 						commit.transaction()
-					endif
+					tot.val.po = tot.value.of.po(i.cprj,i.iref)
 					break	
-				case 4:	
-					if tpisg239.pwgt <> 0 then
-						calc.po.perc(i.cprj, i.iref, i.sitm, i.po.perc)
-						i.wght.of.po = wght.of.po(tpisg183.orno, i.iref, i.sitm)
-						POManufacturingWeight = (sum.tpgv * i.wght.of.po)/100
-	| 					if isspace(tpisg220.sitm) then
-	| 						t.cpgv = t.cpgv + ((POManufacturingWeight/tpisg239.pwgt)*100) 
-	| 					else
-							po.sub.item.wght = AllPOSubItemWeight(i.cprj, i.iref, tpisg220.sitm)
-							t.cpgv = t.cpgv + (POManufacturingWeight/po.sub.item.wght) * i.po.perc
-	| 					endif
-						tpisg220.cpgv = t.cpgv
-						db.update(ttpisg220,db.retry,e)
-					endif
-					break
 				endcase
 			endselect
-		endselect
-		commit.transaction()
+			
+			domain	tcorno		a.sitm
+			t.cpgv = 0
+			i.oamt = 0
+			
+			select	sum(tpisg183.tpgv):sum.tpgv,
+				tpisg183.orno, atpisg220.sitm:a.sitm
+			from	tpisg183, tpisg220 atpisg220
+			where	tpisg183._index2 = {:i.cprj,:i.cact}
+			and	atpisg220._index1 = {tpisg183.cprj}
+			and	atpisg220.cact = tpisg183.atid
+			and	tpisg183.orno <> ""
+			group by tpisg183.orno, atpisg220.sitm
+			selectdo	
+				|Weight Denominator
+				select	tpisg239.pwgt,
+					tpisg239.icls
+				from	tpisg239
+				where	tpisg239._index1 = {:i.pcod,:i.cprj,:i.iref}
+	| 			and	tpisg239.pwgt <> 0
+				selectdo	
+					on case etol(tpisg239.icls)	
+					case 1:
+					case 3:
+						if tot.val.po <> 0 then
+							calc.po.perc(i.cprj, i.iref, i.sitm, i.po.perc)
+	| 						if isspace(a.sitm) then
+								i.oamt = order.amnt.of.po(tpisg183.orno,i.iref)
+								POManufacturingVal = (sum.tpgv * i.oamt)/100
+								TotalPOManufacturingPerc = (POManufacturingVal/tot.val.po) * 100
+	| 						else
+	| 							TotalPOManufacturingPerc = sum.tpgv
+	| 						endif
+							
+							t.cpgv = t.cpgv + (TotalPOManufacturingPerc / i.po.perc)*100
+							
+							tpisg220.cpgv = t.cpgv
+							db.update(ttpisg220,db.retry,e)
+	| 						commit.transaction()
+						endif
+						break	
+					case 4:	
+						if tpisg239.pwgt <> 0 then
+							calc.po.perc(i.cprj, i.iref, i.sitm, i.po.perc)
+							i.wght.of.po = wght.of.po(tpisg183.orno, i.iref, i.sitm)
+							POManufacturingWeight = (sum.tpgv * i.wght.of.po)/100
+		| 					if isspace(tpisg220.sitm) then
+		| 						t.cpgv = t.cpgv + ((POManufacturingWeight/tpisg239.pwgt)*100) 
+		| 					else
+								po.sub.item.wght = AllPOSubItemWeight(i.cprj, i.iref, tpisg220.sitm)
+								t.cpgv = t.cpgv + (POManufacturingWeight/po.sub.item.wght) * i.po.perc
+		| 					endif
+							tpisg220.cpgv = t.cpgv
+							db.update(ttpisg220,db.retry,e)
+						endif
+						break
+					endcase
+				endselect
+			endselect
+			commit.transaction()
+		endif
 	endif
-	
 }
 
 function update.project.activity.master.through.RFQTechnoCommercialCompleted(
@@ -812,7 +876,7 @@ function assign.perc(domain tcmcs.s200u	dm.iref,
 {	
 	FinalPerc = 0
 	
-	if (dm.iref = tp.iref) then
+	if (trim$(dm.iref) = trim$(tp.iref)) then
 		calculate.perc(tp.iref,i.cprj)
 	else if (trim$(dm.iref) = trim$(i.cact)) then
 		calculate.perc(i.cact,i.cprj)
