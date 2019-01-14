@@ -16,7 +16,11 @@
 |* WIP field and Progress percentage field update 
 |*
 |* ID: ISGEC01145, Prasanna Bhuyan, VRC B61U a7 isg, 18-12-2018
-|* Update weight in item reference master and history  
+|* Update weight in item reference master and history
+|*
+|* ID: ISGEC01155, Sahil Sharma, VRC B61U a7 isg, 11-01-2019	
+|* Update Weight in Item Reference Master when all drawings 
+|* of perticular item reference have Actual Release Date  
 |****************************** declaration section ***************************
 declaration:
 
@@ -37,7 +41,8 @@ declaration:
 	table	tdmisg135
 	table	ttdmsl400
 	table	ttiisg910			|#ISGEC01139.n
-		
+	table	ttpisg239			|#ISGEC01145.n
+	
 |------------------------ form variables --------------------------------------
 	extern	domain 	tccprj		i.cprj							
 	extern	domain	tcmcs.str100	dsca
@@ -181,22 +186,38 @@ function update.weight.in.item.reference.master.and.history(domain	tccprj	i.cprj
 	selectdo
 		sum.dpwt = 0
 			
-		select	sum(dmisg140.dpwt):sum.dpwt
+		select	sum(dmisg140.dpwt):sum.dpwt					
 		from	dmisg140
 		where	dmisg140._index1 = {:tpisg239.pcod,:tpisg239.cprj}
 		and	dmisg140.iref = :tpisg239.iref
 		selectdo
 		endselect
 		
-		if	sum.dpwt > tpisg239.pwgt	then
-			
+		if sum.dpwt > tpisg239.pwgt	then
 			tpisg239.pwgt = sum.dpwt
-			
+			db.update(ttpisg239,db.retry,e)
 		endif
 		
-		db.update(ttpisg239,db.retry,e)
+		flag = 0								|#ISGEC01155.sn
+		select	dmisg140.adct
+		from	dmisg140
+		where	dmisg140._index1 = {:tpisg239.pcod,:tpisg239.cprj}
+		and	dmisg140.iref = :tpisg239.iref
+		and	dmisg140.adct = 0
+		selectdo
+			flag = 1
+			break
+		selectempty
+		endselect
+
+		if flag = 0 then
+			tpisg239.pwgt = sum.dpwt
+			db.update(ttpisg239,db.retry,e)
+		endif
+
+|		db.update(ttpisg239,db.retry,e)
 		commit.transaction()
-		
+											|#ISGEC01155.en
 	endselect
 }													|#ISGEC01145.en
 
