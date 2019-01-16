@@ -1,0 +1,71 @@
+|******************************************************************************
+|* tdisg2200m000  0  VRC B61U a7 isg 
+|* Update Indent
+|* Installation user             
+|* 2014-09-17
+|******************************************************************************
+|* Main table tdpur200 Purchase Requisitions, Form Type 4
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdpur200 | Purchase Requisitions
+
+   
+extern	domain	tcorno		i.rqno
+extern	domain	tdpur.rqst	i.rqst
+|****************************** program section ********************************
+
+
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+|****************************** choice section ***********************************
+choice.update:
+on.choice:
+	update_req_status(i.rqst)	
+|**************************** field section **************************************
+field.i.rqno:
+after.field:
+	get_req_status()
+	
+	if tdpur200.rqst = tdpur.rqst.submitted then
+		enable.commands("update")
+	else
+		disable.commands("update")
+	endif
+	
+field.i.rqst:
+before.field:
+	set.enum.values.for.field("i.rqst",tdpur.rqst.rejected,tdpur.rqst.approved)
+
+|***************************** function section ******************************
+functions:
+
+function	get_req_status()
+{
+	select	tdpur200.rqst
+	from	tdpur200
+	where	tdpur200._index1 = {:i.rqno}
+	as set with 1 rows
+	selectdo
+	endselect
+}
+
+function	update_req_status
+				(
+					domain	tdpur.rqst	req.status
+				)
+{
+	select	tdpur200.rqst
+	from	tdpur200 for update
+	where	tdpur200._index1 = {:i.rqno}
+	selectdo
+		tdpur200.rqst = req.status
+		db.update(ttdpur200,db.retry,e)
+	endselect
+	commit.transaction()
+}				

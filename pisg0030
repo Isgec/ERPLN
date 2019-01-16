@@ -1,0 +1,47 @@
+|******************************************************************************
+|* tdisg003  0  VRC B61U a7 live
+|* DAL2 For tdisg003
+|* tools1
+|* 14-06-02 [18:54]
+|******************************************************************************
+|* Script Type: DAL
+|******************************************************************************
+                                                                                
+#include <bic_dal2>
+	table	ttdisg003
+#include "itdisgdll0003"
+function extern long before.open.object.set()
+{
+	return(0)
+}
+
+function extern long before.save.object(long type)
+{
+
+	domain	tccprj		o.cprj
+	domain	tppdm.cspa	o.cspa
+	domain	tcitem		o.item
+	domain	tcpono		o.revn
+| 	
+	on case type
+		case DAL_UPDATE :
+			if tdisg003.stat = tcyesno.yes then
+				tcisgdll0003.Get_Indent(tdisg003.rqno,tdisg003.pono,o.cprj,o.cspa,o.item)
+				if	tcisgdll0003.get.max.revision(o.cprj, o.cspa, o.item) then
+					|UPDATE_STATUS1(o.cprj,o.cspa,o.item,o.revn,tdisg003.sern,indt)
+					UPDATE_STATUS1(o.cprj, o.cspa, o.item, tdisg003.item, indt)
+					tcisgdll0003.insert.tcisg005(
+						o.cprj,		|Project
+						o.cspa,		|Element
+						o.item,		|Item
+						|tdisg003.sern,	|Sr. No.
+						tdisg003.item,	|Item
+						tdisg.item.indent,	|Type
+						tdisg003.rqno,	|Order Number
+						tdisg003.pono)	|Position
+				endif
+		endif
+		break	
+	endcase		
+	return(0)
+}

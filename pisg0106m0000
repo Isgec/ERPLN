@@ -1,0 +1,53 @@
+|******************************************************************************
+|* tdisg0106m000  0  VRC B61U a7 live
+|* Linked Receipts
+|* Tools                         
+|* 2014-06-02
+|******************************************************************************
+|* Main table tdisg006 Purchase Order Wise Linked Receipt, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+	table	ttdisg006 | Purchase Order Wise Linked Receipt
+	
+	extern	domain	tcorno		i.orno
+	extern	domain	tcpono		i.pono
+	extern	domain	tcitem		i.item
+	extern	domain	tcmcs.str16	progname
+	extern	domain	tcqiv1		tot_qoor, tot_acht
+
+|****************************** program section ********************************
+before.program:
+	inputfield.invisible("tdisg006.item.segment.1")
+	import("prog.name$", progname)
+	on case progname
+		case "tdisg0102m000":
+			import("tdisg002.orno", i.orno)
+			import("tdisg002.pono", i.pono)
+			import("tdisg002.item", i.item)
+			query.extend.where("tdisg006._index2 = {:i.orno, :i.pono, :i.item}")
+		break
+	ENDCASE
+	fattr.total.line = true
+
+on.display.total.line:
+	Get.Total.weight()
+	display.total.fields("tdisg006.qoor", tot_qoor, "tdisg006.acht", tot_acht)
+
+|****************************** group section **********************************
+|****************************** function section **********************************
+Functions:
+
+function Get.Total.weight()
+{
+	tot_qoor = 0
+	tot_acht = 0
+	
+	select	sum(tdisg006.qoor):tot_qoor, sum(tdisg006.acht):tot_acht
+	from	tdisg006
+	where	tdisg006._index2 = {:tdisg006.orno, :tdisg006.pono, :tdisg006.item}
+	selectdo
+	endselect
+}

@@ -1,0 +1,201 @@
+|******************************************************************************
+|* tdisg1401m000  0  VRC B61U a7 live
+|* Print Indent Request for Quotations
+|* Tools                         
+|* 2014-05-27
+|******************************************************************************
+|* Main table tdpur101 RFQ Lines, Form Type 4
+|******************************************************************************
+|* IDENT ISG001033 Neerav Singh  27-05-2014	   VRC B61U a7 live                                                                                                                                                             
+|****************************** declaration section ***************************
+declaration:
+	
+  table   ttdpur100 | RFQ Header
+  table   ttdpur101 | RFQ Lines
+  table   ttccom130 |
+  table   ttdpur105 |	
+  table   ttccom100 |
+  table   ttcisg004 |
+  table   ttccom001 |
+  table   tbpmdm001 |  
+  table   ttdipu001 |
+  table   tdmisg001 |
+  table   ttdisg004 |
+  
+   extern  domain  tcpono           pono.f
+   extern  domain  tcpono           pono.t
+   extern  domain  tcqono           qono.f    fixed
+   extern  domain  tcqono           qono.t    fixed
+   extern  domain  tcsern           srnb.f
+   extern  domain  tcsern           srnb.t
+   extern  domain  tcyesno  txta.txt
+   extern  domain  tcpono	     p,h
+   extern  domain  tcqiv1           wght.t
+   extern  domain  tcpono           pono.i
+   extern  domain  tcqono           qono.i
+   extern  domain  tccom.bpid       supp.f		
+   extern  domain  tccom.bpid       supp.t
+   
+|****************************** program section ********************************
+
+before.program:
+	import("tdpur100.qono", qono.f)
+
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+
+|****************************** choice section ********************************
+
+choice.cont.process:
+on.choice:
+   execute(print.data)
+
+choice.print.data:
+on.choice:
+	
+   if rprt_open() then
+| 	if reportno =1 then
+		read.main.table()
+| 	else
+| 		read.main.table1()
+| 	endif
+	rprt_close()
+   else
+       choice.again()
+   endif
+	
+
+|****************************** field section *********************************
+
+field.qono.f:
+when.field.changes:
+   qono.t = qono.f
+
+field.pono.f:
+when.field.changes:
+   pono.t = pono.f
+
+field.srnb.f:
+when.field.changes:
+   srnb.t = srnb.f
+
+|****************************** function section ******************************
+
+functions:
+
+function read.main.table()
+{   
+	h = 0
+	p = 0
+	pono.i = 0
+	select tdpur101.*,tdpur100.*,tdpur105.otbp
+	from   tdpur101,tdpur100,tdpur105
+	where  tdpur101._index1 = {:qono.f}
+	and    tdpur101.qono refers to tdpur100
+	and    tdpur101.qono refers to tdpur105
+	and    tdpur105._index3 inrange {:supp.f} and {:supp.t}
+	order by tdpur101._index1
+	selectdo
+		
+| 		pono.i=0
+		qono.i=tdpur100.qono
+		    
+		select tdipu001.qual
+		from   tdipu001
+		where  tdipu001._index1={:tdpur101.item}
+		selectdo
+		endselect
+
+		select tccom001.*
+		from tccom001
+		where tccom001._index1={:tdpur100.ccon}
+		as set with 1 rows
+		selectdo
+			select bpmdm001.*
+			from   bpmdm001
+			where  bpmdm001._index1={:tccom001.emno}
+			as set with 1 rows
+			selectdo
+			endselect
+		endselect
+
+		select tccom100.bpid,tccom100.nama,tccom100.cadr
+		from  tccom100
+		where tccom100._index1={:tdpur105.otbp}
+		selectdo
+			select tccom130.*
+			from  tccom130
+			where tccom130._index1={:tccom100.cadr}
+			selectdo
+			endselect
+			
+		endselect
+		h = 0 
+		p = 0 
+		rprt_send()
+	selecteos
+| 		qono.i = tdpur100.qono
+		h = 0
+		read.main.table1()
+	endselect
+}
+
+
+
+
+function read.main.table1()
+{
+domain dmdoc.docid	i.docn
+        wght.t=0
+	i.docn = ""
+	select tdpur101.*
+	from   tdpur101 
+	where  tdpur101._index1 = {:qono.f}
+	selectdo
+		pono.i=tdpur101.pono
+		
+		select tdisg004.*
+		from   tdisg004
+		where  tdisg004._index1={:tdpur101.qono,:tdpur101.pono}
+| 		where  tdisg004._index1={:tdpur101.qono,:tdpur101.pono,:tdpur101.srnb}
+		and    tdisg004.slct = tcyesno.yes
+		selectdo
+			p=1
+			wght.t = tdisg004.qnty * tdisg004.wght
+			rprt_send()
+| 		selecteos
+| 			p=2
+| 		endselect
+		
+			select tcisg004.srno,tcisg004.docn
+			from   tcisg004
+			where  tcisg004._index1={:tdpur101.cprj,:tdpur101.cspa,:tdpur101.item}
+			and    tcisg004.srno = :tdisg004.sern
+			selectdo
+				if tcisg004.docn <> i.docn then
+					i.docn = tcisg004.docn
+					p=2
+					Get.Document.Description()
+					rprt_send()
+				endif
+			endselect
+		endselect
+	endselect
+}
+
+function Get.Document.Description()
+{
+	|-------- Document Description---------
+	select	dmisg001.dttl,dmisg001.revn
+	from	dmisg001
+	where	dmisg001._index1=  {:tcisg004.docn}
+	order by dmisg001.revn desc
+	selectdo
+	selectempty
+		dmisg001.dsca = ""
+	endselect
+
+}

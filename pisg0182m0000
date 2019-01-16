@@ -1,0 +1,114 @@
+|******************************************************************************
+|* tdisg0182m000  0  VRC B61U a7 live
+|* LOI Issuance
+|* Installation user             
+|* 2014-12-03
+|******************************************************************************
+|* Main table tdisg082 LOI Issuance, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+	table	ttdisg082 | LOI Issuance
+	table	ttpptc100 |Elements
+	table	ttcmcs050
+	table	ttcisg000
+
+	|******************** Form Variables ***************
+	extern	domain	tcdsca		var.pjdc
+	extern	domain	tcdsca		var.eldc
+	extern	domain	tcyesno		text.yn
+	
+	|******************* Script Variables **************
+	string	str(300)
+
+|****************************** program section ********************************
+before.program:
+	set.synchronized.dialog("tdisg0182m000")
+	read.parameters()
+
+|****************************** group section **********************************
+|****************************** field section **********************************
+field.var.pjdc:
+before.display:
+	var.pjdc = Get_Project_Desc(tdisg082.cprj)
+
+field.var.eldc:
+before.display:
+	var.eldc = Get_Element_Desc(tdisg082.cprj, tdisg082.cspa)
+	
+field.tdisg082.loin:
+before.zoom:
+	if	update.status = add.set	then
+		tcmcs050.nrgr = tcisg000.lngp	
+		attr.zoomcode = Z.SESSION
+		attr.zoomsession$ = "tcmcs0150m000"
+		attr.zoomreturn$ = "tcmcs050.seri"
+	else
+		attr.zoomcode = Z.SESSION
+		attr.zoomsession$ = "tdisg0182m000"
+		attr.zoomreturn$ = "tdisg082.loin"
+	endif
+	
+field.tdisg082.cspa:
+before.zoom:
+	tpptc100.cprj = tdisg082.cprj
+	
+field.tdisg082.orno:
+before.zoom:
+	str = ""
+	str = "tdpur400.orno in ("
+	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 = '" &tdisg082.cprj&"')"
+	query.extend.where.in.zoom(str)
+	
+field.tdisg082.rqno:
+before.zoom:
+	str = ""
+	str = "tdpur200.rqno in ("
+	str = str & "select tdpur201.rqno from tdpur201 where tdpur201._index2 = '" &tdisg082.cprj&"')"
+	query.extend.where.in.zoom(str)
+
+field.text.yn:
+before.display:
+	text.yn = tdisg082.txta <> 0 ? tcyesno.yes:tcyesno.no
+|****************************** function section **********************************
+Functions:
+
+function domain tcdsca	Get_Project_Desc(
+				domain	tccprj	i.cprj
+				)
+{
+	domain	tcdsca	tmp.dsca
+	
+	tmp.dsca = ""
+	select	pj_tcmcs052.dsca:tmp.dsca
+	from	tcmcs052 pj_tcmcs052
+	where	pj_tcmcs052._index1 = {:i.cprj}
+	selectdo
+	endselect
+	
+	return(tmp.dsca)
+}
+
+function domain tcdsca Get_Element_Desc(
+				domain	tccprj		i.cprj,
+				domain	tppdm.cspa	i.cspa
+				)
+{
+	domain	tcdsca	t.dsca
+	
+	t.dsca = ""
+	select	el_tpptc100.desc:t.dsca
+	from	tpptc100 el_tpptc100
+	where	el_tpptc100._index1 = {:i.cprj, :i.cspa}
+	selectdo
+	endselect
+	
+	return(t.dsca)
+}
+
+function read.parameters()
+{
+	tcmcs.dll0095.read.parm("tcisg000")
+}

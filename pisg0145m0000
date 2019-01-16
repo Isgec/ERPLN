@@ -1,0 +1,58 @@
+|******************************************************************************
+|* tdisg0145m000  0  VRC B61U a7 isg 
+|* Display Project / PO Lines wise child item
+|* Installation User             
+|* 2015-04-08
+|******************************************************************************
+|* Main table tdisg045 Project /PO wise Child Item, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdisg045 | Project /PO wise Child Item
+  table   ttdpur401
+  table   ttcmcs052
+  
+  extern domain tccprj i.cprj,cprj.f
+  extern domain tcorno i.orno
+  extern domain tcpono i.pono
+  extern domain tcdsca cprj.n
+  extern domain tccuni  unit	
+|****************************** program section ********************************
+before.program:
+	import("tdpur401.orno",i.orno)
+	import("tdpur401.pono",i.pono)
+	update.field()
+	
+|****************************** choice section **********************************
+choice.update:
+on.choice:
+	do.updation()
+|****************************** field section **********************************
+
+	
+|***************************** function section ********************************
+functions:
+
+function do.updation()
+{
+	tdisg.dll0045.Update_Project_Element_wise_Child_Item(tdpur401.cprj, tdisg045.cspa)
+}
+
+function update.field()
+{
+	select tdpur401.cprj,tcmcs052.dsca,tdpur401.cuqp
+	from    tdpur401,tcmcs052
+	where   tdpur401._index1 = {:i.orno,:i.pono}
+	and     tdpur401.cprj refers to tcmcs052
+	selectdo
+		unit   = tdpur401.cuqp
+		cprj.f = tdpur401.cprj
+		cprj.n = tcmcs052.dsca
+	selectempty
+		unit  = ""
+		cprj.f = ""
+		cprj.n = ""
+	endselect
+}

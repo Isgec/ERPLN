@@ -1,0 +1,48 @@
+|******************************************************************************
+|* tdisg0108m000  0  VRC B61U a7 isg 
+|* Pre-Order Tracking Session
+|* Installation user             
+|* 2015-01-09
+|******************************************************************************
+|* Main table tdisg008 PR Lines Table, Form Type 1
+|******************************************************************************
+|IDENT ISGEC01061, Mani sharma , Dt.21-02-2015    
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdisg008 | PR Lines Table
+  table		ttdpur201| Requisition Lines
+   extern domain tcdsca desc
+   extern domain  tcrqno rqno.var
+   extern  domain tcpono pono.var
+   string	str(300), var.pono
+|****************************** program section ********************************
+before.program:
+	import("tdpur201.nids",desc)
+	import("tdpur201.rqno",rqno.var)
+	import("tdpur201.pono",pono.var)
+	insert.data()
+|****************************** field section *********************************
+field.tdisg008.pono:
+selection.filter:
+	tdpur201.rqno	=	tdisg008.rqno
+|****************************** group section *********************************
+functions:
+function extern insert.data()
+{
+	select tdisg008.*
+        from   tdisg008
+        where  tdisg008._index1 = {:rqno.var,:pono.var}
+	selectdo
+	selectempty
+		tdisg008.rqno = rqno.var
+		tdisg008.pono = pono.var
+		db.insert(ttdisg008,db.skip.dupl,e)
+	        if e = 0 then
+		      commit.transaction()
+	        else
+		     message("error")
+	        endif
+        endselect
+
+}

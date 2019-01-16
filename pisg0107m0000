@@ -1,0 +1,193 @@
+|******************************************************************************
+|* tdisg0105m000  0  VRC B61U a7 live
+|* Bill Of Material Receipt
+|* Tools                         
+|* 2014-05-23
+|******************************************************************************
+|* Main table tdisg007 Bill Of Material Receipt, Form Type 1
+|******************************************************************************
+|* ISGECDV001159, IT0205, Arjit Gupta, VRC B61U a7 live, Dt. 15-11-2014
+|* Option to Select All , To be Dispatch "Yes", Packing List Qty. to Be actual qnty., 
+|* Packing List Unit to be UOM, Net Weight& Gross Weight to be Weight.
+|****************************** declaration section ***************************
+declaration:
+
+  table   	ttdisg007 | Bill Of Material Receipt
+  table		twhinh312
+  table		ttdpur401
+  table		ttcisg004
+  table		ttdisg831
+  
+	extern domain tcqiv1 wght.t
+
+	extern	domain	tcmcs.str16	progname
+	extern	domain	whinh.shpm	import.rcno
+	extern	domain	tcpono		import.rcln
+	extern	domain	tcorno		import.edrn
+	
+#include <bic_dam>
+#include <bic_4gl2>
+| #include "itdisgdll0003"
+|****************************** program section ********************************
+before.program:
+	import("prog.name$", progname)
+	import("tdisg832.rcno",import.rcno)
+	import("tdisg832.rcln",import.rcln)
+	import("tdisg832.edrn",import.edrn)
+| 	query.extension = "tdisg007._index1 = {:import.rcno,:import.rcln}"
+	query.extend.where("tdisg007._index1 = {:import.rcno,:import.rcln}")
+	inputfield.invisible("tdisg007.item.segment.1")
+
+before.display.object:
+	set.command.enable.disable()
+after.form.read:
+	enable.save.on.occ.change  ()
+|****************************** choice section **********************************
+| choice.freeze:
+| on.choice:
+| 	update_tdisg007()
+| 	delete_from_tdisg007()
+| 	commit.transaction()
+							|#ISGECDV001159.sn
+choice.select.all:
+on.choice:
+	Select_All()
+							|#ISGECDV001159.en
+|***************************** field section **************************************	
+field.wght.t:
+before.display:
+	select	sum(tdisg007.wght):wght.t
+	from	tdisg007
+	where	tdisg007._index1 = {:import.rcno,:import.rcln}
+	selectdo
+	selectempty
+		wght.t = 0
+	endselect	
+
+field.tdisg007.psds:
+before.input:
+	tdisg007.psds = tdisg007.desc
+	
+field.tdisg007.item.segment.2:
+before.zoom:
+	attr.zoomcode = 0
+	
+|**************************************** function section **********************************
+functions:
+
+function update_tdisg007()
+{
+	select	tdisg007.stat, tdisg007.slct
+	from	tdisg007 for update
+	where	tdisg007._index1 = {:import.rcno,:import.rcln}
+	and	tdisg007.slct = tcyesno.yes
+	selectdo
+		dal.change.object("tdisg007")
+		dal.set.field("tdisg007.stat", tcyesno.yes)
+		dal.save.object("tdisg007")
+	endselect	
+}
+
+function delete_from_tdisg007()
+{
+| 	select tdisg007.sern
+	select tdisg007.rcno
+	from	tdisg007 for update
+	where	tdisg007._index1 = {:import.rcno,:import.rcln}
+	and	tdisg007.slct = tcyesno.no
+	selectdo
+		db.delete(ttdisg007,db.retry,e)
+	endselect
+	commit.transaction()
+	
+}
+
+function extern boolean modify.set.is.allowed()
+{
+
+	select	tdisg831.stat
+	from	tdisg831
+	where	tdisg831._index1 = {:import.edrn}
+	and	tdisg831.stat = tdisg.stat.created
+	as set with 1 rows
+	selectdo
+	selectempty
+		return(false)
+	endselect
+
+
+ 	if tdisg007.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function extern boolean mark.delete.is.allowed()
+{	
+ 	if tdisg007.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function set.command.enable.disable()
+{
+	if	trim$(progname) = "tdisg8132m000"	then
+		select	tdisg831.stat
+		from	tdisg831
+		where	tdisg831._index1 = {:import.edrn}
+		selectdo
+		endselect
+		if	tdisg831.stat = tdisg.stat.created	then
+| 			enable.commands(add.set, modify.set, mark.delete, dupl.occur)	|#ISGECDV001159.o
+			enable.commands(add.set, modify.set, mark.delete, dupl.occur, "select.all")	|#ISGECDV001159.n
+		else
+| 			disable.commands(add.set, modify.set, mark.delete, dupl.occur)	|#ISGECDV001159.o
+			disable.commands(add.set, modify.set, mark.delete, dupl.occur, "select.all")	|#ISGECDV001159.n
+		endif
+	endif	
+}
+
+function extern boolean add.set.is.allowed()
+{
+	select	tdisg831.stat
+	from	tdisg831
+	where	tdisg831._index1 = {:import.edrn}
+	selectdo
+	endselect
+	if	tdisg831.stat = tdisg.stat.created	then
+		return(true)
+	endif
+	
+	return(false)
+}
+
+							|#ISGECDV001159.sn
+function Select_All()
+{
+	long	u.ret
+	string	error(100)
+	
+	u.ret = 0
+	error = ""
+	select	tdisg007.slct, tdisg007.pqty, tdisg007.pcun, tdisg007.ntwt, 
+		tdisg007.wght, tdisg007.acht, tdisg007.qoor, tdisg007.quom
+	from	tdisg007 for update
+	where	tdisg007._index1 = {:tdisg007.rcno, :tdisg007.rcln}
+	and	tdisg007.slct = tcyesno.no
+	selectdo
+		u.ret = dal.change.object("tdisg007")
+		dal.set.field("tdisg007.slct", tcyesno.yes)
+		dal.set.field("tdisg007.ntwt", tdisg007.wght)
+		dal.set.field("tdisg007.acht", tdisg007.wght)
+		dal.set.field("tdisg007.pqty", tdisg007.qoor)
+		dal.set.field("tdisg007.pcun", tdisg007.quom)
+		u.ret = dal.save.object("tdisg007")
+		if	u.ret = 0	then
+			commit.transaction()
+		else
+			dal.get.error.message(error)
+		endif	
+	endselect
+}
+							|#ISGECDV001159.en

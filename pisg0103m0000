@@ -1,0 +1,230 @@
+|******************************************************************************
+|* tdisg0103m000  0  VRC B61U a7 live
+|* Bill Of Material Indent
+|* Tools                         
+|* 2014-05-22
+|******************************************************************************
+|* Main table tdisg003 Bill Of Material Indent, Form Type 1
+|******************************************************************************
+|* ID ISGEC015083, Manish Manchanda, 2016-01-28
+|* same item used in other requisition no to be delete when freeze
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdisg003 | Bill Of Material Indent
+  table   ttcisg004
+  table   ttdpur201
+
+extern domain tcqiv1	wght.t
+extern domain tcpric   pric.t
+extern domain tcamnt   amnt.t
+extern domain tcrqno   i.rqno
+extern domain tcpono   i.pono
+
+extern  domain tcmcs.str15  	prog.name
+extern	domain	tcpono		o.revn
+	long	ret, rt 
+#include <bic_dam>
+#include "itdisgdll0003"
+#include <bic_4gl2>
+|****************************** program section ********************************
+before.program:
+        import("tdpur201.rqno",i.rqno)
+        import("tdpur201.pono",i.pono)
+        query.extension = "tdisg003._index1 = {:i.rqno,:i.pono}"
+	inputfield.invisible("tdisg003.item.segment.1")
+
+before.display.object:
+	set.command.disable.enable()
+|****************************** group section **********************************
+group.1:
+init.group:
+   get.screen.defaults()
+|****************************** choice Section ********************************
+choice.freeze:
+on.choice:
+	update_tdisg003()
+| 	update_tcisg004()
+	delete_from_tdisg003()
+	commit.transaction()
+choice.cont.bom.lines:
+on.choice:
+	select 	tdpur201.cprj,
+		tdpur201.cspa,
+		tdpur201.item,
+		tdpur201.rqno,
+		tdpur201.pono
+	from	tdpur201
+	where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
+	as set with 1 rows
+	selectdo
+	endselect
+| 	db.retry.point()
+| 	select	tdisg003.rqno
+| 	from	tdisg003
+| 	where	tdisg003._index1 = {:tdpur201.rqno, :tdpur201.pono, :tdpur201.item}
+| 	selectdo
+| 	selectempty
+| 		rt = dal.new.object("tdisg003")
+| 		dal.set.field("tdisg003.rqno", tdpur201.rqno)
+| 		dal.set.field("tdisg003.pono", tdpur201.pono)
+| 		dal.set.field("tdisg003.item", tdpur201.item)
+| 		ret = dal.save.object("tdisg003")
+| 	endselect	
+	BILL_OF_MATERIAL(tdpur201.cprj,tdpur201.cspa,tdpur201.item,
+			201,indt,tdpur201.rqno,tdpur201.pono,0)
+			
+	commit.transaction()		
+choice.mark.delete:
+before.choice:
+	select 	tdpur201.cprj,
+		tdpur201.cspa,
+		tdpur201.item
+	from	tdpur201
+	where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	if tcisgdll0003.get.max.revision(tdpur201.cprj,tdpur201.cspa,tdpur201.item) then
+| 		UPDATE_STATUS(tdpur201.cprj,tdpur201.cspa,tdpur201.item,o.revn,tdisg004.sern,indt)
+		UPDATE_STATUS(tdpur201.cprj, tdpur201.cspa, tdpur201.item, tdisg003.item, indt)
+	endif
+	
+after.choice:
+	commit.transaction()
+
+choice.cont.select.all:
+on.choice:
+	BILL_OF_MATERIAL_SELECT_ALL_LINES(003,tdisg003.rqno,tdisg003.pono)
+after.choice:
+	commit.transaction()
+	
+|****************************** group section **********************************
+|****************************** field section **********************************
+field.tdisg003.rqno:
+before.field:
+	tdisg003.rqno = i.rqno
+field.tdisg003.pono:
+before.field:
+	tdisg003.pono = i.pono
+	
+field.wght.t:
+before.display:
+	select	sum(tdisg003.wght):wght.t,sum(tdisg003.amnt):amnt.t, sum(tdisg003.pric):pric.t
+	from	tdisg003
+	where	tdisg003._index1 = {:i.rqno,:i.pono}
+	selectdo
+	selectempty
+		wght.t = 0
+		amnt.t = 0
+		pric.t = 0
+	endselect		
+
+
+|****************************** function Section ********************************
+functions:
+function update_tdisg003()
+{
+long ret_val
+	select	tdisg003.stat
+	from	tdisg003 for update
+	where	tdisg003._index1 = {:i.rqno,:i.pono}
+	and	tdisg003.slct	 = tcyesno.yes
+	selectdo
+		ret_val = dal.change.object("tdisg003")
+		dal.set.field("tdisg003.stat", tcyesno.yes)
+		ret_val = dal.save.object("tdisg003")
+	endselect	
+}
+
+function delete_from_tdisg003()
+{
+long ret_val
+	
+	domain		tcitem	v.item			|#ISGEC015083.n
+	
+	ret_val = 0
+| 	select tdisg003.*				|#ISGEC015083.so
+| 	from	tdisg003 for update
+| 	where	tdisg003._index1 = {:i.rqno,:i.pono}					
+| 	and	tdisg003.stat = tcyesno.no
+| 	selectdo
+| 		db.delete(ttdisg003,db.retry,e)
+| 	endselect					|#ISGEC015083.eo
+	
+							|#ISGEC015083.sn
+	select	tdisg003.item:v.item
+	from	tdisg003
+	where	tdisg003._index1	=	{:i.rqno,:i.pono}
+	selectdo
+		select	tdisg003.*
+		from	tdisg003	for	update
+		where	tdisg003.item	=	{:v.item}
+		and	tdisg003.stat	=	tcyesno.no
+		selectdo
+			db.delete(ttdisg003,db.retry,e)
+		endselect
+	endselect
+							|#ISGEC015083.en
+}
+
+function update_tcisg004()
+{
+	long ret_val
+
+	ret_val = 0
+	select	tdisg003.*		
+	from	tdisg003 
+	where	tdisg003._index1 = {:i.rqno,:i.pono}
+	and	tdisg003.stat	 = {tcyesno.yes}
+	selectdo			
+		select 	tdpur201.cprj,tdpur201.cspa,tdpur201.item
+		from	tdpur201
+		where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
+		selectdo
+			select 	tcisg004.indt
+			from	tcisg004 for update
+			where	tcisg004._index1  = {:tdpur201.cprj,:tdpur201.cspa,:tdpur201.item}
+| 			and	tcisg004.srno = {:tdisg003.sern}
+			and	tcisg004.item = {:tdisg003.item}
+			selectdo
+				ret_val = dal.change.object("tcisg004")
+				dal.set.field("tcisg004.indt", tcyesno.yes)
+				ret_val = dal.save.object("tcisg004")
+				if ret_val<>0 then
+					abort.transaction()
+				else
+					commit.transaction()
+				endif
+			endselect	
+		endselect	
+	endselect
+
+}
+
+
+function extern boolean modify.set.is.allowed()
+{
+ 	if tdisg003.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function extern boolean mark.delete.is.allowed()
+{	
+ 	if tdisg003.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function set.command.disable.enable()
+{
+	if	tdisg003.stat = tcyesno.yes	then
+		disable.commands("cont.bom.lines", "cont.select.all")
+	else	
+		enable.commands("cont.bom.lines", "cont.select.all")
+	endif	
+}

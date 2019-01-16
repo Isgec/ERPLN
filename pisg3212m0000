@@ -1,0 +1,190 @@
+|******************************************************************************
+|* tdisg3212m000  0  VRC B61U a7 live
+|* Update Receipt Lines and Inbond Order Lines
+|* Tools                         
+|* 2014-03-11
+|******************************************************************************
+|* Main table whinh312 Receipt Lines, Form Type 4
+|******************************************************************************
+|* IDENT ISG001015, Manish Kumar , IT0303 , 11-03-2014 ,  VRC B61U a7 live
+|* Update Session For Updating whinh312 ,whinh200 and whinh210 tables
+|****************************** declaration section ***************************
+declaration:
+
+	table	twhinh312	| Receipt Lines
+	table	twhinh210	| Inbond Order Lines
+	table	ttdpur400	| Purchase Orders
+	table	ttdpur401	| PO Lines
+	table	twhinh200	| Warehouse Orders
+	
+	extern	domain	tcorno		orno.f, orno.t
+	extern	domain	tcorno		i.error.order
+	extern	domain	tcmcs.str100	error.message
+		domain	tcmcs.long	brp_id
+	extern	domain	tcmcs.long	counter
+|****************************** program section ********************************
+|****************************** field section **********************************
+field.orno.f:
+when.field.changes:
+	orno.t = orno.f
+|****************************** choice section *********************************
+choice.update:
+on.choice:
+	brp_id = brp.open("rtdisg3212m0000","D",1)
+	if UpdateReceiptAndInbondOrder() then
+		message("Update Completed")
+| 	else
+| 		message("Error in Update Process")
+	endif
+	brp.close(brp_id)
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+
+|*****************************Functions section*********************************
+functions:
+function boolean UpdateReceiptAndInbondOrder()
+{
+	i.error.order = ""
+	error.message = ""
+	counter = 0
+	select	tdpur400.orno,tdpur401.orno,tdpur401.pono,
+		tdpur401.sqnb,tdpur401.corg
+	from	tdpur400,tdpur401
+	where	tdpur400._index1 inrange {:orno.f} and {:orno.t}
+	and	tdpur400.orno refers to tdpur401
+	selectdo
+		if not UpdateReceiptLines(tdpur401.orno,
+				tdpur401.pono,
+				tdpur401.sqnb) then
+| 			return(false)
+		else
+			commit.transaction()
+			counter = counter + 1
+		endif
+		mess("%d",0,counter)
+	endselect
+| 	commit.transaction()
+	return(true)
+}
+function boolean UpdateReceiptLines
+	(
+		domain	tcorno	i.orno,
+		domain	tcpono	i.pono,
+		domain	tcpono	i.sqnb
+	)
+{
+	select	whinh312.rcno,whinh312.oorg,whinh312.orno,
+		whinh312.pono,whinh312.seqn,whinh312.pmsk,
+		whinh312.acti
+	from	whinh312 for update
+	where	whinh312._index4 inrange {whinh.oorg.sales,:i.orno,:i.pono,:i.sqnb} 
+	and 	{whinh.oorg.not.appl,:i.orno,:i.pono,:i.sqnb}
+	selectdo
+		whinh312.pmsk = "eennnnnnnnnnnnnnnnnn"
+		whinh312.acti = "-"
+		whinh312.lsta = ltoe(30)
+		db.update(twhinh312,db.retry,e)
+		if not e then
+			if not UpdateInbondOrderLines(whinh312.rcno,
+				whinh312.oorg,
+				whinh312.orno,
+				whinh312.pono,
+				whinh312.seqn
+				) then
+				i.error.order = whinh312.orno
+				error.message = "Error in Updating Inbond Order Lines in case of receipt"
+				brp.ready(brp_id)
+			endif
+		else
+			i.error.order = whinh312.orno
+			error.message = "Error in Updating Receipt Lines"
+			brp.ready(brp_id)
+		endif
+	selectempty
+		if not UpdateInbondOrderLines(whinh312.rcno,
+					whinh312.oorg,
+					i.orno,
+					i.pono,
+					i.sqnb
+					) then
+			i.error.order = i.orno
+			error.message = "Error in Updating Inbond Order Lines in case of no receipt"
+			brp.ready(brp_id)
+		endif
+	endselect
+	return(true)
+}
+function boolean UpdateInbondOrderLines
+	(
+		domain	whinh.shpm	i.rcno,
+		domain	whinh.oorg	i.oorg,
+		domain	tcorno		i.orno,
+		domain	tcpono		i.pono,
+		domain	tcpono		i.sqnb
+	)
+{
+	select	whinh210.pmsk,whinh210.acti,whinh210.lsta,
+		whinh210.oorg
+	from	whinh210 for update
+	where	whinh210._index1 inrange {whinh.oorg.sales,:i.orno,:i.pono,:i.sqnb} 
+			and {whinh.oorg.not.appl,:i.orno,:i.pono,:i.sqnb}
+	selectdo
+		if not isspace(i.rcno) then
+			whinh210.pmsk = "eennnnnnnnnnnnnnnnnn"
+			whinh210.acti = "-"
+			whinh210.lsta = ltoe(35)
+			db.update(twhinh210,db.retry,e)
+			if not e then
+				if not UpdateWarehouseOrderStatus(
+						whinh210.oorg,
+						i.orno,
+						whinh.hsta.received
+						) then
+					return(false)
+				endif
+			else
+				return(false)
+			endif
+		else
+			whinh210.pmsk = "yynnnnnnnnnnnnnnnnnn"
+			whinh210.acti = "whinh3412m100"
+			whinh210.lsta = ltoe(5)
+			db.update(twhinh210,db.retry,e)
+			if not e then
+				if not UpdateWarehouseOrderStatus(
+						whinh210.oorg,
+						i.orno,
+						whinh.hsta.actual
+						) then
+					return(false)
+				endif
+			else
+				return(false)
+			endif
+		endif
+	endselect
+	return(true)
+}
+function boolean UpdateWarehouseOrderStatus
+	(
+		domain	whinh.oorg	i.origin,
+		domain	tcorno		i.order,
+		domain	whinh.hsta	i.hsta
+		
+	)
+{
+	select	whinh200.hsta
+	from	whinh200 for update
+	where	whinh200._index1 = {:i.origin,:i.order}
+	selectdo
+		whinh200.hsta = i.hsta
+		db.update(twhinh200,db.retry,e)
+	endselect
+	if not e then
+		return(true)
+	endif
+	return(false)
+}

@@ -1,0 +1,258 @@
+|******************************************************************************
+|* tdisg0105m000  0  VRC B61U a7 live
+|* Bill Of Material Receipt
+|* Tools                         
+|* 2014-05-23
+|******************************************************************************
+|* Main table tdisg005 Bill Of Material Receipt, Form Type 1
+|******************************************************************************
+|* ISGECDV001141, IT0205, Arjit Gupta, Dt. 05-11-2014, VRC B61U a7 live
+|* Unfreeze Child item if Receipt Line is not confirmed.
+|****************************** declaration section ***************************
+declaration:
+
+  table   	ttdisg005 | Bill Of Material Receipt
+  table		twhinh312
+  table		ttdpur401
+  table		ttcisg004
+  
+	extern domain tcqiv1 wght.t
+
+
+	extern	domain	whinh.shpm	import.rcno
+	extern	domain	tcpono		import.rcln
+	extern	domain	tcorno		ot.orno
+	extern	domain	tcpono		ot.pono
+	extern	domain	tcqiv1		cumm.qnty
+	extern	domain	tcqiv1		cumm.wght
+	extern	domain	tcqiv1		tot_acht
+	
+#include <bic_dam>
+#include "itdisgdll0003"
+#include <bic_4gl2>
+|****************************** program section ********************************
+before.program:
+	import("whinh312.rcno",import.rcno)
+	import("whinh312.rcln",import.rcln)
+	query.extension = "tdisg005._index1 = {:import.rcno,:import.rcln}"
+	inputfield.invisible("tdisg005.item.segment.1")
+	fattr.total.line = true
+	
+before.display.object:
+	set.command.disable.enable()	
+	
+on.display.total.line:
+	Get.Total.weight()
+	display.total.fields("tdisg005.acht", tot_acht)	
+|****************************** group section **********************************
+group.1:
+init.group:
+   get.screen.defaults()	
+|****************************** choice section **********************************
+choice.freeze:
+	
+on.choice:
+	update_tdisg005()
+	|update_tcisg004()
+	delete_from_tdisg005()
+	commit.transaction()
+field.wght.t:
+before.display:
+| 	select	sum(tdisg005.wght):wght.t
+	select	sum(tdisg005.acht):wght.t
+	from	tdisg005
+	where	tdisg005._index1 = {:import.rcno,:import.rcln}
+	selectdo
+	selectempty
+		wght.t = 0
+		
+	endselect
+	
+choice.cont.bom.lines:
+on.choice:
+
+	select 	whinh312.orno,
+		whinh312.pono,
+		whinh312.seqn
+	from	whinh312
+	where	whinh312._index1 = {:import.rcno,:import.rcln}
+	and	whinh312.oorg = whinh.oorg.purchase
+	as set with 1 rows
+	selectdo		
+	endselect
+	
+	
+	tcisgdll0003.Linked_Bill_of_Material(whinh312.orno,whinh312.pono,tdisg005.rcno,tdisg005.rcln)
+	commit.transaction()		
+
+choice.cont.select.all:
+on.choice:
+	BILL_OF_MATERIAL_SELECT_ALL_LINES(005,tdisg005.rcno,tdisg005.rcln)
+after.choice:
+	commit.transaction()
+	
+						|#ISGECDV001141.sn
+choice.unfreeze.child:
+before.choice:
+	select	whinh312.lsta
+	from	whinh312
+	where	whinh312._index1 = {:import.rcno, :import.rcln}
+	and	whinh312.lsta = whinh.lstc.confirmed
+	selectdo
+		message("Receipt Line Already confirmed")
+		choice.again()
+	endselect
+	
+on.choice:
+	tcisgdll0003.Unfreeze_Receipt_Bill_of_Material(import.rcno, import.rcln)
+	commit.transaction()
+						|#ISGECDV001141.en
+|******************************************** Field section **********
+field.tdisg005.rcno:
+before.field:
+	tdisg005.rcno = import.rcno
+	
+field.tdisg005.rcln:
+before.field:
+	tdisg005.rcln = import.rcln
+	
+field.cumm.qnty:
+before.display:
+	tcisgdll0003.get.po(tdisg005.rcno, tdisg005.rcln, ot.orno, ot.pono)
+	tcisgdll0003.get.total.receipt.qnty.weight(ot.orno, ot.pono, tdisg005.item, cumm.qnty, cumm.wght)
+
+|*************************************  Functions *****************************	
+functions:
+
+function update_tdisg005()
+{
+	long	ret1
+| 	db.retry.point()
+	select	tdisg005.stat, tdisg005.slct, tdisg005.item
+	from	tdisg005 for update
+	where	tdisg005._index1 = {:import.rcno, :import.rcln}
+	and	tdisg005.slct = tcyesno.yes
+	selectdo
+		dal.change.object("tdisg005")
+		dal.set.field("tdisg005.stat", tcyesno.yes)
+		ret1 = dal.save.object("tdisg005")
+	endselect	
+}
+
+function delete_from_tdisg005()
+{
+| 	db.retry.point()
+| 	select tdisg005.sern
+	select	tdisg005.rcno
+	from	tdisg005 for update
+	where	tdisg005._index1 = {:import.rcno,:import.rcln}
+	and	tdisg005.slct = tcyesno.no
+	selectdo
+		db.delete(ttdisg005,db.retry,e)
+	endselect
+	commit.transaction()
+	
+}
+
+function update_tcisg004()
+{
+| 	db.retry.point()
+	domain	tcmcs.long	ret
+	
+	select whinh312.orno,
+		whinh312.pono,
+		whinh312.seqn
+	from	whinh312
+	where	whinh312._index1 = {:import.rcno,:import.rcln}
+	and	whinh312.oorg = whinh.oorg.purchase
+	as set with 1 rows
+	selectdo
+		select 	tdpur401.cprj,
+			tdpur401.cspa,
+			tdpur401.item
+		from	tdpur401
+		where	tdpur401._index1 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+		as set with 1 rows
+		selectdo
+		endselect
+		
+	endselect
+	
+	
+	select	tdisg005.*								
+	from	tdisg005 
+	where	tdisg005._index1 = {:import.rcno,:import.rcln}
+	and	tdisg005.stat = tcyesno.yes
+	selectdo									
+| 		select 	tdpur101.cprj,tdpur101.cspa,tdpur101.item
+| 		from	tdpur101
+| 		where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono,:tdisg004.srnb}
+| 		selectdo
+| 		select 	whinh312.rcno,
+| 			whinh312.rcln
+| 		from	whinh312
+| 		where	whinh312._index1 = {:import.rcno,:import.rcln}
+| 		as set
+			select 	tcisg004.rcpt, tcisg004.item
+			from	tcisg004 for update
+			where	tcisg004._index1  = {:tdpur401.cprj, :tdpur401.cspa, :tdpur401.item, :tdisg005.item}
+			selectdo
+				dal.change.object("tcisg004")
+				dal.set.field("tcisg004.rcpt", tcyesno.yes)
+				ret = dal.save.object("tcisg004")
+| 				tcisg004.refq = tcyesno.yes
+| 				db.update(ttcisg004,db.retry,e)
+| 				commit.transaction()
+			endselect	
+| 		endselect	
+	endselect
+	
+}
+
+function extern boolean modify.set.is.allowed()
+{
+ 	if tdisg005.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function extern boolean mark.delete.is.allowed()
+{	
+ 	if tdisg005.stat =  tcyesno.yes then
+		return(false)
+	endif
+	return(true)
+}
+
+function set.command.disable.enable()
+{
+	if	tdisg005.stat = tcyesno.yes	then
+		disable.commands("cont.bom.lines", "cont.select.all", "unfreeze.child")
+							|#ISGECDV001141.sn
+		select	whinh312.lsta
+		from	whinh312
+		where	whinh312._index1 = {:import.rcno, :import.rcln}
+		and	whinh312.lsta <> whinh.lstc.confirmed
+		selectdo
+			enable.commands("unfreeze.child")
+		endselect
+							|#ISGECDV001141.en
+	else	
+		enable.commands("cont.bom.lines", "cont.select.all")
+		disable.commands("unfreeze.child")			|#ISGECDV001141.n
+	endif	
+}
+
+function Get.Total.weight()
+{
+	tot_acht = 0
+	
+	select	sum(tdisg005.acht):tot_acht
+	from	tdisg005
+	where	tdisg005._index1 = {:tdisg005.rcno, :tdisg005.rcln}
+	and	tdisg005.slct = tcyesno.yes
+	selectdo
+	endselect
+	
+}

@@ -1,0 +1,196 @@
+|******************************************************************************
+|* tdisg0104m000  0  VRC B61U a7 live
+|* RFQ Bill Of Material
+|* Tools                         
+|* 2014-05-22
+|******************************************************************************
+|* Main table tdisg004 , Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+#include <bic_4gl2>
+	table	ttdisg004 
+	table	ttcisg003
+	table	ttcisg004
+	table	ttdpur101
+
+	extern	domain	tcqiv1	wght.t	
+	extern	domain	tcorno	import.orno
+	extern	domain	tcpono	import.pono
+	extern	domain	tcsern	import.srnb
+	
+	extern	domain	tcpono	o.revn
+#include "itdisgdll0003"	
+|****************************** program section ********************************
+before.program:
+	import("tdpur101.qono",import.orno)
+	import("tdpur101.pono",import.pono)
+	
+	query.extension = "tdisg004._index1 = {:import.orno,:import.pono}"|,:import.srnb}"
+	inputfield.invisible("tdisg004.item.segment.1")
+	
+before.display.object:
+	set.command.disable.enable()
+|****************************** group section **********************************
+group.1:
+init.group:
+   get.screen.defaults()
+|****************************** Choice Section ********************************
+
+choice.freeze:
+on.choice:
+	update_tdisg004()
+| 	update_tcisg004()
+	delete_from_tdisg004()
+	
+	commit.transaction()
+	
+field.wght.t:
+before.display:
+	select	sum(tdisg004.wght):wght.t
+	from	tdisg004
+| 	where	tdisg004._index1 = {:import.orno,:import.pono,:import.srnb}
+	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}
+	selectdo
+	selectempty
+		wght.t = 0
+		
+	endselect		
+choice.cont.bom.lines:
+on.choice:
+	select 	tdpur101.cprj,
+		tdpur101.cspa,
+		tdpur101.item,
+		tdpur101.qono,
+		tdpur101.pono,
+		tdpur101.srnb
+	from	tdpur101
+	where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	BILL_OF_MATERIAL(tdpur101.cprj,tdpur101.cspa,tdpur101.item,
+			101,refq,tdpur101.qono,tdpur101.pono,0)
+			
+	commit.transaction()		
+choice.mark.delete:
+before.choice:
+	select 	tdpur101.cprj,
+		tdpur101.cspa,
+		tdpur101.item
+	from	tdpur101
+	where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	if tcisgdll0003.get.max.revision(tdpur101.cprj, tdpur101.cspa, tdpur101.item) then
+| 		UPDATE_STATUS(tdpur101.cprj,tdpur101.cspa,tdpur101.item,o.revn,tdisg004.sern,refq)
+		UPDATE_STATUS(tdpur101.cprj, tdpur101.cspa, tdpur101.item, tdisg004.item, refq)
+	endif
+	
+after.choice:
+	commit.transaction()
+	
+choice.cont.select.all:
+on.choice:
+	BILL_OF_MATERIAL_SELECT_ALL_LINES(004,tdisg004.qono,tdisg004.pono)
+after.choice:
+	commit.transaction()	
+	
+|****************************** field Section ********************************	
+field.tdisg004.qono:
+before.field:
+	tdisg004.qono = import.orno
+
+field.tdisg004.pono:
+before.field:
+	tdisg004.pono = import.pono
+	
+|****************************** function Section ********************************
+functions:
+function update_tdisg004()
+{
+	select	tdisg004.stat, tdisg004.slct
+	from	tdisg004 for update
+	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}					
+	and	tdisg004.slct = tcyesno.yes
+	selectdo
+		dal.change.object("tdisg004")
+		dal.set.field("tdisg004.stat", tcyesno.yes)
+		dal.save.object("tdisg004")
+	endselect	
+}
+
+function delete_from_tdisg004()
+{
+	select tdisg004.qono
+	from	tdisg004 for update
+	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}					
+	and	tdisg004.slct = tcyesno.no
+	selectdo
+		db.delete(ttdisg004,db.retry,e)
+	endselect
+	
+}
+
+function update_tcisg004()
+{
+	db.retry.point()
+	select	tdisg004.*								
+	from	tdisg004 
+	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}
+	and	tdisg004.stat = tcyesno.yes
+	selectdo									
+		select 	tdpur101.cprj,tdpur101.cspa,tdpur101.item
+		from	tdpur101
+		where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
+		as set with 1 rows
+		selectdo
+			select 	tcisg004.orno
+			from	tcisg004 for update
+			where	tcisg004._index1  = {:tdpur101.cprj,:tdpur101.cspa,:tdpur101.item}
+| 			and	tcisg004.srno = :tdisg004.sern
+			and	tcisg004.item = :tdisg004.item
+			selectdo
+				tcisg004.refq = tcyesno.yes
+				db.update(ttcisg004,db.retry,e)
+				commit.transaction()
+			endselect	
+		endselect	
+	endselect
+	
+}
+
+
+
+function extern boolean modify.set.is.allowed()
+{
+ 	if tdisg004.stat =  tcyesno.yes then
+		return(false)
+	else
+		return(true)
+	endif
+	return(false)
+}
+
+function extern boolean mark.delete.is.allowed()
+{	
+ 	if tdisg004.stat =  tcyesno.yes then
+		return(false)
+	else
+		return(true)
+	endif
+	return(false)
+}
+
+function set.command.disable.enable()
+{
+	if	tdisg004.stat = tcyesno.yes	then
+		disable.commands("cont.bom.lines", "cont.select.all")
+	else	
+		enable.commands("cont.bom.lines", "cont.select.all")
+	endif	
+}
