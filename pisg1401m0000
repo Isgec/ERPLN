@@ -1,45 +1,28 @@
 |******************************************************************************
-|* tdisg1401m000  0  VRC B61U a7 live
-|* Print Indent Request for Quotations
-|* Tools                         
-|* 2014-05-27
+|* tfisg1401m000  0  VRC B61U a7 live
+|* Print Payment Advice Status against P.Invoice
+|* Installation user             
+|* 2014-12-22
 |******************************************************************************
-|* Main table tdpur101 RFQ Lines, Form Type 4
+|* Main table tfcmg101 Payment/Trade Notes Payable Advice, Form Type 4
 |******************************************************************************
-|* IDENT ISG001033 Neerav Singh  27-05-2014	   VRC B61U a7 live                                                                                                                                                             
+|* IDENT ISGEC0108 ,Mani sharma , 23-12-2014                                                                                
 |****************************** declaration section ***************************
 declaration:
-	
-  table   ttdpur100 | RFQ Header
-  table   ttdpur101 | RFQ Lines
-  table   ttccom130 |
-  table   ttdpur105 |	
-  table   ttccom100 |
-  table   ttcisg004 |
-  table   ttccom001 |
-  table   tbpmdm001 |  
-  table   ttdipu001 |
-  table   tdmisg001 |
-  table   ttdisg004 |
-  
-   extern  domain  tcpono           pono.f
-   extern  domain  tcpono           pono.t
-   extern  domain  tcqono           qono.f    fixed
-   extern  domain  tcqono           qono.t    fixed
-   extern  domain  tcsern           srnb.f
-   extern  domain  tcsern           srnb.t
-   extern  domain  tcyesno  txta.txt
-   extern  domain  tcpono	     p,h
-   extern  domain  tcqiv1           wght.t
-   extern  domain  tcpono           pono.i
-   extern  domain  tcqono           qono.i
-   extern  domain  tccom.bpid       supp.f		
-   extern  domain  tccom.bpid       supp.t
-   
-|****************************** program section ********************************
 
+  table   ttfcmg101 | Payment/Trade Notes Payable Advice
+  table   ttfmsl020
+  extern domain tccprj 	 cprj.f, cprj.t
+  extern domain tcorno 	 adrq.f,adrq.t,orno.f,orno.t
+  extern domain tcdate  	 date.f, date.t,v.odat.t,v.odat.f
+  extern domain tccom.bpid      bpid.f,bpid.t  
+  extern domain tfoption        optn.f,optn.t
+  extern domain tcyesno         chek.f,chek.t
+  extern domain tcpono          pono
+  extern domain tcncmp         i.current.company 
+|****************************** program section ********************************
 before.program:
-	import("tdpur100.qono", qono.f)
+	i.current.company = get.compnr()
 
 |****************************** group section **********************************
 
@@ -55,147 +38,89 @@ on.choice:
 
 choice.print.data:
 on.choice:
-	
    if rprt_open() then
-| 	if reportno =1 then
-		read.main.table()
-| 	else
-| 		read.main.table1()
-| 	endif
-	rprt_close()
+       read.main.table()
+       rprt_close()
    else
        choice.again()
    endif
-	
+
 
 |****************************** field section *********************************
 
-field.qono.f:
+field.cprj.f:
 when.field.changes:
-   qono.t = qono.f
+   cprj.t = cprj.f
 
-field.pono.f:
+field.adrq.f:
 when.field.changes:
-   pono.t = pono.f
+   adrq.t = adrq.f
 
-field.srnb.f:
+field.date.f:
 when.field.changes:
-   srnb.t = srnb.f
+   date.t = date.f
+
+field.bpid.f:
+when.field.changes:
+   bpid.t = bpid.f
+
+field.optn.f:
+when.field.changes:
+   optn.t = optn.f
+
+| field.chek.f:
+| when.field.changes:
+|    chek.t = chek.f
+
+field.orno.f:
+when.field.changes:
+   orno.t = orno.f
 
 |****************************** function section ******************************
 
 functions:
 
 function read.main.table()
-{   
-	h = 0
-	p = 0
-	pono.i = 0
-	select tdpur101.*,tdpur100.*,tdpur105.otbp
-	from   tdpur101,tdpur100,tdpur105
-	where  tdpur101._index1 = {:qono.f}
-	and    tdpur101.qono refers to tdpur100
-	and    tdpur101.qono refers to tdpur105
-	and    tdpur105._index3 inrange {:supp.f} and {:supp.t}
-	order by tdpur101._index1
+{	
+	get.date.utc(date.f, 00, 00, 00, v.odat.f)
+	get.date.utc(date.t, 23, 59, 59, v.odat.t)
+	
+	select tfmsl020.*,tccom100.nama
+	from   tfmsl020,tccom100
+	where  tfmsl020.comp = {:i.current.company}
+	and    tfmsl020.adrq inrange {:adrq.f} and {:adrq.t}
+	and    tfmsl020.rqdt inrange {:v.odat.f} and {:v.odat.t}
+	and    tfmsl020.orno inrange {:orno.f} and {:orno.t}
+	and    tfmsl020.optn inrange {:optn.f} and {:optn.t}
+	and    tfmsl020.bpid inrange {:bpid.f} and {:bpid.t}
+	and    tfmsl020.cprj inrange {:cprj.f} and {:cprj.t} 
+	and    tfmsl020.bpid refers to tccom100
 	selectdo
-		
-| 		pono.i=0
-		qono.i=tdpur100.qono
-		    
-		select tdipu001.qual
-		from   tdipu001
-		where  tdipu001._index1={:tdpur101.item}
-		selectdo
-		endselect
-
-		select tccom001.*
-		from tccom001
-		where tccom001._index1={:tdpur100.ccon}
-		as set with 1 rows
-		selectdo
-			select bpmdm001.*
-			from   bpmdm001
-			where  bpmdm001._index1={:tccom001.emno}
-			as set with 1 rows
-			selectdo
-			endselect
-		endselect
-
-		select tccom100.bpid,tccom100.nama,tccom100.cadr
-		from  tccom100
-		where tccom100._index1={:tdpur105.otbp}
-		selectdo
-			select tccom130.*
-			from  tccom130
-			where tccom130._index1={:tccom100.cadr}
-			selectdo
-			endselect
-			
-		endselect
-		h = 0 
-		p = 0 
-		rprt_send()
-	selecteos
-| 		qono.i = tdpur100.qono
-		h = 0
-		read.main.table1()
-	endselect
-}
-
-
-
-
-function read.main.table1()
-{
-domain dmdoc.docid	i.docn
-        wght.t=0
-	i.docn = ""
-	select tdpur101.*
-	from   tdpur101 
-	where  tdpur101._index1 = {:qono.f}
-	selectdo
-		pono.i=tdpur101.pono
-		
-		select tdisg004.*
-		from   tdisg004
-		where  tdisg004._index1={:tdpur101.qono,:tdpur101.pono}
-| 		where  tdisg004._index1={:tdpur101.qono,:tdpur101.pono,:tdpur101.srnb}
-		and    tdisg004.slct = tcyesno.yes
-		selectdo
-			p=1
-			wght.t = tdisg004.qnty * tdisg004.wght
+		if chek.f = tcyesno.yes then
+			if tfmsl020.stat <> tfmsl.lc.stat.proc then
+				rprt_send()
+			endif
+		else 
+			if tfmsl020.stat = tfmsl.lc.stat.proc then
 			rprt_send()
-| 		selecteos
-| 			p=2
-| 		endselect
-		
-			select tcisg004.srno,tcisg004.docn
-			from   tcisg004
-			where  tcisg004._index1={:tdpur101.cprj,:tdpur101.cspa,:tdpur101.item}
-			and    tcisg004.srno = :tdisg004.sern
-			selectdo
-				if tcisg004.docn <> i.docn then
-					i.docn = tcisg004.docn
-					p=2
-					Get.Document.Description()
-					rprt_send()
-				endif
-			endselect
-		endselect
+			endif	
+		endif
 	endselect
 }
 
-function Get.Document.Description()
+function get.date.utc(
+		domain	tcdate	i.date,
+		long		i.hh,
+		long		i.mn,
+		long		i.ss,
+	ref	domain	tcdate	o.date
+			)
 {
-	|-------- Document Description---------
-	select	dmisg001.dttl,dmisg001.revn
-	from	dmisg001
-	where	dmisg001._index1=  {:tcisg004.docn}
-	order by dmisg001.revn desc
-	selectdo
-	selectempty
-		dmisg001.dsca = ""
-	endselect
-
-}
+	long	dd, mm, yy, hh, mn, ss
+	
+	utc.to.date(i.date, yy , mm, dd, hh, mn, ss)
+	o.date = date.to.utc(yy, mm, dd, i.hh, i.mn, i.ss)
+	if	o.date < 0	then
+		o.date = 0
+	endif
+}	
