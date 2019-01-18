@@ -181,7 +181,6 @@ function read.main.table()
 			po.stat = "Approved"
 		endif
 		
-		
 		po.stat = strip$(shiftl$(po.stat))
 		
 		select tdisg086.revi,tdisg086.orno,tdisg086.date				|ISGEC01067.sn
@@ -312,7 +311,7 @@ function	generate.header()
 		sprintf$("Remarks"),					|23											
 		sprintf$("Entry by"),					|24											
 		sprintf$("Rejection/Approval Reason"),			|25		|ISGEC01067.n	
-		sprintf$("Rejection/Approval Remarks"),			|26		|ISGEC01082.n
+		sprintf$("Rejection/Approval Remarks"),		|26		|ISGEC01082.n
 		sprintf$("PO Status"))					|27		|ISGEC01082.n
 	line4 = strip$(shiftl$(line4))		
 	seq.puts(line4, stat.fp)	
@@ -380,7 +379,7 @@ function Initialize_Variables()
 	rep.etby = ""				|24
 	rej.rem  = ""    			|25			|ISGEC01067.n
 	app.var  = ""				|26			|ISGEC01082.n
-	po.stat  = ""				|27
+	po.stat  = ""
 }
 
 						|#ISGECDV001160.sn

@@ -1,16 +1,16 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tpisg0532m000  0  VRC B61U a7 live
+|* Installment Wise Element Breakup
+|* Tools                         
+|* 2014-04-30
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tpisg032 Installment Breakup, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttpisg032 | Installment Breakup
 
 
 |****************************** program section ********************************

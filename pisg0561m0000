@@ -1,16 +1,16 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tpisg0561m000  0  VRC B61U a7 isg 
+|* Contract Price Break-up
+|* Installation user             
+|* 2014-12-02
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tpisg061 Contract Price Break-up, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttpisg061 | Contract Price Break-up
 
 
 |****************************** program section ********************************

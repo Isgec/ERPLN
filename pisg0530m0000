@@ -1,16 +1,16 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tpisg0530m000  0  VRC B61U a7 live
+|* Reimbursement
+|* Installation user             
+|* 2014-07-09
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tpisg030 Reimbursement, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttpisg030 | Reimbursement
 
 
 |****************************** program section ********************************

@@ -1,20 +1,29 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tpisg0103  0  VRC B61U a7 dev 
+|* Sanction Transfer Reasons
+|* sujeet                        
+|* 2014-02-17
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tpisg003 Sanction Transfer Revisions, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttpisg003 | Sanction Transfer Revisions
 
 
 |****************************** program section ********************************
-
+after.form.read:
+	enable.save.on.occ.change()
+before.display.object:
+	set.enum.values.for.field("tpisg015.acti",	tpisg.sanction.launch,
+							tpisg.sanction.partial,
+							tpisg.sanction.complete,
+							tpisg.sanction.l4revise)
+field.all:
+before.field:
+	attr.dorp = 1
 
 |****************************** group section **********************************
 

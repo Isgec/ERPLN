@@ -1,16 +1,16 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tcisg0501m002  0  VRC B61U a7 isg 
+|* Display Standard Items
+|* Installation User             
+|* 2015-05-14
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tcibd001 Items - General, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttcibd001 | Items - General
 
 
 |****************************** program section ********************************

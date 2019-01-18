@@ -102,23 +102,16 @@ function generate.file()
 
 function read.main.table()
 {
-	domain	tcmcs.int	rvno.f
 	get.date.utc(date.f, 00, 00, 00, v.date.f)
 	get.date.utc(date.t, 23, 59, 59, v.date.t)
 	
 	select	tdisg086.*, tdmsl400.apdt
-	from	tdisg086, tdmsl400, tdisg083
+	from	tdisg086, tdmsl400
 	where	tdisg086._index1 inrange {:orno.f}	and {:orno.t}
 	and	tdisg086.date inrange :v.date.f	and	:v.date.t
 	and	tdisg086.user inrange :user.f	and	:user.t
 	and	tdisg086.cmba refers to tdmsl400
-	and 	tdisg083.emno = tdisg086.user
-	and 	tdisg083.role <> 3
 	selectdo
-		rvno.f = 0
-		select max(revi):rvno.f from tdisg086 where orno = :tdisg086.orno selectdo endselect
-		if rvno.f <> tdisg086.revi then continue endif
-		
 		Initialize_Variables()
 		Init_Variables_PODetails()
 		rep.orno = tdisg086.orno

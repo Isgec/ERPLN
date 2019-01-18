@@ -1,200 +1,303 @@
 |******************************************************************************
-|* tdisg082  0  VRC B61U a7 live
-|* DAL2 for tdisg082
+|* tpisg082  0  VRC B61U a7 isg 
+|* DAL 2 for tpisg082
 |* baan
-|* 14-12-03 [11:53]
+|* 15-04-08 [17:04]
 |******************************************************************************
 |* Script Type: DAL
 |******************************************************************************
-                                                                                
-	|******************** Includes
+	table	ttpisg081
+	table	ttpisg082
+	table	ttpptc101
+	table	ttpisg011
+	table	ttpest120
+	domain	tcamnt	old.act.value, old.yet.value, new.act.value, new.yet.value, old.incentive, new.incentive
+	extern	domain	tppdm.cspa	var.elem
 	#include <bic_dal2>
-	#include "itcmcs2000"	|* DAL(-GUI) Support Defines
+	#define SANCTION_STATUS
+^	check_sanction_status()	
 
-	|*************** Table declaration ******************
-		table	ttdisg082
-		table	ttcisg000
-		table	ttfisg000
-		
-		
-
-|****************************** object hooks **********************************
-
-function extern boolean method.is.allowed(
-			long		i.method)
-{
-	on case i.method
-		case DAL_NEW:
-		if not new.method.is.allowed() then
-			dal.set.error.message("@Cannot insert a record.")	
-			return(false)
-		endif
-		break
-	case DAL_UPDATE:
-		if not update.method.is.allowed() then
-			dal.set.error.message("@Cannot modify this record.")
-			return(false)
-		endif
-		break
-	case DAL_DESTROY:
-		if not destroy.method.is.allowed() then
-			dal.set.error.message("@Cannot delete this record.")
-			return(false)
-		endif
-		break
-	endcase
-
-	return(true)
-}
 
 function extern long before.open.object.set()
 {
-	read.parameters()
-	define.field.dependencies()
+	dal.field.depends.on("tpisg082.actl", HOOK_IS_DERIVED, "tpisg082.cspa")
+	dal.field.depends.on("tpisg082.yetl", HOOK_IS_DERIVED, "tpisg082.cspa")
+	dal.field.depends.on("tpisg082.totl", HOOK_UPDATE, "tpisg082.actl")
+	dal.field.depends.on("tpisg082.totl", HOOK_UPDATE, "tpisg082.yetl")
+	dal.field.depends.on("tpisg082.parn", HOOK_UPDATE, "tpisg082.cspa")
+	dal.field.depends.on("tpisg082.levl", HOOK_UPDATE, "tpisg082.cspa")
 	return(0)
 }
+
+function extern boolean method.is.allowed(long type)
+{
+	on case type
+	case DAL_NEW :	
+		if tpisg082.stat <> tpisg.sanction.free then
+			return(false)
+		endif	
+		
+		if SANCTION_STATUS then
+			return(false)
+		endif
+		break	
+	case DAL_UPDATE :
+		if tpisg082.stat <> tpisg.sanction.free then
+			return(false)
+		endif
+
+		if SANCTION_STATUS then
+			return(false)
+		endif
+		
+		if tpisg082.levl < 3 then
+			return(false)
+		endif	
+		break
+	case DAL_DESTROY :
+		if tpisg082.stat <> tpisg.sanction.free then
+			return(false)
+		endif
+		
+		if SANCTION_STATUS then
+			return(false)
+		endif		
+		break	
+	endcase
+	return(true)
+}
+
 
 function extern long before.save.object(long type)
 {
-	on case type
-		case DAL_NEW :
-			if  tcmcs.dll0050.check.and.generate.order.number(
-					3, tdisg082.loin, tcisg000.lngp, 
-					9, tdisg082.loin) then
-				return(DALHOOKERROR)
-			endif
-			break
-		case DAL_UPDATE:
-			break
-	ENDCASE
+| 	on case type
+| 	case DAL_NEW :	
+| 		new.act.value = tpisg082.actl
+| 		new.yet.value = tpisg082.yetl
+| 		new.incentive = tpisg082.totl
+| 		break	
+| 	case DAL_UPDATE :
+| 		with.old.object.values.do(get_old_value)
+| 		new.act.value = tpisg082.actl
+| 		new.yet.value = tpisg082.yetl
+| 		new.incentive = tpisg082.totl
+| 		break	
+| 	endcase	
 	return(0)
 }
 
-function extern long set.object.defaults()
+function extern long after.save.object(long type)
 {
-	tdisg082.loin.set.field.default()
+| 	on case type
+| 	case DAL_NEW :	
+| 		if not isspace(tpisg082.parn) then
+| 			check_parent_new()
+| 		endif
+| 		break	
+| 	case DAL_UPDATE :
+| 		if not isspace(tpisg082.parn) then
+| 			check_parent_old()
+| 		endif
+| 		break	
+| 	endcase	
 	return(0)
 }
 
-function extern long before.new.object()
-{		
-	tdisg082.loin = tcisg000.lser
-	return(0)
-}
-
-function extern long before.get.object()
+function extern boolean tpisg082.cspa.is.valid()
 {
-	return(0)
-}
-
-function extern long after.get.object()
-{
+	select 	tpisg011.aver
+	from	tpisg011
+	where	tpisg011._index1 = {:tpisg082.cprj}
+	as set with 1 rows
+	selectdo
+	endselect
 	
-	return(0)
-}
-
-function long read.parameters()
-{
-	RETIFNOK(tcmcs.dll0095.read.parm("tcisg000"))
-	RETIFNOK(tcmcs.dll0095.read.parm("tfisg000"))
-	return(0)
-}
-
-|**** Dependencies Section ****************************************************
-
-function void define.field.dependencies()
-{
-	|* Initialize field relations.
-	dal.init.field.dependencies()
+	select	tpest120.sele
+	from	tpest120
+	where	tpest120._index1 = {:tpisg082.cprj, :tpisg011.aver}
+	and	tpest120.sele = :tpisg082.cspa
+	selectdo
+	selectempty
+		return(false)
+	endselect
 	
-	dal.field.depends.on("tdisg082.bpnm", HOOK_IS_APPLICABLE +
-						HOOK_IS_MANDATORY,
-					"tdisg082.otbp")
-					
-	dal.field.depends.on("tdisg082.suno", HOOK_IS_DERIVED,
-					"tdisg082.otbp")
-					
-	dal.field.depends.on("tdisg082.vldt", HOOK_IS_VALID,
-					"tdisg082.ldat")
-					
-	|* Add direct dependent fields.
-	|* Please keep the fields in alphabetical order.
-
-	dal.finalize.field.dependencies()
-}
-
-function boolean new.method.is.allowed()
-{
 	return(true)
 }
 
-function boolean update.method.is.allowed()
-{
-	return(true)
-}
-function boolean destroy.method.is.allowed()
-{
-			long		delete.allowed
 
-	with.old.object.values.do(	deleting_allowed,
-					delete.allowed)	|* ref
-	if not delete.allowed then
+function extern tpisg082.parn.update()
+{
+	select	tpest120.pele
+	from	tpest120
+	where	tpest120._index1 = {:tpisg082.cprj, :tpisg011.aver}
+	and	tpest120.sele = :tpisg082.cspa
+	selectdo
+		tpisg082.parn = tpest120.pele
+	endselect
+
+}
+
+function extern tpisg082.levl.update()
+{
+	select	tpest120.levl
+	from	tpest120
+	where	tpest120._index1 = {:tpisg082.cprj, :tpisg011.aver}
+	and	tpest120.sele = :tpisg082.cspa
+	selectdo
+		tpisg082.levl = tpest120.levl
+	endselect
+
+}
+
+function extern boolean tpisg082.actl.is.readonly()
+{
+| 	select	tpisg082.cprj
+| 	from	tpisg082
+| 	where	tpisg082._index1 = {:tpisg082.cprj}
+| 	and	tpisg082.parn = :tpisg082.cspa
+| 	selectdo	
+| 		return(true)
+| 	endselect
+		if tpisg082.levl < 3 then
+			return(true)
+		endif	
+	return(false)
+}
+
+function extern boolean tpisg082.actl.is.derived()
+{
+	if tpisg082.levl < 3 then
+		return(true)
+	endif	
+	return(false)
+}
+
+| function extern boolean tpisg082.yetl.is.readonly()
+| {
+| 	select	tpisg082.cprj
+| 	from	tpisg082
+| 	where	tpisg082._index1 = {:tpisg082.cprj}
+| 	and	tpisg082.parn = :tpisg082.cspa
+| 	selectdo	
+| 		return(true)
+| 	endselect
+| 	return(false)
+| }
+
+function extern boolean tpisg082.yetl.is.derived()
+{
+	if tpisg082.levl < 3 then
+		return(true)
+	endif	
+	return(false)
+}
+
+function extern tpisg082.totl.update()
+{
+	tpisg082.totl = tpisg082.actl + tpisg082.yetl
+}
+
+function extern boolean approve.is.allowed()
+{
+	if tpisg082.stat = tpisg.sanction.approved then
 		return(false)
 	endif
-
 	return(true)
 }
 
-function void deleting_allowed(
-	ref		long		o.delete.allowed)
+function get_old_value()
 {
-	o.delete.allowed = true
+	old.act.value = tpisg082.actl
+	old.yet.value = tpisg082.yetl
+	old.incentive = tpisg082.totl
 }
 
-|************* LOI Number ***********************
-function tdisg082.loin.set.field.default()
+function check_parent_new()
 {
-	tdisg082.loin = tcisg000.lser
+	var.elem = tpisg082.parn
+	update_parent_new()
+	while not isspace(var.elem)
+		select	tpptc101.cspp
+		from	tpptc101
+		where	tpptc101._index2 = {:tpisg082.cprj,:var.elem}
+		selectdo
+		selectempty
+			tpptc101.cspp = ""
+		endselect
+		
+		var.elem = tpptc101.cspp
+		
+		if not isspace(var.elem) then
+			update_parent_new()
+		endif				
+	endwhile
+
 }
 
-|************* BP Name *******************
-function extern boolean tdisg082.bpnm.is.applicable()
+
+function update_parent_new()
 {
-	if	tdisg082.otbp = tcyesno.yes	then
+	select	tpisg082.*
+	from	tpisg082 for update
+	where	tpisg082._index1 = {:tpisg082.cprj, :var.elem}
+	selectdo
+		tpisg082.actl = tpisg082.actl + new.act.value
+		tpisg082.yetl = tpisg082.yetl + new.yet.value
+		tpisg082.totl = tpisg082.totl + new.incentive
+		db.update(ttpisg082, db.retry)
+	endselect
+
+}
+
+function check_parent_old()
+{
+	var.elem = tpisg082.parn
+	update_parent_old()
+	while not isspace(var.elem)
+		select	tpptc101.cspp
+		from	tpptc101
+		where	tpptc101._index2 = {:tpisg082.cprj,:var.elem}
+		selectdo
+		selectempty
+			tpptc101.cspp = ""
+		endselect
+		
+		var.elem = tpptc101.cspp
+		
+		if not isspace(var.elem) then
+			update_parent_old()
+		endif				
+	endwhile
+
+}
+
+
+function update_parent_old()
+{
+	select	tpisg082.*
+	from	tpisg082 for update
+	where	tpisg082._index1 = {:tpisg082.cprj, :var.elem}
+	selectdo
+		tpisg082.actl = tpisg082.actl + new.act.value - old.act.value
+		tpisg082.yetl = tpisg082.yetl + new.yet.value - old.yet.value
+		tpisg082.totl = tpisg082.totl + new.incentive - old.incentive
+		db.update(ttpisg082, db.retry)
+	endselect
+
+}
+
+function boolean check_sanction_status()
+{
+	select	tpisg011.act1
+	from	tpisg011
+	where	tpisg011._index1 = {:tpisg082.cprj}
+	and	(tpisg011.act1 = tpisg.sanction.approved or tpisg011.act1 = tpisg.sanction.approval)
+	as set with 1 rows
+	selectdo
 		return(true)
-	endif	
-	
+	selectempty
+	endselect
 	return(false)
-}
 
-function extern boolean tdisg082.bpnm.is.mandatory()
-{
-	if	tdisg082.otbp = tcyesno.yes	then
-		return(true)
-	endif	
-	
-	return(false)
-}
-
-|************* Supplier Code ********************
-function extern boolean tdisg082.suno.is.derived()
-{
-	if	tdisg082.otbp = tcyesno.yes	then
-		tdisg082.suno = tfisg000.bpid
-		return(true)
-	endif
-	
-	return(false)
-}
-
-|************** Valid Upto **********************
-function extern boolean tdisg082.vldt.is.valid()
-{
-	if	tdisg082.vldt < tdisg082.ldat	then
-		dal.set.error.message("@Valid cannot be before LOI Date")
-		return(DALHOOKERROR)
-	endif
-	
-	return(true)
 }
 

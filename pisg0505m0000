@@ -1,16 +1,16 @@
 |******************************************************************************
-|* tdisg0510m000  0  VRC B61U a7 isg 
-|* NCDR Overview
-|* user 05                       
-|* 2015-02-21
+|* tfisg0505m000  0  VRC B61U a7 live
+|* Display IR wise Invoice
+|* Tools                         
+|* 2014-08-23
 |******************************************************************************
-|* Main table tdisg010 Tabe for uploading NCDR, Form Type 1
+|* Main table tfisg005 IR wise Invoice, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg010 | Tabe for uploading NCDR
+  table   ttfisg005 | IR wise Invoice
 
 
 |****************************** program section ********************************
