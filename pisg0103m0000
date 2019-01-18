@@ -1,230 +1,353 @@
 |******************************************************************************
-|* tdisg0103m000  0  VRC B61U a7 live
-|* Bill Of Material Indent
+|* tfisg0103m000  0  VRC B61U a7 live
+|* Link GR
 |* Tools                         
-|* 2014-05-22
+|* 2014-06-03
 |******************************************************************************
-|* Main table tdisg003 Bill Of Material Indent, Form Type 1
+|* Main table tfisg003 GR Details, Form Type 1
 |******************************************************************************
-|* ID ISGEC015083, Manish Manchanda, 2016-01-28
-|* same item used in other requisition no to be delete when freeze
+|* ESSP Incident: 3797, Sujeet Kumar, 03-06-2014, 	B61U a7 live  
+|*
+|* ISGECDV001059, IT0205, Arjit Gupta, Dt. 25-09-2014, B61U a7 live
+|* Export GR No., Transporter, GR Date when call from zoom 
+|* 
+|* ISGECDV001126, IT0205, Arjit Gupta, Dt. 29-10-2014, B61U a7 live
+|* When called from "tfisg0501m200" then not to check link 'Yes' to link GR
+|*
+|* ISGECDV001145, IT0205, Arjit Gupta, Dt. 06-11-2014, B61U a7 live
+|* Display Project Code on form
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg003 | Bill Of Material Indent
-  table   ttcisg004
-  table   ttdpur201
+  table		ttfisg001	
+  table   	ttfisg003 | GR Details
+  table		ttfisg002
+  table		ttfacp100
+  table		ttcmcs143
+  table		ttccom139
+  table 	ttdisg016
+  
+extern	domain	tcncmp		import.icmp
+extern	domain	tfgld.docn	import.irno
+extern	domain	tccom.bpid	import.irbp
+extern	domain	tfgld.sess	import.program
+extern	domain	tcncmp		i.ncmp, curr.ncmp
+extern	domain	tcdsca		dsca.from,dsca.to
+long ret_val
 
-extern domain tcqiv1	wght.t
-extern domain tcpric   pric.t
-extern domain tcamnt   amnt.t
-extern domain tcrqno   i.rqno
-extern domain tcpono   i.pono
+extern	domain	tccprj		import.cprj
+	extern	domain	tcdsca		var.prjdc	|#ISGECDV001145.n
+								|#ISGECDV001059.sn
+	extern	domain	tcmcs.str16	prog.name
+	|**************** Global Variables **************
+	extern	domain	tfacp.isup	exp.grno
+	extern	domain	tccom.bpid	exp.bpid
+	extern	domain	tfgld.date	exp.grdt
+								|#ISGECDV001059.en
+	extern	domain	tcsess		i.session		|#ISGECDV001126.n
 
-extern  domain tcmcs.str15  	prog.name
-extern	domain	tcpono		o.revn
-	long	ret, rt 
 #include <bic_dam>
-#include "itdisgdll0003"
-#include <bic_4gl2>
 |****************************** program section ********************************
 before.program:
-        import("tdpur201.rqno",i.rqno)
-        import("tdpur201.pono",i.pono)
-        query.extension = "tdisg003._index1 = {:i.rqno,:i.pono}"
-	inputfield.invisible("tdisg003.item.segment.1")
-
-before.display.object:
-	set.command.disable.enable()
-|****************************** group section **********************************
-group.1:
-init.group:
-   get.screen.defaults()
-|****************************** choice Section ********************************
-choice.freeze:
-on.choice:
-	update_tdisg003()
-| 	update_tcisg004()
-	delete_from_tdisg003()
-	commit.transaction()
-choice.cont.bom.lines:
-on.choice:
-	select 	tdpur201.cprj,
-		tdpur201.cspa,
-		tdpur201.item,
-		tdpur201.rqno,
-		tdpur201.pono
-	from	tdpur201
-	where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
-	as set with 1 rows
-	selectdo
-	endselect
-| 	db.retry.point()
-| 	select	tdisg003.rqno
-| 	from	tdisg003
-| 	where	tdisg003._index1 = {:tdpur201.rqno, :tdpur201.pono, :tdpur201.item}
-| 	selectdo
-| 	selectempty
-| 		rt = dal.new.object("tdisg003")
-| 		dal.set.field("tdisg003.rqno", tdpur201.rqno)
-| 		dal.set.field("tdisg003.pono", tdpur201.pono)
-| 		dal.set.field("tdisg003.item", tdpur201.item)
-| 		ret = dal.save.object("tdisg003")
-| 	endselect	
-	BILL_OF_MATERIAL(tdpur201.cprj,tdpur201.cspa,tdpur201.item,
-			201,indt,tdpur201.rqno,tdpur201.pono,0)
-			
-	commit.transaction()		
-choice.mark.delete:
-before.choice:
-	select 	tdpur201.cprj,
-		tdpur201.cspa,
-		tdpur201.item
-	from	tdpur201
-	where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
-	as set with 1 rows
-	selectdo
-	endselect
+	curr.ncmp = get.compnr()
+	import("tfisg002.irno",import.irno)
+	import("prog.name$",import.program)
 	
-	if tcisgdll0003.get.max.revision(tdpur201.cprj,tdpur201.cspa,tdpur201.item) then
-| 		UPDATE_STATUS(tdpur201.cprj,tdpur201.cspa,tdpur201.item,o.revn,tdisg004.sern,indt)
-		UPDATE_STATUS(tdpur201.cprj, tdpur201.cspa, tdpur201.item, tdisg003.item, indt)
+	if import.program = "tfisg0102m000" then
+		import("im.bpid", import.irbp)
+		import("i.session", i.session)			|#ISGECDV001126.n
+		query.extend.where("tfisg003.bpid = " & quoted.string(import.irbp) & " and tfisg003.sele = tcyesno.no")
+| 		query.extension = "tfisg003.link = tcyesno.no"
+	else
+| 		if import.program = "whinh3512m000" then
+| 			ret_val = dynamic.index.switching = 1
+| 		endif
+| 		
+| 		set.synchronized.dialog("tfisg0103m000")
+		
+		if	import.program = "tdisg4151m000"	then
+			import("tdisg451.cprj",import.cprj)
+			query.extend.where("tfisg003.irno in (select tfisg001.irno from tfisg001 where tfisg001.cprj = '" & import.cprj & "')")
+		else	
+			if import.program = "whinh3512m000" then
+				ret_val = dynamic.index.switching = 1
+			endif
+		
+			set.synchronized.dialog("tfisg0103m000")
+		endif	
 	endif
 	
-after.choice:
-	commit.transaction()
+									|#ISGECDV001059.sn
+before.display.object:
+	import("prog.name$", prog.name)
+	if	trim$(prog.name) = "tdisg4152m000"	then
+		disable.commands(modify.set, mark.delete, add.set, dupl.occur)
+	else
+		enable.commands(modify.set, mark.delete, add.set, dupl.occur)
+	endif	
+|******************************* Zoom Section ***********************************
+zoom.from.all:
+on.exit:
+	export("exp.grno", tfisg003.grno)
+	export("exp.bpid", tfisg003.bpid)
+	export("exp.grdt", tfisg003.grdt)
+									|#ISGECDV001059.en
+|******************************* field Section ***********************************
 
-choice.cont.select.all:
-on.choice:
-	BILL_OF_MATERIAL_SELECT_ALL_LINES(003,tdisg003.rqno,tdisg003.pono)
-after.choice:
-	commit.transaction()
-	
-|****************************** group section **********************************
-|****************************** field section **********************************
-field.tdisg003.rqno:
-before.field:
-	tdisg003.rqno = i.rqno
-field.tdisg003.pono:
-before.field:
-	tdisg003.pono = i.pono
-	
-field.wght.t:
+field.tfisg003.ncmp:
 before.display:
-	select	sum(tdisg003.wght):wght.t,sum(tdisg003.amnt):amnt.t, sum(tdisg003.pric):pric.t
-	from	tdisg003
-	where	tdisg003._index1 = {:i.rqno,:i.pono}
+	tfisg003.ncmp = curr.ncmp
+
+
+field.tfisg003.irno:	
+check.input:
+	if import.program = "tfisg0102m000" then
+	else
+		if tfisg003.irno = 0 then
+			message("Enter Valid IR Number")
+			set.input.error("")
+		else
+| 			on.main.table(check.ir,o.tfisg003.irno)
+| 			
+| 			select 	tfisg001.link
+| 			from	tfisg001 
+| 			where	tfisg001._index1 = {:tfisg003.irno}
+| 			and	tfisg001.link = tcyesno.yes
+| 			as set with 1 rows
+| 			selectdo
+| 				message("IR already Linked")
+| 				set.input.error("")
+| 			endselect
+			
+		endif
+	endif	
+
+field.tfisg003.plcf:
+before.zoom:
+	tcmcs143.ccty = tfisg003.cctf
+	
+field.tfisg003.citf:
+before.zoom:
+	tccom139.ccty = tfisg003.cctf
+	tccom139.cste = tfisg003.plcf
+
+field.tfisg003.plct:
+before.zoom:
+	tcmcs143.ccty = tfisg003.cctt
+
+field.tfisg003.citt:
+before.zoom:
+	tccom139.ccty = tfisg003.cctt
+	tccom139.cste = tfisg003.plct
+field.dsca.from:
+before.display:
+	select	tccom139.dsca
+	from	tccom139
+	where	tccom139._index1 = {:tfisg003.cctf,:tfisg003.plcf,:tfisg003.citf}
+	selectdo
+		dsca.from = tccom139.dsca
+	selectempty
+		dsca.from = ""
+	endselect	
+
+field.dsca.to:
+before.display:
+	select	tccom139.dsca
+	from	tccom139
+	where	tccom139._index1 = {:tfisg003.cctt,:tfisg003.plct,:tfisg003.citt}
+	selectdo
+		dsca.to = tccom139.dsca
+	selectempty
+		dsca.from = ""
+	endselect	
+
+					|#ISGECDV001145.sn
+field.var.prjdc:
+before.display:
+	select	pj_tcmcs052.dsca:var.prjdc
+	from	tcmcs052 pj_tcmcs052
+	where	pj_tcmcs052._index1 = {:tfisg003.cprj}
 	selectdo
 	selectempty
-		wght.t = 0
-		amnt.t = 0
-		pric.t = 0
-	endselect		
+		var.prjdc = ""
+	endselect
+						|#ISGECDV001145.en
+						
+field.tfisg003.fpon:
+before.zoom:
+	query.extend.where.in.zoom("tdisg016.cprj ="&quoted.string(tfisg003.cprj))
+|****************************** choice section **********************************
+choice.dupl.occur:
+before.choice:
+	tfisg003.irno = 0
+	
+choice.link.gr:
+on.choice:
+									|#ISGECDV001126.sn
+	if	trim$(i.session) = "tfisg0501m200"	then
+		insert_in_tfisg002_transporter()
+	else
+									|#ISGECDV001126.en
+		insert_in_tfisg002()
+	endif							|#ISGECDV001126.n	
+	commit.transaction()
+	execute(end.program)
 
 
-|****************************** function Section ********************************
-functions:
-function update_tdisg003()
-{
-long ret_val
-	select	tdisg003.stat
-	from	tdisg003 for update
-	where	tdisg003._index1 = {:i.rqno,:i.pono}
-	and	tdisg003.slct	 = tcyesno.yes
+choice.end.program:
+before.choice:
+	if	import.program = "tfisg0102m000"	then
+		refresh.parent(-1)
+	endif	
+
+choice.mark.delete:
+before.choice:
+	select 	tfisg001.stat
+	from	tfisg001 
+	where	tfisg001._index1 = {:tfisg003.irno}
+	and	tfisg001.stat = tfisg.status.ir.receipt
+	as set with 1 rows
 	selectdo
-		ret_val = dal.change.object("tdisg003")
-		dal.set.field("tdisg003.stat", tcyesno.yes)
-		ret_val = dal.save.object("tdisg003")
-	endselect	
-}
-
-function delete_from_tdisg003()
-{
-long ret_val
+	selectempty
+		message("IR Already Processed!!")
+		choice.again()
+	endselect
 	
-	domain		tcitem	v.item			|#ISGEC015083.n
-	
-	ret_val = 0
-| 	select tdisg003.*				|#ISGEC015083.so
-| 	from	tdisg003 for update
-| 	where	tdisg003._index1 = {:i.rqno,:i.pono}					
-| 	and	tdisg003.stat = tcyesno.no
-| 	selectdo
-| 		db.delete(ttdisg003,db.retry,e)
-| 	endselect					|#ISGEC015083.eo
-	
-							|#ISGEC015083.sn
-	select	tdisg003.item:v.item
-	from	tdisg003
-	where	tdisg003._index1	=	{:i.rqno,:i.pono}
+	select 	tfisg002.irno
+	from	tfisg002 for update
+	where	tfisg002._index1 = {:tfisg003.irno,:tfisg003.ncmp,:tfisg003.grno,:tfisg003.bpid,:tfisg003.grdt}
 	selectdo
-		select	tdisg003.*
-		from	tdisg003	for	update
-		where	tdisg003.item	=	{:v.item}
-		and	tdisg003.stat	=	tcyesno.no
+		db.delete(ttfisg002,db.retry,e)
+		select tfisg001.link
+		from	tfisg001 for update
+		where	tfisg001._index1 = {:tfisg003.irno}
 		selectdo
-			db.delete(ttdisg003,db.retry,e)
+			tfisg001.link = tcyesno.no
+			db.update(ttfisg001,db.retry,e)
 		endselect
 	endselect
-							|#ISGEC015083.en
-}
+	
+	commit.transaction()
+	
+		
+|***********************************************************************************
+main.table.io:
+before.write:
+| 	tfisg003.link = tcyesno.yes
 
-function update_tcisg004()
+| 	select 	tfacp100.ifbp,
+| 		tfisg001.ncmp:i.ncmp
+| 	from	tfacp100, tfisg001
+| 	where	tfacp100._index1 = {:tfisg003.irno}
+| 	and	tfacp100.ninv refers to tfisg001
+| 	as set with 1 rows
+| 	selectdo
+| 	endselect
+| 	
+| 	tfisg002.irno = tfisg003.irno
+| 	tfisg002.gcmp = tfisg003.ncmp
+| 	tfisg002.grno = tfisg003.grno
+| 	tfisg002.grbp = tfisg003.bpid
+| 	tfisg002.grdt = tfisg003.grdt
+| 	
+| 	db.insert(ttfisg002,db.skip.dupl,e)
+| 	
+| 	select 	tfisg001.link
+| 	from	tfisg001 for update
+| 	where 	tfisg001._index1 = {:tfisg003.irno}
+| 	as set with 1 rows
+| 	selectdo
+| 		tfisg001.link = tcyesno.yes
+| 		db.update(ttfisg001,db.retry,e)
+| 	endselect
+| 	
+| before.rewrite:
+| 	if dal.is.field.changed("tfisg003.irno") then
+| 		skip.io("")
+| 	endif
+	
+	
+functions:
+function insert_in_tfisg002()
 {
-	long ret_val
-
-	ret_val = 0
-	select	tdisg003.*		
-	from	tdisg003 
-	where	tdisg003._index1 = {:i.rqno,:i.pono}
-	and	tdisg003.stat	 = {tcyesno.yes}
-	selectdo			
-		select 	tdpur201.cprj,tdpur201.cspa,tdpur201.item
-		from	tdpur201
-		where	tdpur201._index1 = {:tdisg003.rqno,:tdisg003.pono}
+	select 	tfisg003.ncmp,
+		tfisg003.grno,
+		tfisg003.bpid,
+		tfisg003.grdt
+	from	tfisg003
+	where	tfisg003._index2 = {:tfisg003.bpid}
+	and	tfisg003.sele = tcyesno.yes
+	and	tfisg003.link = tcyesno.no
+	selectdo
+| 		tfisg002.icmp = import.icmp
+		tfisg002.irno = import.irno
+| 		tfisg002.irbp = import.irbp
+		tfisg002.gcmp = tfisg003.ncmp
+		tfisg002.grno = tfisg003.grno
+		tfisg002.grbp = tfisg003.bpid
+		tfisg002.grdt = tfisg003.grdt
+		db.insert(ttfisg002,db.skip.dupl,e)
+		
+		select 	tfisg003.link
+		from	tfisg003 for update
+| 		where	tfisg003._index1 = {:tfisg003.ncmp,:tfisg003.grno,:tfisg003.bpid}
+		where	tfisg003._index1 = {:tfisg003.grno,:tfisg003.bpid}
+		and	tfisg003.sele = tcyesno.yes
+		and	tfisg003.link = tcyesno.no
 		selectdo
-			select 	tcisg004.indt
-			from	tcisg004 for update
-			where	tcisg004._index1  = {:tdpur201.cprj,:tdpur201.cspa,:tdpur201.item}
-| 			and	tcisg004.srno = {:tdisg003.sern}
-			and	tcisg004.item = {:tdisg003.item}
-			selectdo
-				ret_val = dal.change.object("tcisg004")
-				dal.set.field("tcisg004.indt", tcyesno.yes)
-				ret_val = dal.save.object("tcisg004")
-				if ret_val<>0 then
-					abort.transaction()
-				else
-					commit.transaction()
-				endif
-			endselect	
-		endselect	
+			tfisg003.link = tcyesno.yes
+			db.update(ttfisg003,db.retry,e)
+		endselect
+		
 	endselect
-
+	
 }
 
-
-function extern boolean modify.set.is.allowed()
+function check.ir
+		(
+			ref	domain 	tfgld.docn	o.irno
+		)
 {
- 	if tdisg003.stat =  tcyesno.yes then
-		return(false)
-	endif
-	return(true)
+	select 	tfisg003.irno:o.irno
+	from	tfisg003
+	where	tfisg003._index1 = {:tfisg003.grno,:tfisg003.bpid,:tfisg003.grdt}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	
 }
 
-function extern boolean mark.delete.is.allowed()
-{	
- 	if tdisg003.stat =  tcyesno.yes then
-		return(false)
-	endif
-	return(true)
-}
-
-function set.command.disable.enable()
+								|#ISGECDV001126.sn
+function insert_in_tfisg002_transporter()
 {
-	if	tdisg003.stat = tcyesno.yes	then
-		disable.commands("cont.bom.lines", "cont.select.all")
-	else	
-		enable.commands("cont.bom.lines", "cont.select.all")
-	endif	
+	select 	tfisg003.ncmp,
+		tfisg003.grno,
+		tfisg003.bpid,
+		tfisg003.grdt
+	from	tfisg003
+	where	tfisg003._index2 = {:tfisg003.bpid}
+	and	tfisg003.sele = tcyesno.yes
+	and	tfisg003.tirn = :import.irno
+	selectdo
+		tfisg002.irno = import.irno
+		tfisg002.gcmp = tfisg003.ncmp
+		tfisg002.grno = tfisg003.grno
+		tfisg002.grbp = tfisg003.bpid
+		tfisg002.grdt = tfisg003.grdt
+		db.insert(ttfisg002,db.skip.dupl,e)
+		
+		select 	tfisg003.link
+		from	tfisg003 for update
+		where	tfisg003._index1 = {:tfisg003.grno, :tfisg003.bpid}
+		and	tfisg003.sele = tcyesno.yes
+		and	tfisg003.tirn = :import.irno
+		selectdo
+			tfisg003.link = tcyesno.yes
+			db.update(ttfisg003,db.retry,e)
+		endselect
+		
+	endselect
+	
 }
+								|#ISGECDV001126.en

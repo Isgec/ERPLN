@@ -1,196 +1,220 @@
 |******************************************************************************
-|* tdisg0104m000  0  VRC B61U a7 live
-|* RFQ Bill Of Material
+|******************************************************************************
+|* tfisg0104m000  0  VRC B61U a7 live
+|* Maintain IR - Bill of Ladding
 |* Tools                         
-|* 2014-05-22
+|* 2014-08-01
 |******************************************************************************
-|* Main table tdisg004 , Form Type 1
+|* Main table tfisg004 IR - Bill of Ladding, Form Type 1
 |******************************************************************************
-                                                                                
+|*IDENT ISGEC015043, Shilpa Janardanan , 31/08/2015, VRC B61U a7 ISG
+|* Modification in the session, report printing
+| 
+|* IDENT ISGEC015072, Shilpa Janardanan, 15-10-2015, VRC B61U a7 ISG
+|* Modification in report 
+
 |****************************** declaration section ***************************
 declaration:
-#include <bic_4gl2>
-	table	ttdisg004 
-	table	ttcisg003
-	table	ttcisg004
-	table	ttdpur101
 
-	extern	domain	tcqiv1	wght.t	
-	extern	domain	tcorno	import.orno
-	extern	domain	tcpono	import.pono
-	extern	domain	tcsern	import.srnb
+	table	ttfisg004 	|# IR - Bill of Ladding
+	table	ttfacp100
+	table	ttfisg001				|#ISGEC015043.sn
+	table	ttdpur406	|#Purchase Receipts
+	table	ttfisg006	|# Charge code
+	table	ttcmcs052	|#Projects
+	table	ttdisg012
+	table	ttccom100				|#ISGEC015043.en
+	table	ttdisg839		|#ISGEC015072.n
 	
-	extern	domain	tcpono	o.revn
-#include "itdisgdll0003"	
+	domain	tcamnt	amnt
+| 	domain	tcmcs.str1	spool.device 
+	domain	tcmcs.str25	report.code,report.code1 	|#ISGEC015043.sn
+	long  	brp.report.1,brp.report.2
+	extern domain	tfgld.docn	cur.irno		|#ISGEC015043.en
+	extern domain	tcpono	p,q
+	
+	extern	domain	tcloco	logn
 |****************************** program section ********************************
-before.program:
-	import("tdpur101.qono",import.orno)
-	import("tdpur101.pono",import.pono)
-	
-	query.extension = "tdisg004._index1 = {:import.orno,:import.pono}"|,:import.srnb}"
-	inputfield.invisible("tdisg004.item.segment.1")
-	
+before.program:			|#ISGEC015043.sn
+	logn = logname$
+					|#ISGEC015043.en
 before.display.object:
-	set.command.disable.enable()
-|****************************** group section **********************************
-group.1:
-init.group:
-   get.screen.defaults()
-|****************************** Choice Section ********************************
+	set.command.enable.disable()
 
-choice.freeze:
+|****************************** group section **********************************
+|******************************* choice section ********************
+choice.confirm:				|#ISGEC015043.sn
 on.choice:
-	update_tdisg004()
-| 	update_tcisg004()
-	delete_from_tdisg004()
+	select	tfisg001.amnt:amnt
+	from	tfisg001
+	where	tfisg001._index1 = {:tfisg004.irno}
+	selectdo
+	endselect
+	if amnt <> tfisg004.amnt then
+		mess("tcgenstring", 1, "Total charges not equal to IR amount")
+		choice.again()
+	else
+		select	tfisg004.conf
+		from	tfisg004 for update
+		where	tfisg004._index1 = {:tfisg004.irno}
+		selectdo
+			tfisg004.conf = tcyesno.yes	
+			db.update(ttfisg004, db.retry, e)
+		endselect
+	endif				
 	
-	commit.transaction()
+choice.print.data:
+on.choice:
+| 	spool.device = "D"
+| 	report.code = "rtfisg040601001"
+| 	report.code1 = "rtfisg040601002"
+| 	brp.report.1 = brp.open(report.code,spool.device,1)
+| 	print_ir_against_bill()
+| 	brp.report.2 = brp.open(report.code1,spool.device,1)
+|  	print_other_ir()
+| 	brp.close(brp.report.1)
+| 	brp.close(brp.report.2)
+		
+	if reportno= 1 then
+	rprt_open()
+		print_ir_against_bill()
+		print_other_ir()
+	rprt_close()
+	endif	
 	
-field.wght.t:
+	|#ISGEC015043.en
+|****************************** field section **********************************
+field.tfacp100.isup:
 before.display:
-	select	sum(tdisg004.wght):wght.t
-	from	tdisg004
-| 	where	tdisg004._index1 = {:import.orno,:import.pono,:import.srnb}
-	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}
+	select	tfacp100.isup
+	from	tfacp100
+	where	tfacp100._index1 = {:tfisg004.irno}
 	selectdo
 	selectempty
-		wght.t = 0
-		
-	endselect		
-choice.cont.bom.lines:
-on.choice:
-	select 	tdpur101.cprj,
-		tdpur101.cspa,
-		tdpur101.item,
-		tdpur101.qono,
-		tdpur101.pono,
-		tdpur101.srnb
-	from	tdpur101
-	where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
-	as set with 1 rows
-	selectdo
+		tfacp100.isup = ""
 	endselect
 	
-	BILL_OF_MATERIAL(tdpur101.cprj,tdpur101.cspa,tdpur101.item,
-			101,refq,tdpur101.qono,tdpur101.pono,0)
-			
-	commit.transaction()		
-choice.mark.delete:
-before.choice:
-	select 	tdpur101.cprj,
-		tdpur101.cspa,
-		tdpur101.item
-	from	tdpur101
-	where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
-	as set with 1 rows
-	selectdo
-	endselect
-	
-	if tcisgdll0003.get.max.revision(tdpur101.cprj, tdpur101.cspa, tdpur101.item) then
-| 		UPDATE_STATUS(tdpur101.cprj,tdpur101.cspa,tdpur101.item,o.revn,tdisg004.sern,refq)
-		UPDATE_STATUS(tdpur101.cprj, tdpur101.cspa, tdpur101.item, tdisg004.item, refq)
-	endif
-	
-after.choice:
-	commit.transaction()
-	
-choice.cont.select.all:
-on.choice:
-	BILL_OF_MATERIAL_SELECT_ALL_LINES(004,tdisg004.qono,tdisg004.pono)
-after.choice:
-	commit.transaction()	
-	
-|****************************** field Section ********************************	
-field.tdisg004.qono:
+field.tfisg004.amnt:			|#ISGEC015043.sn
 before.field:
-	tdisg004.qono = import.orno
-
-field.tdisg004.pono:
-before.field:
-	tdisg004.pono = import.pono
-	
-|****************************** function Section ********************************
-functions:
-function update_tdisg004()
-{
-	select	tdisg004.stat, tdisg004.slct
-	from	tdisg004 for update
-	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}					
-	and	tdisg004.slct = tcyesno.yes
+	select	tfacp100.stin
+	from	tfacp100
+	where	tfacp100._index1 = {:tfisg004.irno}
+	and	tfacp100.stin in (2,3)
 	selectdo
-		dal.change.object("tdisg004")
-		dal.set.field("tdisg004.stat", tcyesno.yes)
-		dal.save.object("tdisg004")
-	endselect	
-}
+		disable.fields("tfisg004.amnt")
+	selectempty
+		enable.fields("tfisg004.amnt")
+	endselect			|#ISGEC015043.en
+|*************************** Function section ***********************************
+Functions:
 
-function delete_from_tdisg004()
+function set.command.enable.disable()
 {
-	select tdisg004.qono
-	from	tdisg004 for update
-	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}					
-	and	tdisg004.slct = tcyesno.no
-	selectdo
-		db.delete(ttdisg004,db.retry,e)
-	endselect
-	
-}
-
-function update_tcisg004()
-{
-	db.retry.point()
-	select	tdisg004.*								
-	from	tdisg004 
-	where	tdisg004._index1 = {:import.orno,:import.pono}|,:import.srnb}
-	and	tdisg004.stat = tcyesno.yes
-	selectdo									
-		select 	tdpur101.cprj,tdpur101.cspa,tdpur101.item
-		from	tdpur101
-		where	tdpur101._index1 = {:tdisg004.qono,:tdisg004.pono}|,:tdisg004.srnb}
-		as set with 1 rows
-		selectdo
-			select 	tcisg004.orno
-			from	tcisg004 for update
-			where	tcisg004._index1  = {:tdpur101.cprj,:tdpur101.cspa,:tdpur101.item}
-| 			and	tcisg004.srno = :tdisg004.sern
-			and	tcisg004.item = :tdisg004.item
-			selectdo
-				tcisg004.refq = tcyesno.yes
-				db.update(ttcisg004,db.retry,e)
-				commit.transaction()
-			endselect	
-		endselect	
-	endselect
-	
-}
-
-
-
-function extern boolean modify.set.is.allowed()
-{
- 	if tdisg004.stat =  tcyesno.yes then
-		return(false)
-	else
-		return(true)
-	endif
-	return(false)
-}
-
-function extern boolean mark.delete.is.allowed()
-{	
- 	if tdisg004.stat =  tcyesno.yes then
-		return(false)
-	else
-		return(true)
-	endif
-	return(false)
-}
-
-function set.command.disable.enable()
-{
-	if	tdisg004.stat = tcyesno.yes	then
-		disable.commands("cont.bom.lines", "cont.select.all")
+	if	not isspace(tfisg004.blno)	then
+		enable.commands("tdisg8530m000")
 	else	
-		enable.commands("cont.bom.lines", "cont.select.all")
+		disable.commands("tdisg8530m000")
 	endif	
 }
+
+
+function print_ir_against_bill()			|#ISGEC015043.sn
+{
+	domain	tcibd.sern	irno
+	
+	irno = str$(tfisg004.irno)
+	q = 0
+	select	tfisg006.*, tdisg012.dsca
+	from	tfisg006, tdisg012
+	where	tfisg006._index1 = {:tfisg004.irno}
+	and	tfisg006.chrg	refers to tdisg012
+	selectdo
+		select	tdisg839.biln			|#ISGEC015072.sn
+		from	tdisg839
+		where	tdisg839._index1 = {:tfisg004.blno}
+		selectdo
+		selectempty
+			tdisg839.biln = ""
+		endselect				|#ISGEC015072.en
+		
+		select	tfisg001.bpid, tfisg001.amnt, tfisg001.irdt, tfisg001.orno, tfisg001.cprj
+			, tccom100.nama, tcmcs052.dsca
+		from	tfisg001,tccom100, tcmcs052
+		where	tfisg001._index1 = {:tfisg004.irno}
+		and	tfisg001.bpid refers to tccom100
+		and	tfisg001.cprj refers to tcmcs052
+		selectdo
+			select	tdpur406.rcno, tdpur406.damt
+			from	tdpur406
+			where	tdpur406._index1 = {:tfisg001.orno}
+			and	tdpur406.dino = :irno
+			selectdo
+			selectempty
+				tdpur406.rcno = ""
+				tdpur406.damt = 0
+			endselect	
+			
+		selectempty
+			tfisg001.bpid = ""
+			tccom100.nama = ""
+			tfisg001.amnt = 0
+			tfisg001.orno = ""
+			tfisg001.cprj = ""
+		endselect
+		
+		select	tfacp100.isup
+		from	tfacp100
+		where	tfacp100._index1 = {:tfisg004.irno}
+		selectdo
+		selectempty
+			tfacp100.isup = ""
+		endselect
+		q = 1
+		p = 0
+| 		brp.ready(brp.report.1)
+		rprt_send()
+	selectempty
+		tdisg012.dsca = ""
+		tfisg006.amnt = 0
+		tfisg006.chrg = ""
+		tfisg006.remk = ""
+	endselect
+
+}	
+
+function print_other_ir()
+{
+	p = 0
+| 	q = 0
+	select	tfisg004.irno:cur.irno
+	from	tfisg004
+	where	tfisg004.blno = :tfisg004.blno
+	and	tfisg004.irno <> :tfisg004.irno
+	selectdo
+		select	tdisg839.biln			|#ISGEC015072.sn
+		from	tdisg839
+		where	tdisg839._index1 = {:tfisg004.blno}
+		selectdo
+		selectempty
+			tdisg839.biln = ""
+		endselect				|#ISGEC015072.en
+		
+		select	tfisg006.*,tdisg012.dsca
+		from	tfisg006, tdisg012
+		where	tfisg006._index1 = {:cur.irno}
+		and	tfisg006.chrg	refers to tdisg012
+		selectdo
+| 			brp.ready(brp.report.2)
+			p = 1
+			q = 2
+			rprt_send()
+		selectempty
+			tdisg012.dsca = ""
+		endselect
+	endselect
+	
+}
+
+
+
+|#ISGEC015043.en

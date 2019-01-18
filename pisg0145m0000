@@ -1,58 +1,93 @@
 |******************************************************************************
-|* tdisg0145m000  0  VRC B61U a7 isg 
-|* Display Project / PO Lines wise child item
-|* Installation User             
-|* 2015-04-08
+|* tpisg0145m000  0  VRC B61U a7 live
+|* Maintain Project Wise Addresses
+|* Tools                         
+|* 2014-08-09
 |******************************************************************************
-|* Main table tdisg045 Project /PO wise Child Item, Form Type 1
+|* Main table tpisg045 Project Wise Address, Form Type 1
 |******************************************************************************
-                                                                                
+|* ID: ISGEC001188, IT0327, Ritu Shrivastava, VRC B61U a7 isg, Dt. 20-12-2014
+|* Added CST and LST registration number.
 |****************************** declaration section ***************************
 declaration:
 
-  table   ttdisg045 | Project /PO wise Child Item
-  table   ttdpur401
-  table   ttcmcs052
-  
-  extern domain tccprj i.cprj,cprj.f
-  extern domain tcorno i.orno
-  extern domain tcpono i.pono
-  extern domain tcdsca cprj.n
-  extern domain tccuni  unit	
+  table   ttpisg045 | Project Wise Address
+  table   ttctax400					|#ISGEC001188.n
+  table   ttppdm740					|#ISGEC001188.n
+
+extern	domain	tccprj		project
+extern	domain	tcmcs.str16	v.sess
+
+   extern domain tctax.txnb	tax.cst, tax.lst	|#ISGEC001188.n
+   extern domain tccom.bpid	v.bpid			|#ISGEC001188.n
+   
+#include <bic_dam> 
 |****************************** program section ********************************
 before.program:
-	import("tdpur401.orno",i.orno)
-	import("tdpur401.pono",i.pono)
-	update.field()
+	import("prog.name$",v.sess)
+	if v.sess  = "tppdm6500m000" then
+		import("tppdm600.cprj",project)
+		query.extend.where("tpisg045._index1 = {:project}")
+	endif
 	
-|****************************** choice section **********************************
-choice.update:
-on.choice:
-	do.updation()
-|****************************** field section **********************************
-
+after.form.read:
+	enable.save.on.occ.change()	
 	
-|***************************** function section ********************************
-functions:
+|****************************** group section **********************************
+field.tpisg045.cprj:
+before.field:
+	if v.sess  = "tppdm6500m000" then
+		tpisg045.cprj = project
+	endif	
 
-function do.updation()
-{
-	tdisg.dll0045.Update_Project_Element_wise_Child_Item(tdpur401.cprj, tdisg045.cspa)
-}
+field.tpisg045.cstr:							|#ISGEC001188.sn
+before.zoom:
+	get.bp.projectwise()
+	query.extend.where.in.zoom("tctax400.bpid = " & quoted.string(v.bpid) & " and tctax400.catg.l = tctax.catg.l.cst")
 
-function update.field()
-{
-	select tdpur401.cprj,tcmcs052.dsca,tdpur401.cuqp
-	from    tdpur401,tcmcs052
-	where   tdpur401._index1 = {:i.orno,:i.pono}
-	and     tdpur401.cprj refers to tcmcs052
+field.tax.cst:
+before.display:
+	select tctax400.fovn:tax.cst
+	from   tctax400
+	where  tctax400._index3 = {:tpisg045.cstr}
 	selectdo
-		unit   = tdpur401.cuqp
-		cprj.f = tdpur401.cprj
-		cprj.n = tcmcs052.dsca
-	selectempty
-		unit  = ""
-		cprj.f = ""
-		cprj.n = ""
+	endselect
+	
+field.tpisg045.lstr:
+before.zoom:
+	get.bp.projectwise()
+	query.extend.where.in.zoom("tctax400.bpid = " & quoted.string(v.bpid) & " and tctax400.catg.l = tctax.catg.l.lst")
+
+
+field.tax.lst:
+before.display:
+	select tctax400.fovn:tax.lst
+	from   tctax400
+	where  tctax400._index3 = {:tpisg045.cstr}
+	selectdo
+	endselect
+
+|******************************** functions *****************************
+Functions:
+
+function get.bp.projectwise()
+{
+	select tppdm740.ofbp:v.bpid
+	from   tppdm740
+	where  tppdm740._index1 = {:project}
+	selectdo
 	endselect
 }
+
+function boolean regn.no(domain tctax.seqn.l		i.seqn)
+{
+	select tctax400.*
+	from   tctax400
+	where  tctax400._index3 = {:i.seqn}
+	selectdo
+		return(true)
+	endselect
+	
+	return(false)
+}
+									|#ISGEC001188.en

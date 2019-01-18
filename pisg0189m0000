@@ -10,11 +10,7 @@
 |* Email Alert when PO is approved/Rejected        
 |*
 |* ISGEC002016, IT0352, Abhishek Singh, 16-06-2015
-|* Modification in Email Alert when PO is approved/Rejected
-|
-|* ISGEC015087, IT0302, Ankit Sharma, Dt. 23-02-2016, VRC B61U a7 live
-|* Added rate factor with basic value on PO Approval and rejection
-|
+|* Modification in Email Alert when PO is approved/Rejected  
 |****************************** declaration section ***************************
 declaration:
 
@@ -195,8 +191,7 @@ function boolean Login_Authorized()
 	where	tdisg083._index2 = {:curr.logn}
 	as set with 1 rows
 	selectdo
-		select	tdpur400.cotp,
-			tdpur400.ccur								|#ISGEC015087.n
+		select	tdpur400.cotp
 		from	tdpur400
 		where	tdpur400._index1 = {:tdisg089.orno}
 		selectdo
@@ -207,14 +202,10 @@ function boolean Login_Authorized()
 			order by tdisg084.strv desc
 			as set with 1 rows
 			selectdo
-| 				if	(tdisg084.stmt <= var.obsc)	and			|#ISGEC015087.so
-| 					(tdisg084.edmt >= var.obsc)	then	
-| 					return(true)
-| 				endif								|#ISGEC015087.eo
-				if	(tdisg084.stmt <= (var.obsc * tdpur400.ratp(1)))	and			|#ISGEC015087.sn
-					(tdisg084.edmt >= (var.obsc * tdpur400.ratp(1)))	then
+				if	(tdisg084.stmt <= var.obsc)	and
+					(tdisg084.edmt >= var.obsc)	then
 					return(true)
-				endif								|#ISGEC015087.en
+				endif
 			endselect
 		endselect	
 	endselect	

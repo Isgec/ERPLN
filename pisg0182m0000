@@ -1,114 +1,138 @@
 |******************************************************************************
-|* tdisg0182m000  0  VRC B61U a7 live
-|* LOI Issuance
-|* Installation user             
-|* 2014-12-03
+|* tpisg0182m000  0  VRC B61U a7 isg 
+|* Export Incentive
+|* user07                        
+|* 2015-02-25
 |******************************************************************************
-|* Main table tdisg082 LOI Issuance, Form Type 1
+|* Main table tpisg082 Export Incentives, Form Type 1
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
 
-	table	ttdisg082 | LOI Issuance
-	table	ttpptc100 |Elements
-	table	ttcmcs050
-	table	ttcisg000
-
-	|******************** Form Variables ***************
-	extern	domain	tcdsca		var.pjdc
-	extern	domain	tcdsca		var.eldc
-	extern	domain	tcyesno		text.yn
-	
-	|******************* Script Variables **************
-	string	str(300)
+  table   ttpisg082 | Export Incentives
+  table		ttcmcs052
+  table		ttpest120
+  
+  extern domain tcdsca	dsca1, dsca2	
+  extern domain tcmcs.str3 levl.f
+	domain	tppdm.sern	highest.level
+	domain	tcamnt	tot.ini, tot.act, tot.yet, tot.tot	
+	domain	tppdm.cspa	parent.ele
+	domain	tccprj		project
 
 |****************************** program section ********************************
-before.program:
-	set.synchronized.dialog("tdisg0182m000")
-	read.parameters()
+| before.display.object:
+| 	if tpisg082.stat = tpisg.sanction.approved then
+| 		disable.commands("approve")
+| 	else
+| 		enable.commands("approve")
+| 	endif
 
+| after.form.read:
+| enable.save.on.occ.change()
 |****************************** group section **********************************
-|****************************** field section **********************************
-field.var.pjdc:
+field.tcmcs052.dsca:
 before.display:
-	var.pjdc = Get_Project_Desc(tdisg082.cprj)
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:tpisg082.cprj}
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
 
-field.var.eldc:
+| field.tpisg082.cspa:
+| before.zoom:
+| 	tpest120.cprj = tpisg082.cprj
+| after.zoom:
+| 	tpisg082.parn = tpest120.pele
+| 	tpisg082.levl = tpest120.levl	
+	
+field.dsca1:
 before.display:
-	var.eldc = Get_Element_Desc(tdisg082.cprj, tdisg082.cspa)
-	
-field.tdisg082.loin:
-before.zoom:
-	if	update.status = add.set	then
-		tcmcs050.nrgr = tcisg000.lngp	
-		attr.zoomcode = Z.SESSION
-		attr.zoomsession$ = "tcmcs0150m000"
-		attr.zoomreturn$ = "tcmcs050.seri"
-	else
-		attr.zoomcode = Z.SESSION
-		attr.zoomsession$ = "tdisg0182m000"
-		attr.zoomreturn$ = "tdisg082.loin"
-	endif
-	
-field.tdisg082.cspa:
-before.zoom:
-	tpptc100.cprj = tdisg082.cprj
-	
-field.tdisg082.orno:
-before.zoom:
-	str = ""
-	str = "tdpur400.orno in ("
-	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 = '" &tdisg082.cprj&"')"
-	query.extend.where.in.zoom(str)
-	
-field.tdisg082.rqno:
-before.zoom:
-	str = ""
-	str = "tdpur200.rqno in ("
-	str = str & "select tdpur201.rqno from tdpur201 where tdpur201._index2 = '" &tdisg082.cprj&"')"
-	query.extend.where.in.zoom(str)
+	select	tpptc100.desc:dsca1
+	from	tpptc100
+	where	tpptc100._index1 = {:tpisg082.cprj, :tpisg082.cspa}
+	selectdo
+	selectempty
+		dsca1 = ""
+	endselect
 
-field.text.yn:
+
+field.dsca2:
 before.display:
-	text.yn = tdisg082.txta <> 0 ? tcyesno.yes:tcyesno.no
-|****************************** function section **********************************
-Functions:
+	select	tpptc100.desc:dsca2
+	from	tpptc100
+	where	tpptc100._index1 = {:tpisg082.cprj, :tpisg082.parn}
+	selectdo
+	selectempty
+		dsca2 = ""
+	endselect
 
-function domain tcdsca	Get_Project_Desc(
-				domain	tccprj	i.cprj
-				)
+
+field.levl.f:
+before.field:
+	levl.f = "L" & str$(tpisg082.levl + 1)
+	
+
+functions:
+
+function extern calculate()
 {
-	domain	tcdsca	tmp.dsca
-	
-	tmp.dsca = ""
-	select	pj_tcmcs052.dsca:tmp.dsca
-	from	tcmcs052 pj_tcmcs052
-	where	pj_tcmcs052._index1 = {:i.cprj}
+	select	max(tpisg082.levl):highest.level
+	from	tpisg082
+	where	tpisg082._index1 = {:tpisg082.cprj}
 	selectdo
 	endselect
 	
-	return(tmp.dsca)
-}
-
-function domain tcdsca Get_Element_Desc(
-				domain	tccprj		i.cprj,
-				domain	tppdm.cspa	i.cspa
-				)
-{
-	domain	tcdsca	t.dsca
-	
-	t.dsca = ""
-	select	el_tpptc100.desc:t.dsca
-	from	tpptc100 el_tpptc100
-	where	el_tpptc100._index1 = {:i.cprj, :i.cspa}
+	select	tpisg082.*
+	from	tpisg082 for update
+	where	tpisg082._index1 = {:tpisg082.cprj}
+	and	tpisg082.levl < :highest.level
 	selectdo
+		tpisg082.actl = 0
+		tpisg082.budg = 0
+		tpisg082.yetl = 0
+		tpisg082.totl = 0
+		db.update(ttpisg082, db.retry)
 	endselect
+	commit.transaction()
 	
-	return(t.dsca)
+	while highest.level > 0
+		select	isg082.cprj:project,
+			isg082.parn:parent.ele,
+			sum(isg082.budg):tot.ini,
+			sum(isg082.actl):tot.act,
+			sum(isg082.yetl):tot.yet,
+			sum(isg082.totl):tot.tot
+		from	tpisg082 isg082
+		where	isg082._index1 = {:tpisg082.cprj}
+		and	isg082.levl = :highest.level
+		group by isg082.cprj, isg082.parn
+		selectdo
+			update_tpisg082.values()
+		endselect	
+		highest.level = highest.level - 1	
+	endwhile
+	
 }
 
-function read.parameters()
+function update_tpisg082.values()
 {
-	tcmcs.dll0095.read.parm("tcisg000")
+	select	tpisg082.*
+	from	tpisg082 for update
+	where	tpisg082._index1 = {:project}
+	and	tpisg082.cspa = :parent.ele
+	and	tpisg082.levl = :highest.level - 1 
+	selectdo
+		tpisg082.budg = tot.ini
+		tpisg082.actl = tot.act
+		tpisg082.yetl = tot.yet
+		tpisg082.totl = tot.tot
+		db.update(ttpisg082, db.retry)
+	endselect
+	commit.transaction()
+
 }
+

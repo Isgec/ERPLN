@@ -1,20 +1,26 @@
 |******************************************************************************
-|* tdisg006  0  VRC B61U a7 live
-|* DAL2 for tdisg006
-|* tools1
-|* 14-06-02 [15:20]
+|* tfisg006  0  VRC B61U a7 isg 
+|* Dal for Charge Code
+|* baan
+|* 15-09-11 [14:49]
 |******************************************************************************
 |* Script Type: DAL
+| 
+|* IDENT ISGEC015043, Shilpa Janardnan, VRC B61U a7 isg
+|* IDENT ISGEC015072, Shilpa Janardnan, VRC B61U a7 isg
+|* check for charge code to be excluded for service tax - PFB101
 |******************************************************************************
-                                                                                
+
+	table	ttfisg004
+	table	ttfisg006
+	table	ttdisg012		|#ISGEC01572.n
+	
+	domain	 tcorno		old.chrg
+	domain	tfgld.docn	cur.irno
+	     
 #include <bic_dal2>
 
-	table	ttdisg002
-	table	ttdisg006
-	table	ttdpur401
-	table	ttcisg004
-	
-#include "itdisgdll0003"
+
 function extern long before.open.object.set()
 {
 	return(0)
@@ -22,93 +28,46 @@ function extern long before.open.object.set()
 
 function extern long before.save.object(long type)
 {
-	on case type
-	case DAL_NEW :
-| 		update.tdisg002(tdisg006.orno,tdisg006.pono,tdisg006.sern,tdisg006.qoor,tdisg006.acht)
-		update.tdisg002(tdisg006.orno,tdisg006.pono,tdisg006.item,tdisg006.qoor,tdisg006.acht)
-		break
-	endcase
-	
 	return(0)
 }
 
-function extern long before.destroy.object()
-{
-	domain 	tcpono	o.revn
+function extern boolean tfisg006.chrg.is.valid(long mode)
+{		
 	
-	select 	tdisg002.qoor,
-		tdisg002.acht
-	from	tdisg002 for update 
-| 	where	tdisg002._index1 = {:tdisg006.orno,:tdisg006.pono,:tdisg006.sern}
-	where	tdisg002._index1 = {:tdisg006.orno,:tdisg006.pono,:tdisg006.item}
+	select	tfisg004.irno,tfisg004.blno
+	from	tfisg004
+	where	tfisg004.irno = :tfisg006.irno
 	selectdo
-		tdisg002.qoor = tdisg002.qoor - tdisg006.qoor
-		tdisg002.acht = tdisg002.acht - tdisg006.acht
-		db.update(ttdisg002,db.retry,e)
-		select 	tdpur401.cprj,
-			tdpur401.cspa,
-			tdpur401.item
-		from	tdpur401
-		where	tdpur401._index1 = {:tdisg006.orno,:tdisg006.pono}
-		as set with 1 rows
+		select	tfisg004.irno:cur.irno
+		from	tfisg004
+		where	tfisg004.blno = :tfisg004.blno
+		and	tfisg004.irno <> :tfisg006.irno
 		selectdo
-			if tcisgdll0003.get.max.revision(tdpur401.cprj, tdpur401.cspa, tdpur401.item) then
-| 				UPDATE_STATUS(tdpur401.cprj,tdpur401.cspa,tdpur401.item,o.revn,tdisg006.sern,rcpt)
-				UPDATE_STATUS(tdpur401.cprj, tdpur401.cspa, tdpur401.item, tdisg006.item, rcpt)
-			endif
-		endselect
-	endselect
-	
-	return(0)
+			select	tfisg006.chrg:old.chrg
+			from	tfisg006
+			where	tfisg006._index1 = {:cur.irno}
+			and	tfisg006.chrg <> "PFB101"		|#ISGEC015072.n
+			selectdo
+				if tfisg006.chrg = old.chrg then
+						dal.set.error.message ("tfisg006") 
+					return(false)
+				endif
+			endselect
+		endselect	
+	endselect	
+	return(true)
 }
 
-function update.tdisg002
-			(
-				domain	tcorno		i.orno,	|Purchase Order
-				domain	tcpono		i.pono,	|Position
-| 				domain	tcpono		i.sern,	|Serail No
-				domain	tcitem		i.item,	|Item
-				domain	tcqiv1		i.qoor,	|Actual Quantity
-				domain	tcqiv1		i.acht	|Actual Weight
-			)
-{
-	domain 	tcpono		o.revn
-	domain	tccprj		o.cprj
-	domain	tppdm.cspa	o.cspa
-	domain	tcitem		o.item
-	
-	select 	tdisg002.qoor,
-		tdisg002.acht,
-		tdisg002.qnty
-	from	tdisg002 for update
-| 	where	tdisg002._index1 = {:i.orno,:i.pono,:i.sern}
-	where	tdisg002._index1 = {:i.orno,:i.pono,:i.item}
-	selectdo
-		tdisg002.qoor = tdisg002.qoor + i.qoor
-		tdisg002.acht = tdisg002.acht + i.acht
-		db.update(ttdisg002,db.retry,e)
-		tcisgdll0003.Get_Order(i.orno,i.pono,o.cprj,o.cspa,o.item)
-| 		if tdisg002.qoor = tdisg002.qnty then
-				if tcisgdll0003.get.max.revision(o.cprj, o.cspa, o.item) then
-					select tcisg004.rcpt
-					from	tcisg004 for update 
-					where	tcisg004._index1 = {:o.cprj, :o.cspa, :o.item, :i.item}
-					selectdo
-						tcisg004.rcpt = tcyesno.yes
-						db.update(ttcisg004,db.retry,e)
-						tcisgdll0003.insert.tcisg005(o.cprj, o.cspa, o.item, tdisg006.item,
-							tdisg.item.receipt, tdisg006.rcno, tdisg006.rcln)
-					endselect
-					
-				endif
-| 		else
-| 			if tcisgdll0003.get.max.revision(o.cprj, o.cspa, o.item) then
-| 				tcisgdll0003.insert.tcisg005(o.cprj, o.cspa, o.item, tdisg006.item,
-| 					tdisg.item.receipt, tdisg006.rcno, tdisg006.rcln)
-| 			endif
-				
-| 		endif	
-			
-	endselect
-	
-}
+| function extern boolean tfisg006.dsca.is.derived()	|#ISGEC015072.n
+| {
+| 	select	tdisg012.dsca
+| 	from	tdisg012
+| 	where	tdisg012._index1 = {:tfisg006.chrg}
+| 	selectdo
+| 		tfisg006.dsca = tdisg012.dsca
+| 		return(true)
+| 	selectempty
+| 			tfisg006.dsca = ""
+| 	endselect
+|         return(false)
+| }						|#ISGEC015072.en
