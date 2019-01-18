@@ -1,14 +1,16 @@
 |******************************************************************************
-|* tdisg4401m002  0  VRC B61U a7 isg 
-|* Print PO wise Delivery Status [Modified]
-|* user06                        
-|* 2015-03-03
+|* tdisg4401m300  0  VRC B61U a7 isg 
+|* Print PO Line wise Delivery Status
+|* Installation user             
+|* 2014-10-28
 |******************************************************************************
 |* Main table tdpur401 Purchase Order Lines, Form Type 4
 |******************************************************************************
-|*ISGEC01076, IT0388, Gokul Chaurasia, Dt. 03-03-2015, VRC B61U a7 isg
-|*****************************************************************************
-|* ISGEC01093, Mani sharma, IT0376, Dt. 17.03.2015, VRC B61U a7 isg
+|* ISGECDV001192, IT0205, Arjit Gupta, VRC B61U a7 live, Dt. 01-12-2014
+|* Add a column Balance Baisc Amount.
+|*
+|* ISGEC01072, IT0375, Sandhyarani, Dt. 03-03-2015, VRC B61U a7 live
+|* Modification on Order date
 |****************************** declaration section ***************************
 declaration:
 
@@ -31,7 +33,7 @@ declaration:
 	table	ttfacp100
 	table	ttccom100				
 	table	ttccom001
-	table	ttdmsl400					
+	table	ttdmsl400				|#ISGEC01072.n
 
 	|*************** Form Variables *******************
 	extern	domain	tcorno		orno.f    fixed
@@ -52,8 +54,7 @@ declaration:
 	extern	domain	tppdm.cspa	cspa.t
 	extern	domain	tcemno		emno.f
 	extern	domain	tcemno		emno.t
-	extern	domain	tcperc		cnsm.perc
-| 	extern	domain	tccprj		cprj.f
+	extern	domain	tcyesno		pend.rcpt
 	|*************** File Handling Variables *******************
 	string		str(300), err.file(100), file.name(100), line3(2000), line4(2000)
 	long		ret2, stat.fp
@@ -71,17 +72,18 @@ declaration:
 		domain	tcamnt		scr.rcst	
 		domain	tcamnt		scr.rexc	
 		domain	tcamnt		scr.rstx	
-		domain	tcamnt		scr.roch
-		domain	tcqiv1		scr.oqnt		
-		domain	tcamnt		scr.obsc		
-		domain	tcamnt		scr.oexc		
-		domain	tcamnt		scr.ocst		
-		domain	tcamnt		scr.ostx		
-		domain	tcamnt		scr.lcst		
-		domain	tcamnt		scr.rbal	
+		domain	tcamnt		scr.roch	
 	|************** File Utilization Variables *************************
 	extern	domain	tcorno		rep.orno	
+	extern	domain	tcpono		rep.pono	
 	extern	domain	tcdate		rep.odat	
+	extern	domain	tcitem		rep.item	
+	extern	domain	tcdsca		rep.itdsc	
+	extern	domain	tccprj		rep.cprj	
+	extern	domain	tcdsca		rep.pjdsc	
+	extern	domain	tppdm.cspa	rep.cspa	
+	extern	domain	tcdsca		rep.eldsc	
+	extern	domain	tcqiv1		rep.oqnt	
 	extern	domain	tcpric		rep.oprc	
 	extern	domain	tcamnt		rep.obsc	
 	extern	domain	tcamnt		rep.oexc	
@@ -89,6 +91,8 @@ declaration:
 	extern	domain	tcamnt		rep.ostx	
 	extern	domain	tcamnt		rep.lcst	
 	extern	domain	tcamnt		rep.ogrs
+	extern	domain	tcqiv1		rep.rqnt	
+	extern	domain	tcpric		rep.rprc	
 	extern	domain	tcamnt		rep.rbsc	
 	extern	domain	tcamnt		rep.rexc	
 	extern	domain	tcamnt		rep.rcst	
@@ -103,9 +107,9 @@ declaration:
 	extern	domain	tcnama		rep.bynm		
 	extern	domain	tcdate		rep.ddta		
 	extern	domain	tcmcs.str15	rep.hdst		
-	extern	domain	tcamnt		rep.bbal			
-	extern	domain	tcamnt		rep.rbal			
-	extern	domain	tcperc		rep.cnpr
+	extern	domain	tcamnt		rep.bbal			|#ISGECDV001192.n		
+	extern	domain	tcamnt		rep.rbal		
+	extern	domain	tcqiv1		rep.blqt		
 
 |*************** Include **************
 #include<bic_desktop>
@@ -121,16 +125,50 @@ init.group:
 |****************************** choice section ********************************
 choice.cont.process:
 on.choice:
-	if isspace(cprj.f) then				|ISGEC01093.sn
-		message("Project is Mandatory")
-		choice.again()
-	else							|ISGEC01093.en
-		generate.file()
-	endif
+	generate.file()
+
 |****************************** field section *********************************
 field.orno.f:
 when.field.changes:
 	orno.t = orno.f
+before.zoom:
+	str = "tdpur400.orno in ("
+	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 inrange '" &cprj.f&"' and '"&cprj.t&"')"
+	query.extend.where.in.zoom(str)
+	
+field.orno.t:
+before.zoom:
+	str = "tdpur400.orno in ("
+	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 inrange '" &cprj.f&"' and '"&cprj.t&"')"
+	query.extend.where.in.zoom(str)
+
+field.odat.f:
+when.field.changes:
+	odat.t = odat.f
+	
+field.rcdt.f:
+when.field.changes:
+	rcdt.t = rcdt.f	
+
+field.emno.f:
+when.field.changes:
+	emno.t = emno.f
+
+field.cprj.f:
+when.field.changes:
+	cprj.t = cprj.f
+
+field.cspa.f:
+when.field.changes:
+	cspa.t = cspa.f
+
+field.ddta.f:
+when.field.changes:
+	ddta.t = ddta.f
+
+field.rcno.f:
+when.field.changes:
+	rcno.t = rcno.f
 
 field.bpid.f:
 when.field.changes:
@@ -142,22 +180,17 @@ functions:
 function generate.file()
 {
 	open.file()
-	generate.header1()
-	read.project()
 	generate.header()
 	read.main.table()
 	close.file()
 }
 
 function read.main.table()
-{	
+{
 	rcdt.f = 0
 	rcdt.t = utc.num()
 	set.fmin(rcno.f)
 	set.fmax(rcno.t)
-	odat.t = utc.num()
-	ddta.t = utc.num()
-	rcdt.t = utc.num()
 	get.date.utc(odat.f, 00, 00, 00, v.odat.f)
 	get.date.utc(odat.t, 23, 59, 59, v.odat.t)
 	get.date.utc(ddta.f, 00, 00, 00, v.ddta.f)
@@ -165,109 +198,85 @@ function read.main.table()
 	get.date.utc(rcdt.f, 00, 00, 00, v.rcdt.f)
 	get.date.utc(rcdt.t, 23, 59, 59, v.rcdt.t)
 	
-	select	tdpur400.orno, tdpur400.odat, tdpur400.otbp,	
-		tdpur400.hdst, tdpur400.ccon, tdpur400.ddat,
-		tccom100.nama, tccom001.nama
-	from	tdpur400, tccom100, tccom001
-	where	tdpur400._index1 inrange {:orno.f}	and	{:orno.t}
+	select	tdpur401.*, tdpur400.orno, tdpur400.odat, tdpur400.otbp,	
+		tdpur400.hdst, tdpur400.ccon, tcibd001.dsca, tcmcs052.dsca,					
+		tccom100.nama, tccom001.nama								
+	from	tdpur401, tdpur400, tcibd001, tcmcs052, tccom100, tccom001		
+	where	tdpur401._index1 inrange {:orno.f}	and	{:orno.t}
+	and	tdpur401._index5 inrange {:cprj.f}	and	{:cprj.t}
+	and	tdpur401.cspa inrange :cspa.f		and	:cspa.t
+	and	tdpur401.ddta inrange :v.ddta.f		and	:v.ddta.t
+	and	tdpur401.orno refers to tdpur400
+	and	tdpur400.odat inrange :v.odat.f		and	:v.odat.t	
 	and	tdpur400._index2 inrange {:bpid.f}	and	{:bpid.t}	
-	and	tdpur400.otbp refers to tccom100 Unref Clear
-	and	tdpur400.ccon refers to tccom001 Unref Clear
+	and	tdpur400._index4 inrange {:emno.f}	and	{:emno.t}
+	and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
+	and	tdpur401.item refers to tcibd001
+	and	tdpur401.cprj refers to tcmcs052
+	and	tdpur400.otbp refers to tccom100
+	and	tdpur400.ccon refers to tccom001 Unref Clear				
 	selectdo
 		Initialize_Variable()
-		select	tdpur401.*								
-		from	tdpur401		
-		where	tdpur401._index1 = {:tdpur400.orno}
-		and     tdpur401.cprj = :cprj.f
-		and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
+		get.po.date()
+		rep.orno = tdpur401.orno	
+		rep.pono = tdpur401.pono	
+		rep.item = tdpur401.item	
+		rep.itdsc = tcibd001.dsca	
+		rep.cprj = tdpur401.cprj	
+		rep.pjdsc = tcmcs052.dsca
+		rep.cspa = tdpur401.cspa
+| 		rep.odat = tdpur400.odat				|#ISGEC01072.o
+		rep.otbp = tdpur400.otbp		
+		rep.nama = tccom100.nama		
+		rep.buyr = tdpur400.ccon		
+		rep.bynm = tccom001.nama		
+		rep.ddta = tdpur401.ddta		
+		receipt.found = false
+		rep.hdst = enum.descr$("tdpur.hdst", tdpur400.hdst)		
+		
+		select	e_tpptc100.desc:rep.eldsc
+		from	tpptc100 e_tpptc100
+		where	e_tpptc100._index1 = {:tdpur401.cprj, :tdpur401.cspa}
 		selectdo
-			get.po.date()
-			rep.orno = tdpur400.orno
-			rep.odat = tdpur400.odat
-			rep.otbp = tdpur400.otbp
-			rep.nama = tccom100.nama
-			rep.buyr = tdpur400.ccon
-			rep.bynm = tccom001.nama		
-			rep.ddta = tdpur400.ddat
-			rep.hdst = enum.descr$("tdpur.hdst", tdpur400.hdst)
-			
-			cprj.f   = tdpur401.cprj
-			receipt.found = false
-			scr.oqnt = 0		
-			scr.oexc = 0		
-			scr.ocst = 0		
-			scr.ostx = 0		
-			scr.lcst = 0
-			scr.rbal = 0
-			scr.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)
-			if	tdpur401.qoor <> 0	then
-				rep.oprc = (tdpur401.oamt / tdpur401.qoor)
-			else
-				rep.oprc = 0
-			endif	
-			rep.obsc = rep.obsc + (scr.oqnt * rep.oprc)
-			populate.tax.amounts()
-			Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-			rep.oexc = rep.oexc + scr.oexc
-			rep.ocst = rep.ocst + scr.ocst
-			rep.ostx = rep.ostx + scr.ostx
-			rep.lcst = rep.lcst + scr.lcst
-			rep.ogrs = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst
-			tmp.oval = 0				
-			tmp.oval = (scr.oqnt * rep.oprc) + scr.oexc + scr.ocst + scr.ostx + scr.lcst			
-			if	not Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
-							v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
-							tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		
-							tmp.oval)	then		
-			endif				
-			if	not Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
+		selectempty
+			rep.eldsc = ""
+		endselect
+		rep.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)
+		if	tdpur401.qoor <> 0	then
+			rep.oprc = (tdpur401.oamt / tdpur401.qoor)
+		else
+			rep.oprc = 0
+		endif	
+		rep.obsc = rep.oqnt * rep.oprc
+		populate.tax.amounts()
+		Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+		rep.ogrs = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst
+		tmp.oval = 0				
+		tmp.oval = rep.ogrs			
+		if	not Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
 						v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
 						tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		
-						tmp.oval)	then
-			endif
-			
-			if	not receipt.found then
-				scr.rbal = (scr.oqnt * rep.oprc) + scr.oexc + scr.ocst + scr.ostx + scr.lcst
-			endif
-			rep.rbal = rep.rbal + scr.rbal
-		endselect
-		rep.bbal = rep.obsc - rep.rbsc
-		if	rep.ogrs = rep.rbal	then
-			rep.cnpr = 0
-		else
-			if	rep.ogrs <> 0	then
-				rep.cnpr = ((rep.ogrs - rep.rbal)/rep.ogrs) * 100
-			endif
+						tmp.oval)	then		
+		endif				
+		if	not Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
+					v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
+					tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		
+					tmp.oval)	then
 		endif
-		if	cnsm.perc <= rep.cnpr	then
-			if rep.obsc <> 0 and rep.ogrs <> 0  then
-				|and rep.rbsc <> 0 and rep.rgrs <> 0 and rep.bbal <> 0 and rep.rbal <> 0 then
+		rep.bbal = rep.obsc - rep.rbsc		|#ISGECDV001192.n
+		if	not receipt.found then
+			rep.bbal = rep.obsc		|#ISGECDV001192.n
+			rep.rbal = rep.ogrs
+		endif
+		rep.blqt = rep.oqnt - rep.rqnt
+		if	pend.rcpt = tcyesno.yes	then
+			if	rep.blqt > 0	then
 				print.detail()
-			endif	
+			endif
+		else
+			print.detail()
 		endif	
 	endselect	
-}
-
-function read.project()
-{
-
-| 	select tdpur400.orno							|ISGEC01093.so
-| 	from   tdpur400
-| 	where  tdpur400._index1 inrange {:orno.f}	and	{:orno.t}
-| 	and	tdpur400._index2 inrange {:bpid.f}	and	{:bpid.t}
-| 	as set with 1 rows
-| 	selectdo
-| 		select tdpur401.cprj
-| 		from    tdpur401
-| 		where   tdpur401._index1 = {:tdpur400.orno}
-| 		and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
-| 		as set with 1 rows
-| 		selectdo
-| 			cprj.f = tdpur401.cprj
-| 		endselect							|ISGEC01093.eo
-		
-		print.detail1()
-| 	endselect
 }
 
 function domain tcqiv1	 get.additional.qty.from.401(
@@ -359,16 +368,16 @@ function populate.tax.amounts()
 			case	tctax.indt.l.e.cess.service:			
 			case	tctax.indt.l.hse.cess.excise:
 			case	tctax.indt.l.hse.cess.servic:		
-				scr.oexc = scr.oexc + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				rep.oexc = rep.oexc + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break
 			case	tctax.indt.l.lst:	
 			case	tctax.indt.l.cst:	
 			case	tctax.indt.l.vat:	
 			case	tctax.indt.l.n.a:
-				scr.ocst = scr.ocst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				rep.ocst = rep.ocst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break	
 			default:
-				scr.ostx = scr.ostx + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				rep.ostx = rep.ostx + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 		endcase
 	endselect
 }
@@ -391,7 +400,7 @@ function Get_Landed_Cost(domain tcorno		im.orno,
 		and	tclct200.borf = :tmp.borf
 		order by tclct200._index1
 		selectdo
-			scr.lcst = scr.lcst + tclct200.lcam
+			rep.lcst = rep.lcst + tclct200.lcam
 		endselect
 	endselect	
 }
@@ -434,7 +443,9 @@ function boolean Get_Warehouse_Receipt(
 	and	whinh312.ardt inrange :in.rcdt.f	and	:in.rcdt.t
 	and	whinh312.rcno refers to whinh310
 	selectdo
+		rep.rqnt = rep.rqnt + whinh312.qrcr
 		rep.rbsc = rep.rbsc + (in.pric * whinh312.qrcr)
+		rep.rprc = in.pric
 		scr.bval = 0
 		select	whisg312.inrq
 		from	whisg312
@@ -457,8 +468,7 @@ function boolean Get_Warehouse_Receipt(
 		scr.roch = 0
 		scr.rexc = 0	
 		scr.rcst = 0	
-		scr.rstx = 0
-			
+		scr.rstx = 0	
 		Calculate_Other_Charge(whinh312.rcno, whinh312.rcln, scr.roch)
 		rep.roch = rep.roch + scr.roch
 		on case whinh310.stat
@@ -528,10 +538,11 @@ function boolean Get_Warehouse_Receipt(
 		rep.rstx = rep.rstx + scr.rstx	
 		rep.rgrs = (rep.rbsc + rep.roch + rep.rexc + rep.rcst + rep.rstx)
 		
-		tot.rcpt = tot.rcpt + (in.pric * whinh312.qrcr) + scr.roch + scr.rexc + scr.rcst + scr.rstx
-		
-		scr.rbal = tot.ogrs -  tot.rcpt	
-		in.ogrs = scr.rbal
+		if	rep.rgrs <> 0	then
+			tot.rcpt = tot.rcpt + rep.rgrs
+		endif
+		rep.rbal = tot.ogrs -  rep.rgrs	
+		in.ogrs = rep.rbal
 				
 		receipt.found = true
 	selectempty
@@ -581,6 +592,7 @@ function boolean Get_Purchase_Receipt(
 					and	whinh312._index1 inrange {:in.rcno.f} and	{:in.rcno.t}
 					and	whinh312.ardt inrange	:in.rcdt.f	and	:in.rcdt.t)
 	selectdo	
+		rep.rqnt = rep.rqnt + tdpur406.qiap
 		scr.bval = 0	
 		select	whisg312.inrq
 		from	whisg312
@@ -600,6 +612,7 @@ function boolean Get_Purchase_Receipt(
 		v.sces = 0
 		
 		rep.rbsc = rep.rbsc + (tdpur406.qiap * in.pric)
+		rep.rprc = in.pric
 		
 		scr.roch = 0
 		scr.rexc = 0
@@ -642,10 +655,12 @@ function boolean Get_Purchase_Receipt(
 		rep.rstx = rep.rstx + scr.rstx
 		
 		rep.rgrs = (rep.rbsc + rep.rexc + rep.rcst + rep.roch + rep.rstx)
-		tot.rcpt = tot.rcpt + (tdpur406.qiap * in.pric) + scr.roch + scr.rexc + scr.rcst + scr.rstx
-		
-		scr.rbal = tot.ogrs -  tot.rcpt
-		in.ogrs = scr.rbal	
+		if	rep.rgrs <> 0	then
+			tot.rcpt = tot.rcpt + rep.rgrs
+		endif
+		rep.rbal = tot.ogrs -  rep.rgrs
+		in.ogrs = rep.rbal
+			
 		receipt.found = true	
 	selectempty
 		return(false)
@@ -878,68 +893,92 @@ function get.tax.from.whinh936(
 	endselect
 }
 
-function	generate.header1()
-{
-line4 = concat$("	",
-		sprintf$("Project"))
-		
-	line4 = strip$(shiftl$(line4))		
-	seq.puts(line4, stat.fp)
-	
-| 	line4 = ""
-}
 
 function	generate.header()
-{	
+{
 	line4 =	concat$("	",
-		sprintf$("Order No"),					|1		
-		sprintf$("Order Date"),				|2
-| 		sprintf$("Supplier"),					|3		
-		sprintf$("Supplier "),					|4		
-| 		sprintf$("Buyer"),					|5		
-		sprintf$("Buyer "),				|6		
-		sprintf$("Basic Value Ordered"),			|9
-		sprintf$("Total Value Ordered"),			|10
-		sprintf$("Basic Value Delivered"),			|11
-		sprintf$("Total Value Delivered"),			|12
-		sprintf$("Basic Value Balance"),			|13					
-		sprintf$("Total Value Balance"))			|14										
+		sprintf$("PO Number"),					|1		
+		sprintf$("Supplier"),					|2		
+		sprintf$("Name"),					|3		
+		sprintf$("Buyer"),					|4		
+		sprintf$("Buyer Name"),				|5		
+		sprintf$("Position"),					|6
+		sprintf$("Order Date"),				|7
+		sprintf$("Order Status"),				|8		
+		sprintf$("Delivery Date"),				|9		
+		sprintf$("Item"),					|10
+		sprintf$("Description"),		  		|11
+		sprintf$("Project"),					|12
+		sprintf$("Description"),			  	|13
+		sprintf$("Element"),					|14
+		sprintf$("Description"),			        |15
+		sprintf$("Quantity"),					|16
+		sprintf$("Price"),					|17
+		sprintf$("Basic Value"),				|18
+		sprintf$("Excise"),					|19	
+		sprintf$("CST/VAT"),					|20
+		sprintf$("S. Tax"),					|21
+		sprintf$("Landed Cost"),				|22
+		sprintf$("Gross Value"),				|23
+		sprintf$("Receipt Quantity"),				|24	
+		sprintf$("Receipt Price"),				|25	
+		sprintf$("Receipt Basic Amount"),			|26
+		sprintf$("Excise Duty"),				|27
+		sprintf$("CST/VAT"),					|28
+		sprintf$("Service Tax"),				|29
+		sprintf$("Other Charge"),				|30
+		sprintf$("Gross Amount"),				|31
+		sprintf$("PO Balance Quantity"),			|32			
+		sprintf$("PO Basic Balance Amount"),			|33		|#ISGECDV001192.n		
+		sprintf$("PO Balance Amount"),				|34			
+		sprintf$("Billing Value"))				|35											
 		
 	line4 = strip$(shiftl$(line4))		
 	seq.puts(line4, stat.fp)	
 }
 
-function	print.detail1()
-{
-	line3 = concat$("	",
-		sprintf$("%s", cprj.f))
-	
-	line3 = strip$(shiftl$(line3))
-		seq.puts(line3, stat.fp)
-	
-| 	line3 = ""
-}
-
 function	print.detail()
 {	
-
 	line3 =	concat$("	",
 		sprintf$("%s", rep.orno),				|1
-		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|2
-| 		sprintf$("%s", rep.otbp),				|3				
-		sprintf$("%s", rep.nama),				|4				
-| 		sprintf$("%s", rep.buyr),				|5				
-		sprintf$("%s", rep.bynm),				|6		
-		sprintf$("%f", rep.obsc),				|9
-		sprintf$("%f", rep.ogrs),				|10
-		sprintf$("%f", rep.rbsc),				|11
-		sprintf$("%f", rep.rgrs),				|12
-		sprintf$("%f", rep.bbal),				|13				
-		sprintf$("%f", rep.rbal))				|14
+		sprintf$("%s", rep.otbp),				|2				
+		sprintf$("%s", rep.nama),				|3				
+		sprintf$("%s", rep.buyr),				|4				
+		sprintf$("%s", rep.bynm),				|5				
+		sprintf$("%d", rep.pono),				|6
+		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|7
+		sprintf$("%s", rep.hdst),				|8				
+		sprintf$("%u(%02d/%02m/%04Y)", rep.ddta),		|9				
+		sprintf$("%s", rep.item),				|10
+		sprintf$("%s", rep.itdsc),				|11
+		sprintf$("%s", rep.cprj),				|12	
+		sprintf$("%s", rep.pjdsc),				|13
+		sprintf$("%s", rep.cspa),				|14
+		sprintf$("%s", rep.eldsc),				|15
+		sprintf$("%f", rep.oqnt),				|16
+		sprintf$("%f", rep.oprc),				|17
+		sprintf$("%f", rep.obsc),				|18
+		sprintf$("%f", rep.oexc),				|19
+		sprintf$("%f", rep.ocst),				|20
+		sprintf$("%f", rep.ostx),				|21
+		sprintf$("%f", rep.lcst),				|22
+		sprintf$("%f", rep.ogrs),				|23
+		sprintf$("%f", rep.rqnt),				|24
+		sprintf$("%f", rep.rprc),				|25
+		sprintf$("%f", rep.rbsc),				|26
+		sprintf$("%f", rep.rexc),				|27
+		sprintf$("%f", rep.rcst),				|28
+		sprintf$("%f", rep.rstx),				|29
+		sprintf$("%f", rep.roch),				|30
+		sprintf$("%f", rep.rgrs),				|31
+		sprintf$("%f", rep.blqt),				|32			
+		sprintf$("%f", rep.bbal),				|33		 |#ISGECDV001192.n			
+		sprintf$("%f", rep.rbal),				|34		 			
+		sprintf$("%f", rep.bval))				|35
 	
 		line3 = strip$(shiftl$(line3))
 		seq.puts(line3, stat.fp)
-}
+}	
 
 function Initialize_Variable()
 {
@@ -948,27 +987,36 @@ function Initialize_Variable()
 	rep.nama = ""				|3				
 	rep.buyr = ""				|4				
 	rep.bynm = ""				|5				
-	rep.odat = 0				|6
-	rep.hdst = ""				|7				
-	rep.ddta = 0				|8				
-	rep.oprc = 0				|
-	rep.obsc = 0				|9
-	rep.oexc = 0				|10
-	rep.ocst = 0				|11
-	rep.ostx = 0				|12
-	rep.lcst = 0				|13
-	rep.ogrs = 0				|14
-	rep.rbsc = 0				|15
-	rep.rexc = 0				|16
-	rep.rcst = 0				|17
-	rep.rstx = 0				|18
-	rep.roch = 0				|19
-	rep.rgrs = 0				|20
-	rep.bbal = 0				|21		
-	rep.rbal = 0				|22			
-	rep.bval = 0				|23
-	rep.cnpr = 0				|24
-| 	cprj.f   = ""				|25
+	rep.pono = 0				|6
+	rep.odat = 0				|7
+	rep.hdst = ""				|8				
+	rep.ddta = 0				|9				
+	rep.item = ""				|10
+	rep.itdsc = ""				|11
+	rep.cprj = ""				|12	
+	rep.pjdsc = ""				|13
+	rep.cspa = ""				|14
+	rep.eldsc = ""				|15
+	rep.oqnt = 0				|16
+	rep.oprc = 0				|17
+	rep.obsc = 0				|18
+	rep.oexc = 0				|19
+	rep.ocst = 0				|20
+	rep.ostx = 0				|21
+	rep.lcst = 0				|22
+	rep.ogrs = 0				|23
+	rep.rqnt = 0				|24
+	rep.rprc = 0				|25
+	rep.rbsc = 0				|26
+	rep.rexc = 0				|27
+	rep.rcst = 0				|28
+	rep.rstx = 0				|29
+	rep.roch = 0				|30
+	rep.rgrs = 0				|31
+	rep.blqt = 0				|32			
+	rep.bbal = 0				|33		|#ISGECDV001192.n			
+	rep.rbal = 0				|34					
+	rep.bval = 0				|35
 }
 
 function get.date.utc(
@@ -1007,7 +1055,7 @@ function close.file()
 	ret2 = app_start(file.name,"c:","","","")
 }
 
-function get.po.date()							
+function get.po.date()								|#ISGEC01072.sn
 {
 	select	tdmsl400.apdt
 	from	tdmsl400
@@ -1017,4 +1065,4 @@ function get.po.date()
 	selectempty
 		tdmsl400.apdt = 0
 	endselect	
-}
+}										|#ISGEC01072.sn
