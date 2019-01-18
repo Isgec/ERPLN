@@ -14,10 +14,6 @@
 |* 
 |* ISGEC001172, IT0205, Arjit Gupta, VRC B61U a7 isg, Dt. 29-11-2014
 |* PO must be picked of Rev. 0 and PR Value to be initialize PO wise.
-|
-|* ISGEC015087, IT0302, Ankit Sharma, Dt. 25-02-2016, VRC B61U a7 live
-|* Added currency column in field
-|
 |****************************** declaration section ***************************
 declaration:
 
@@ -106,7 +102,6 @@ declaration:
 		domain  tcorno         prev.orno1
 		domain	tcamnt		scr.pbmt
 		domain	tcamnt		scr.pbvl
-		extern	domain	tcccur		rep.ccur		|#ISGEC015087.n
 |*************** Include **************
 #include<bic_desktop>
 |****************************** program section ********************************
@@ -254,8 +249,7 @@ function generate.header()
 	line2 =	concat$("	",
 		sprintf$("Division"),					|1		
 		sprintf$("PO No"),					|2		
-		sprintf$("PO Creation Date"),				|3
-		sprintf$("Currency"),					|3.1		|#ISGEC015087.n		
+		sprintf$("PO Creation Date"),				|3		
 		sprintf$("PO Approval Date"),				|4		
 		sprintf$("Item Description"),				|5		
 		sprintf$("Supplier Code"),				|6
@@ -341,7 +335,6 @@ function read.main.table()
 			rep.ddta = tdpur400.ddat
 			rep.buyr = tdpur400.ccon
 			rep.apdt = tdmsl400.apdt
-			rep.ccur = tdpur400.ccur		|#ISGEC015087.n
 			rep.hdst = enum.descr$("tdpur.hdst", tdpur400.hdst)
 			
 									|#ISGEC001172.sn
@@ -368,9 +361,7 @@ function read.main.table()
 			rep.ocst = rep.ocst + scr.ocst
 			rep.ostx = rep.ostx + scr.ostx
 			rep.lcst = rep.lcst + scr.lcst
-			rep.pomt = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst				|#ISGEC015087.o	
-			rep.pomt = (rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst) * tdpur400.ratp(1)	|#ISGEC015087.n				
-			
+			rep.pomt = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst
 			
 									|#ISGECDV001177.sn
 			select	pt_tdpur094.dsca:rep.potp
@@ -382,16 +373,12 @@ function read.main.table()
 			endselect
 			
 			if	Get_Max_Revision(tdpur400.orno) = tdmsl400.vrsn	then
-| 				rep.pbmt = rep.pbmt + tdpur401.oamt				|#ISGEC015087.so
-| 				rep.pbvl = rep.pbvl + tdpur401.oamt / 100000			|#ISGEC015087.eo
-				rep.pbmt = rep.pbmt + (tdpur401.oamt * tdpur400.ratp(1))		|#ISGEC015087.sn
-				rep.pbvl = rep.pbvl + (tdpur401.oamt * tdpur400.ratp(1)) / 100000	|#ISGEC015087.en
+				rep.pbmt = rep.pbmt + tdpur401.oamt
+				rep.pbvl = rep.pbvl + tdpur401.oamt / 100000
 			else
 				Get_PO_Basic_Amount(tdpur401.orno, 0 , tdpur401.pono, tdpur401.sqnb, scr.pbmt, scr.pbvl)
-| 				rep.pbmt = rep.pbmt + scr.pbmt					|#ISGEC015087.so				
-| 				rep.pbvl = rep.pbvl + scr.pbvl					|#ISGEC015087.eo
-				rep.pbmt = rep.pbmt + (scr.pbmt * tdpur400.ratp(1))		|#ISGEC015087.sn
-				rep.pbvl = rep.pbvl + (scr.pbvl * tdpur400.ratp(1))		|#ISGEC015087.sn
+				rep.pbmt = rep.pbmt + scr.pbmt
+				rep.pbvl = rep.pbvl + scr.pbvl
 			endif	
 			Get_Send_For_Approval_Date(tdpur401.orno, tdpur401.pono, tdpur401.sqnb, rep.ipdt)
 									|#ISGECDV001177.en
@@ -423,13 +410,11 @@ function read.main.table()
 			rep.rqmt = ind.bas + ind.exc + ind.stx + ind.oth1 + ind.oth2
 			rep.rqvl = rep.rqmt/100000
 | 			rep.samt = rep.rqmt - rep.pomt			|#ISGECDV001177.o
-			rep.samt = rep.rqmt - rep.pbmt			|#ISGECDV001177.nMM		|#ISGEC015087.o
-| 			rep.samt = (rep.rqmt * tdpur400.ratp(1)) - rep.pbmt				|#ISGEC015087.nMM
+			rep.samt = rep.rqmt - rep.pbmt			|#ISGECDV001177.n
 			rep.sval = rep.samt/100000
 			rep.povl = rep.pomt/100000
 			if rep.rqmt <> 0 then
-				rep.sper = (rep.samt/(rep.rqmt) * 100)					|#ISGEC015087.oMM
-| 				rep.sper = (rep.samt/(rep.rqmt *tdpur400.ratp(1)) ) * 100 		|#ISGEC015087.nMM
+				rep.sper = (rep.samt/rep.rqmt) * 100 
 			else
 				rep.sper = 0
 			endif
@@ -464,10 +449,9 @@ function read.main.table()
 function write.data()
 {	
 	line3 =	concat$("	",
-		sprintf$("%s", rep.grid),				|1
+		sprintf$("%s", rep.grid),			|1
 		sprintf$("%s", rep.orno),				|2				
-		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|3
-		sprintf$("%s", rep.ccur),				|3.1				|# ISGEC015087.n		
+		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|3				
 		sprintf$("%u(%02d/%02m/%04Y)", rep.apdt),		|4				
 		sprintf$("%s", rep.refa),				|5				
 		sprintf$("%s", rep.otbp),				|6				
@@ -531,7 +515,6 @@ function initialize.variables()
 	rep.hdst = ""
 	rep.potp = ""					|#ISGECDV001177.n
 	rep.ipdt = ""					|#ISGECDV001177.n
-	rep.ccur = ""				|7.1				|#ISGEC015087.n
 }
 
 function domain tcqiv1	 get.additional.qty.from.401(

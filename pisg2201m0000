@@ -134,8 +134,9 @@ when.field.changes:
 		tpptc120.cact = ""
 		tpptc120.ccco = ""
 	endselect
-	
-	cspa.f = tpptc120.cspa
+	if isspace(cspa.f) then		|#ISGEC015068.n
+		cspa.f = tpptc120.cspa
+	endif					|#ISGEC015068.n
 	cact.f = tpptc120.cact
 	ccco.f = tpptc120.ccco
 	

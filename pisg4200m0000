@@ -35,7 +35,7 @@ group.1:
 init.group:
    get.screen.defaults()
 
-choice.proc.cont:		
+choice.proc.cont:
 					|#ISGECDV001168.sn
 before.choice:
 	check.all.input()

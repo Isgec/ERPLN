@@ -24,18 +24,10 @@
 |* ISGEC001190, IT0205, Arjit Gupta, VRC B61U a7 isg, Dt. 20-12-2014
 |* When PO Selected by default latest revision will be picked.
 
+
 |* ISGEC015019,Radheshyam, 23-06-2015, VRC B61U a7 isg
 |* Modification in report layout
 |* Size of PO quantity increased, Sample Packing list removed, changes in header
-
-|* ISGEC015085, IT0386, Saurabh Dubey, 20 Feb 2015, VRC B61U a7
-|* Project Description Added
-|* 
-|* ID ISGEC015086, Manish Manchanda, 2016-03-31
-|* Modifications for city logic
-|*
-|* ID : ISGECFIN012, IT0386, Saurabh Dubey, VRC B61U a7 isg Dt. 17.06.2016
-|* Krishi Kalyan Cess Logic
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -113,9 +105,6 @@ declaration:
 	extern	domain	tcyesno	order.accp.print
 	extern domain	tcmcs.str16	prog.name				|ISG001030.n
 	extern	domain	tcdsca		rep.refb
-	extern	domain	tcdsca		o.tcmcs052.dsca	|#ISGEC01085.n
-	extern	domain	tcmcs.str100m	rep.city2	|#ISGEC015086.n
-	extern	domain	tcamnt		o.kkcess.rate	|#ISGECFIN012.n
 |****************************** program section ********************************
 before.program:								|ISG001030.sn
 	import("prog.name$",prog.name)
@@ -327,15 +316,6 @@ function read.main.table()
 			tccom001.nama = ""
 			bpmdm001.mail = ""
 		endif
-							|#ISGEC015086.sn
-		if	trim$(vend.ccit)	=	"DEF"	then
-			rep.city2	=	vend.pstc
-			vend.pstc	=	""
-		else
-			rep.city2	=	trim$(vend.ccit)&" - "&vend.pstc
-			vend.pstc	=	""
-		endif
-							|#ISGEC015086.en
 		brnc.lst = ""
 		brnc.cst = ""
 		last.vrsn = 0
@@ -365,10 +345,8 @@ function read.main.table()
 			from	tcmcs052
 			where	tcmcs052._index1 = {:tdpur401.cprj}
 			selectdo
-				o.tcmcs052.dsca = tcmcs052.dsca	|#ISGEC015085.n
 			selectempty
 				tcmcs052.dsca = ""
-				o.tcmcs052.dsca = ""	|#ISGEC015085.n
 			endselect	
 			|#ISGEC0104.en
 		endselect
@@ -473,7 +451,7 @@ function read.main.table()
 		oth.chg2 = 0
 		ialt.m = ""
 		aX1a.m = ""
-		o.kkcess.rate = 0	|#ISGECFIN012.n
+		
 		
 		|#ISGEC0104.sn
 		Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
@@ -607,7 +585,6 @@ function populate.tax.amounts()
 	domain	tcamnt		tmp.rate		|#ISGEC0104.n
 	
 	tmp.rate = 0					|#ISGEC0104.n
-	o.kkcess.rate = 0.00	|#ISGECFIN012.n
 	
 	tctax.dll9141.determine.aggregate.tax.amounts.per.line( 
 						tdpur401.ccty,				| domain tcccty i.tax.country, 
@@ -649,12 +626,10 @@ function populate.tax.amounts()
 	and	tctax941.cmbb refers to tcmcs036
 	selectdo
 		on case tcmcs036.indt.l
-		case	tctax.indt.l.kk.cess:	|#ISGECFIN012.n		
 		case	tctax.indt.l.bed:
 		case	tctax.indt.l.service:			|#ISGEC0104.n	
 			exc.amnt = exc.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
-| 			exc.rate = o.tax.rates(tctax941.layr,tctax941.seqn)		|#ISGECFIN012.o
-			exc.rate = exc.rate + o.tax.rates(tctax941.layr,tctax941.seqn)	|#ISGECFIN012.n	
+			exc.rate = o.tax.rates(tctax941.layr,tctax941.seqn)
 			tmp.rate = exc.rate			|#ISGEC0104.n
 			break
 		case	tctax.indt.l.aed:	

@@ -74,15 +74,6 @@
 |*
 |* IDENT ISGEC015039, Shilpa Janardanan, VRC B61U a7 isg Dt.17-08-2015
 |* Amount printing as zero for lower version
-|*
-|* ID ISGEC015084, Manish Manchanda, 2016-02-05
-|* new logic for QAP data.
-|*
-|* ID ISGEC015086, Manish Manchanda, 2016-03-01
-|* MOdification in City2,  description and zip code logic
-|*
-|* ID : ISGECFIN012, IT0386, Saurabh Dubey, VRC B61U a7 isg Dt. 17.06.2016
-|* Krishi Kalyan Cess Logic
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -120,15 +111,12 @@ declaration:
 	table	ttdisg400			|#ISGECDV001168.n
 	
 	table	ttdisg869			|#ISGEC01034.n
-	table	ttdisg874			|#ISGEC015084.n
-	table	ttcmsl111			|#ISGEC015086.n
-	
+
 	extern	domain	tcorno	i.orno
 	extern	domain	tcsern	i.vrsn,last.vrsn
 	extern	domain	tcamnt	iamt.m,exc.amnt,exc.rate,stx.rate,
 				stx.amnt,tot.amnt,oth.chg1,oth.chg2
 	extern	domain	tcamnt	tot.exc,tot.stx,tot.oth1,tot.oth2,tot.bas
-	extern	domain	tcamnt	o.kkcess.rate	|#ISGECFIN012.n
 	extern	domain	tcamnt	ind.exc,ind.stx,ind.oth1,ind.oth2,ind.bas
 	extern	domain	tcamnt	tot.oth.stx,oth.stx,oth.exc			|#ISGEC001071.n
 	extern	domain	tcwght	iwgt.m
@@ -176,8 +164,6 @@ declaration:
 	extern domain tctax.layr.l	layer.temp1,layer.temp2			|#ISGEC001164.n
 	extern domain  tcsern  i.version
 	
-	extern	domain	tcmcs.str300m	v.qapa				|#ISGEC015084.n
-	extern	domain	tcmcs.str100m	rep.city2			|#ISGEC015086.n
 |****************************** program section ********************************
 before.program:								|ISG001030.sn
 	import("prog.name$",prog.name)
@@ -206,12 +192,6 @@ before.program:								|ISG001030.sn
 			import("tdisg089.orno", i.orno)
 			import("tdisg089.revi", i.vrsn)
 			break
-								|#ISG01009.sn
-		case	"tfisg1201m000":
-			import("v.orno",i.orno)
-			import("i.vrsn",i.vrsn)
-			break
-								|#ISG01009.en	
 	ENDCASE		
 								|#ISGECDV001198.en
 | 	endif					|#ISGECDV001198.o
@@ -425,37 +405,25 @@ function read.main.table()
 		as set with 1 rows
 		selectdo
 		endselect
-| 		if isspace(vend.namf) then			|#ISGEC015086.so
-| 			vend.namf = vend.dsca
-| 		endif						
-| 		if isspace(vend.namf) then			
-| 			select tccom139.dsca from tccom139	|#ISGEC015086.eo
-			select	tccom139.dsca,			|#ISGEC015086.sn
-				tccom139.city				
-			from	tccom139			|#ISGEC015086.en	
+		if isspace(vend.namf) then
+			vend.namf = vend.dsca
+		endif
+		if isspace(vend.namf) then
+			select tccom139.dsca from tccom139
 			where tccom139._index1 = {:vend.ccty,:vend.cste,:vend.ccit}
 			as set with 1 rows
 			selectdo
-	| 			vend.namf = tccom139.dsca		|#ISGEC015086.o
+				vend.namf = tccom139.dsca
 			endselect
-| 		endif						|#ISGEC015086.o
-		select tccom139.dsca from tccom139	
+		endif
+		select tccom139.dsca from tccom139
 		where tccom139._index1 = {:brnc.ccty,:brnc.cste,:brnc.ccit}
 		as set with 1 rows
 		selectdo
 		endselect
 		
 		brnc.city = strip$(tccom139.dsca)&"-"&strip$(brnc.pstc) & "," & tcmcs143.dsca
-							|#ISGEC015086.sn
-		if	trim$(tccom139.city)	=	"DEF"	then
-			rep.city2	=	vend.pstc
-			vend.pstc	=	""
-		else
-			rep.city2	=	trim$(vend.ccit)&" - "&vend.pstc
-			vend.pstc	=	""
-		endif
 		
-							|#ISGEC015086.en
 		if isspace(tdpur400.ccon) then
 			tccom001.nama = ""
 			bpmdm001.mail = ""
@@ -624,7 +592,6 @@ function read.main.table()
 		get.var(pid, "tdpur400.cdf_prty", prty.c)
 		get.var(pid, "tdpur400.cdf_qap", qap.c)
 		get.var(pid, "tdpur400.cdf_qdat", qdat.c)
-		get.qap.details()						|#ISGEC015084.n
 	endselect
 	get.po.totals()
 	line.indc = 0
@@ -664,7 +631,6 @@ function read.main.table()
 		exc.rate = 0
 		stx.rate = 0
 		stx.amnt = 0
-		o.kkcess.rate = 0	|#ISGECFIN012.n
 		tot.amnt = 0
 		oth.chg1 = 0
 		oth.chg2 = 0
@@ -864,7 +830,6 @@ function populate.tax.amounts()
 	
 	
 	tmp.rate = 0					|#ISGEC0104.n
-	o.kkcess.rate = 0.00	|#ISGECFIN012.n
 	temp.1.rate = 0	|#ISG10102.n
 	rate = 0	|#ISG10102.n
 	temp.amnt = 0
@@ -908,12 +873,10 @@ function populate.tax.amounts()
 	and	tctax941.cmbb refers to tcmcs036
 	selectdo
 		on case tcmcs036.indt.l
-		case	tctax.indt.l.kk.cess:	|#ISGECFIN012.n
 		case	tctax.indt.l.bed:
 		case	tctax.indt.l.service:			|#ISGEC0104.n
 			exc.amnt = exc.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
-| 			exc.rate = o.tax.rates(tctax941.layr,tctax941.seqn)		|#ISGECFIN012.o		
-			exc.rate = exc.rate + o.tax.rates(tctax941.layr,tctax941.seqn)	|#ISGECFIN012.n	
+			exc.rate = o.tax.rates(tctax941.layr,tctax941.seqn)
 			tmp.rate = exc.rate			|#ISGEC0104.n
 			break
 		case	tctax.indt.l.aed:	
@@ -1376,25 +1339,3 @@ function get.layer(ref domain tctax.layr.l layer.temp)
 	endif
 }									|#ISGEC001164.en							
 
-function	get.qap.details()						|#ISGEC015084.sn
-{
-	v.qapa	=	"Material shall be inspected as per ISGEC "
-	select	tdisg874.*	
-	from	tdisg874
-	where	tdisg874._index1	=	{:tdpur400.orno}
-	selectdo
-		on	case	tdisg874.resp
-		case	tdisg.resp.isgec:
-			v.qapa	=	v.qapa&", QAP Number "&trim$(tdisg874.qapn)&"- REV "&str$(tdisg874.revn)&" - "
-					&sprintf$("%D(%02d %03h %04Y)",tdisg874.date) 
-			break
-		case	tdisg.resp.supplier:
-			v.qapa	=	"Material shall be inpected as per supplier QAP, approved by ISGEC. Supplier to Submit QAP within 7 days on order receipt."
-			break
-		endcase
-	selectempty
-		v.qapa	=	"QAP is not applicable for this purchase order."
-	endselect
-	
-				
-}
