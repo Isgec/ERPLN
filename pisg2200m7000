@@ -42,7 +42,7 @@ declaration:
 	table	ttdmsl400
 	table	ttiisg910			|#ISGEC01139.n
 	table	ttpisg239			|#ISGEC01145.n
-	
+	table	ttpisg250
 |------------------------ form variables --------------------------------------
 	extern	domain 	tccprj		i.cprj							
 	extern	domain	tcmcs.str100	dsca
@@ -175,16 +175,20 @@ function update.weight.in.item.reference.master.and.history(domain	tccprj	i.cprj
 		to.iref = item.ref
 	endif
 	
-	select	tpisg239.pwgt,
-		tpisg239.pcod,
-		tpisg239.cprj,
-		tpisg239.iref
+	select	tpisg239.*
+| 	select	tpisg239.pwgt,
+| 		tpisg239.pcod,
+| 		tpisg239.cprj,
+| 		tpisg239.iref
 	from	tpisg239	for update
 	where	tpisg239.cprj = :i.cprj
 	and	tpisg239.iref inrange :from.iref and :to.iref
 	and	tpisg239.wgdr = tcyesno.yes
 	selectdo
 		sum.dpwt = 0
+			
+			
+		insert.history.250()	
 			
 		select	sum(dmisg140.dpwt):sum.dpwt					
 		from	dmisg140
@@ -870,9 +874,12 @@ function manufacturing.progress.update(
 					endcase
 				endselect
 			endselect
-			commit.transaction()
+			|commit.transaction()
 		endif
 	endif
+		
+	UpdateManufacturingWIPProgress(i.pcod, i.cprj, i.iref, i.cact, i.sitm)
+	commit.transaction()
 }
 
 function update.project.activity.master.through.RFQTechnoCommercialCompleted(
@@ -2204,6 +2211,69 @@ function UpdateMilestoneActivities(domain	tccprj		i.cprj)
 			commit.transaction()			
 		endif
 	endselect
-	
 
+}
+
+function insert.history.250()
+{
+	domain	tcdate		curr.date
+	curr.date = utc.num()
+	
+	select	tpisg250.*
+	from	tpisg250	 
+	where	tpisg250._index1 = {:tpisg239.pcod,:tpisg239.cprj,:tpisg239.iref}
+	and	tpisg250.date = :curr.date
+	selectdo
+	selectempty
+		tpisg250.pcod = tpisg239.pcod
+		tpisg250.cprj = tpisg239.cprj
+		tpisg250.iref = tpisg239.iref
+		tpisg250.sele = tpisg239.sele
+		tpisg250.elem = tpisg239.elem
+		tpisg250.cuni = tpisg239.cuni
+		tpisg250.icls = tpisg239.icls
+		tpisg250.wgdr = tpisg239.wgdr
+		tpisg250.pwgt = tpisg239.pwgt
+		tpisg250.logn = logname$
+		tpisg250.date = utc.num()
+		db.insert(ttpisg250,db.skip.dupl,e)
+	endselect
+}
+
+function UpdateManufacturingWIPProgress(domain tcorno		i.pcod,
+					domain tccprj		i.cprj,
+					domain tcmcs.s200u	i.iref,
+					domain tcmcs.str30	i.cact,
+					domain	tcorno		i.sitm)
+{
+	domain	tfgld.date	ValidDate
+	domain	tcmcs.long	NonWorkingDays, ElapsedDays, GetDuration
+	domain	tcmcs.double	duration
+	
+	ValidDate = date.to.num(2000,01,01)	
+	
+	if tpisg220.cpgv<90 and tpisg220.manu = tcyesno.no and tpisg220.rmcm = tcyesno.yes then
+		NonWorkingDays = 0
+		ElapsedDays = 0
+		GetDuration = 0 
+		duration = 0
+		
+		if (tpisg220.mosd > ValidDate) and  (tpisg220.moed > ValidDate) then
+			NonWorkingDays = GetNonWorkingDays(tpisg220.mosd, date.num(), tpcalender.typ.fivedays)
+			ElapsedDays = (date.num() - tpisg220.mosd - NonWorkingDays)
+			
+			GetDuration = GetNonWorkingDays(tpisg220.mosd, tpisg220.moed, tpcalender.typ.fivedays)
+			duration = (tpisg220.moed - tpisg220.mosd - NonWorkingDays)
+			
+			if (ElapsedDays > 0) and (duration > 0)  then
+				tpisg220.wipp = (ElapsedDays / duration)*100
+				tpisg220.scpgv = tpisg220.cpgv	
+ 				tpisg220.cpgv = tpisg220.scpgv + tpisg220.wipp				
+				if tpisg220.cpgv > 90 then
+					tpisg220.cpgv = 90 
+				endif				
+				db.update(ttpisg220, db.retry, e)
+			endif
+		endif
+	endif
 }
