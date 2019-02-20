@@ -35,6 +35,13 @@
 |******************************************************************************
 |* ID: ISGEC01122, Prasanna Bhuyan, VRC B61U a7 isg, 19/11/2018
 |* Modifications
+|*
+|* ID: ISGEC01147,Bharti Garg, VRC B61U a7 isg, 27-12-2018
+|* Changes . 
+|*
+|* ID: ISGEC01163, Sahil Sharma, VRC B61U a7 isg, 19-02-2019
+|* Pre and Post order deletion functionality
+|*
 |******************************************************************************
 
         table	tdmisg134
@@ -128,7 +135,41 @@ function extern boolean method.is.allowed(
 				return(false)
 			endif
 			break
-		endcase	
+		case "dmisg1134m100":						|#ISGEC01147.sn	
+		case "dmisg1134m500":
+			if get.values.for.curr.user() then
+				return(true)
+			else
+				return(false)
+			endif
+			break							
+		
+		endcase
+	case DAL_NEW:											
+	case DAL_DESTROY:
+		on case calling.prog
+		case "dmisg1134m100":	
+		case "dmisg1134m500":
+			if get.values.for.curr.user() then
+				return(true)
+			else
+				return(false)
+			endif
+			break							|#ISGEC01147.en
+		endcase
+		
+										|#ISGEC01163.sn
+		on case calling.prog
+		case "dmisg1534m000":
+		case "dmisg1534m100":
+			if dmisg134.stat = ltoe(1) then
+				return(true)
+			else
+				return(false)
+			endif
+			break
+		endcase
+										|#ISGEC01163.en
 	endcase
 
 	return(true)
@@ -136,19 +177,19 @@ function extern boolean method.is.allowed(
 
 function extern long after.get.object(long type)
 {
-	domain tcemm.grid user.division
+| 	domain tcemm.grid user.division		|#ISGEC01147.o
 | 	user.division = get.user.division()					|#ISGECMOD024.o
 										
 										|#ISGECMOD024.sn
-	on case calling.prog 
-	case "dmisg1134m100" : 
-	case "dmisg1134m500" :	
-		user.division = filter.records()				|#ISGECMOD024.en	
+| 	on case calling.prog 		|#ISGEC01147.so	
+| 	case "dmisg1134m100" : 
+| 	case "dmisg1134m500" :		|#ISGEC01147.eo	
+| 		user.division = filter.records()				|#ISGECMOD024.en	
 | 		if user.division <> dmisg134.eunt then				|#ISGEC0163.so
 | 			return(DALHOOKERROR)
-| 		endif								|#ISGEC0163.eo
-		break								|#ISGECMOD024.sn		
-	endcase								|#ISGECMOD024.en
+| 		endif		|#ISGEC01147.so								|#ISGEC0163.eo
+| 		break		|#ISGEC01147.eo								|#ISGECMOD024.sn		
+| 	endcase								|#ISGECMOD024.en
 	
 	return(0)
 
@@ -702,7 +743,7 @@ function	extern	generate.mail.alert()
 		select	dmisg231.mail,dmisg231.emno						|#ISGEC01122.sn
 		from	dmisg231
 		where	dmisg231._index1 = {:dmisg134.cprj}
-		as set with 1 rows
+| 		as set with 1 rows
 		selectdo
 			dmisg00001.send.mail.alert(
 						get.employee(logname$),
@@ -810,3 +851,15 @@ function extern calc.perc.and.insert.tpisg220.data()						|#ISGEC01100.sn
 		endselect
 	endselect
 }
+
+function extern boolean get.values.for.curr.user()			|#ISGEC01147.sn
+{
+	select	dmisg133.logn,dmisg133.cprj
+	from	dmisg133
+	where	dmisg133._index1 = {:login.user,:dmisg134.cprj}
+	selectdo
+		return(true)
+	endselect
+	return(false)
+}								|#ISGEC01147.en
+
