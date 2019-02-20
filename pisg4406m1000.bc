@@ -74,6 +74,9 @@
 |*
 |* ID: ISGEC001222, IT0478, Atul Ojha, 27/08/2018, VRC B61U a7 isg
 |* Modifications
+|*
+|* ID: ISGEC016019, Manav Singh, 09/02/2019, VRC B61U a7 isg
+|* Modifications
 |****************************** declaration section ***************************
 declaration:
 
@@ -500,6 +503,30 @@ function read.main.table()
 		initialize.po.gross.value.variables()
 		get.po.gross.amount(tdpur406.orno)					
 											|#ISGECMOD035.en
+		
+		select	tdmsl400.orno,tdmsl400.vrsn,tdmsl400.work			|ISGEC016019.sn
+		from	tdmsl400
+		where 	tdmsl400._index1 = {:tdpur406.orno}
+		and	tdmsl400.work = tdmsl.work.completed
+| 		and	tdms400._index1 refers to tdmsl500
+		selectdo
+			select	tdmsl500.oamt:gross.val
+			from	tdmsl500
+			where	tdmsl500._index1 = {:tdmsl400.orno,:tdmsl400.vrsn}
+			selectdo
+			selectempty
+				gross.val = 0.00
+				
+				select	tdpur400.oamt:gross.val
+				from	tdpur400
+				where	tdpur400._index1 = {:tdmsl400.orno}
+				selectdo
+				selectempty
+					gross.val = 0.00	
+				endselect	
+			endselect	
+		selectempty
+		endselect								|ISGEC016019.en	
 
 		tmp.rep.st.amnt = 0
 		tmp.rep.exc.amnt = 0
@@ -972,8 +999,8 @@ function get.po.gross.amount(domain	tcorno	in.orno)
 		tot.sgst = tot.sgst + sgst.amnt
 		tot.cess = tot.cess + cess.amnt
 	selecteos
-		gross.val = tot.bas + tot.sgst + tot.exc 
-			+ tot.stx + tot.oth1 + tot.oth2 + tot.cess
+| 		gross.val = tot.bas + tot.sgst + tot.exc 				|ISGEC016019.so
+| 			+ tot.stx + tot.oth1 + tot.oth2 + tot.cess			|ISGEC016019.eo
 	endselect	
 }
 
