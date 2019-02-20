@@ -111,10 +111,23 @@ on.choice:
 	
 choice.update.baseline:
 on.choice:
-	update.item.reference(dmisg140.pcod,dmisg140.cprj)			|#ISGEC01145.n
-	update.baseline()
-| 	update.revised.schedule.dates(dmisg140.pcod,dmisg140.cprj)		|#ISGECMOD035.n
-	
+	tpisg220.frez = tcyesno.no
+	select tpisg220.frez from tpisg220 
+	where tpisg220.cprj = :dmisg140.cprj
+	selectdo endselect
+	if tpisg220.frez = tcyesno.yes then
+		update.item.reference(dmisg140.pcod,dmisg140.cprj)			|#ISGEC01145.n
+		update.baseline()
+	| 	update.revised.schedule.dates(dmisg140.pcod,dmisg140.cprj)		|#ISGECMOD035.n
+	endif
+											|#Sahil.Sharma.18.02.2019.sn
+choice.mark.delete:
+before.choice:
+	if dmisg140.acdt <> 0 then
+		message("Record cannot be deleted as Actual Release Date is present!")
+		choice.again()
+	endif
+											|#Sahil.Sharma.18.02.2019.en	
 |****************************** field section **********************************
 
 										|#Atul.14.03.2018.sn
