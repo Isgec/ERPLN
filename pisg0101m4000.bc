@@ -42,6 +42,9 @@
 |
 |* ID: ISGEC01145, Prasanna Bhuyan, 19-12-2018, VRC B61U a7 isg  
 |* check sub item code against BOM 
+|*
+|* ID: ISGEC01157, Bharti Garg, 22-01-2019
+|* added a new mail. 
 |****************************** declaration section ***************************
 |
 |
@@ -63,6 +66,13 @@ declaration:
 	table	ttpisg235
 	table	ttpisg230
 	table	ttpisg220
+	table	ttdisg002			|ISGEC01157.sn
+	table	ttdisg003
+	table	ttppdm600
+	table	ttdpur400			|ISGEC01157.en
+	
+	
+	
 
 							|#ISGEC01127.sn
 	table	tdmisg114	|* DCR			
@@ -83,6 +93,7 @@ declaration:
 	table	tdmisg140
 	table	tdmisg152			|#GSTLIVE01010.en
 	table	ttpisg243			|#ISGEC01145.n
+	table	ttpisg239			|#veena.10-01-2019
   
   
   
@@ -196,6 +207,11 @@ on.choice:
 	endif	
 							|PATCH002030.en
 							
+	if mail.with.table() then			|ISGEC01157..sn
+		message("Sending Email Failed")
+	endif						|ISGEC01157..en
+							
+	
 |****************************** field section ********************************
 functions:
 
@@ -209,23 +225,29 @@ function check_for_sub_item_code()									|#ISGEC01145.sn
 	and	dmisg140.docn = :dmisg001.docn
 	as set with 1 rows
 	selectdo
-		select	tpisg243.sitm
-		from	tpisg243
-		where	tpisg243._index1 = {:dmisg140.pcod,:dmisg140.iref}
-		as set with 1 rows
-		selectdo
-			if not isspace(tpisg243.sitm)	then
-				select	dmisg002.sitm
-				from	dmisg002
-				where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
-				selectdo
-					if isspace(dmisg002.sitm)	then
-						message("Sub Item code not maintained against BOM")
-						choice.again()
-					endif
-				endselect
-			endif
-		endselect
+		tpisg239.icls = ltoe(0)									|#veena.10-01-2019.sn
+		select tpisg239.icls from tpisg239 where cprj = :dmisg001.cprj and iref = :dmisg140.iref
+		selectdo endselect
+		
+		if tpisg239.icls = ltoe(4) then								|#veena.10-01-2019.en
+			select	tpisg243.sitm
+			from	tpisg243
+			where	tpisg243._index1 = {:dmisg140.pcod,:dmisg140.iref}
+			as set with 1 rows
+			selectdo
+				if not isspace(tpisg243.sitm)	then
+					select	dmisg002.sitm
+					from	dmisg002
+					where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
+					selectdo
+						if isspace(dmisg002.sitm)	then
+							message("Sub Item code not maintained against BOM")
+							choice.again()
+						endif
+					endselect
+				endif
+			endselect
+		endif
 	endselect
 }													|#ISGEC01145.en
 
@@ -1598,3 +1620,261 @@ function calculate.perc(domain tcmcs.st150m	i.item)
 		var.perc1 = 0
 	endif
 }
+														
+function long mail.with.table()					|ISGEC01157.sn
+{
+
+	domain	tcnama	nama
+	domain	tclogn	user.id
+	
+	string tmp.file(200),line(500)
+	long stat.fp,to.ID,cc.ID,from.ID,attachment.ID,message.ID,ret,stat
+	
+	tmp.file = creat.tmp.file$(bse.tmp.dir$()) & ".html"				
+	stat.fp = seq.open(tmp.file,"w+")
+	if stat.fp <=0 then
+		message("Temp file can not be created")
+	endif
+	
+	select	tdisg002.orno,tdisg002.pono
+	from	tdisg002
+	where	tdisg002.docn = {:dmisg001.docn}
+	and	tdisg002.revi = {:dmisg001.revn}
+	selectdo
+		select	tdpur400.otbp,tdpur400.ccon
+		from	tdpur400
+		where	tdpur400._index1 = {:tdisg002.orno}
+		selectdo
+		endselect
+	endselect
+	
+	select	tdisg003.rqno,tdisg003.pono,tdisg003.item
+	from	tdisg003
+	where	tdisg003.docn = {:dmisg001.docn}
+	and	tdisg003.revi = {:dmisg001.revn}
+	selectdo
+	endselect
+	
+	seq.puts("<HTML>",stat.fp)
+	seq.puts("<HEAD>",stat.fp)
+	seq.puts("</HEAD>",stat.fp)
+	seq.puts("<BODY>",stat.fp)
+	
+	
+
+	|------------------- New Code ----------------------------------------
+	seq.puts("<table border=""1""; cellpadding=""0"" cellspacing=""0"" width=""100%"" >", stat.fp)
+	seq.puts("<tr height=""20"" width=""100%"" >",stat.fp)
+	seq.puts("<td colspan =""1"" align=""center"" width=""100%"">" & "Drawing Approval Status" &"</td>",stat.fp)
+	seq.puts("</tr>",stat.fp)
+	
+	seq.puts("<tr height=""20"" width=""100%"" >",stat.fp)
+	if dmisg001.aact.2 = tcyesno.yes then
+		seq.puts("<td colspan =""1"" align=""center"" width=""100%"" >" & "Drawing Accepted" &"</td>",stat.fp)
+	else
+		seq.puts("<td colspan =""1"" align=""center"" width=""100%"">" & "Drawing Rejected" &"</td>",stat.fp)
+	endif
+	seq.puts("</tr>",stat.fp)
+	seq.puts("</table>", stat.fp)
+	
+	|----------------------- END ------------------------------------------------
+	seq.puts("<table border=""1""; cellpadding=""0"" cellspacing=""0"" width=""100%"" >", stat.fp)
+	
+	
+	|*************Table fields************
+	seq.puts("<tr style=""height:15.75pt"" height=""21"">",stat.fp)
+	
+	seq.puts("<td colspan=""1"" >"&"Document ID"&"</td>",stat.fp)	|1
+	seq.puts("<td colspan=""1"" >"&"Rev No."&"</td>",stat.fp)	|2
+	seq.puts("<td colspan=""1"" >"&"Indent No."&"</td>",stat.fp)	|3
+	seq.puts("<td colspan=""1"">"&"Indent Line"&"</td>",stat.fp)	|4
+	seq.puts("<td colspan=""1"">"&"Lot Item"&"</td>",stat.fp)	|5
+	seq.puts("<td colspan=""1"">"&"PO No."&"</td>",stat.fp)		|6
+	seq.puts("<td colspan=""1"">"&"PO Line"&"</td>",stat.fp)	|7
+	seq.puts("<td colspan=""1"">"&"Supplier"&"</td>",stat.fp)	|8
+	seq.puts("<td colspan=""1"">"&"Document Title"&"</td>",stat.fp)	|9
+	seq.puts("</tr>",stat.fp)
+	
+	
+	|************** values ***************
+	seq.puts("<tr style=""height:15.0pt"" height=""20"">",stat.fp)
+	seq.puts("<td colspan=""1"" >" & trim$(dmisg001.docn) & "</td>",stat.fp)		|1
+	seq.puts("<td colspan=""1"" >" & trim$(dmisg001.revn)& "</td>",stat.fp)		|2
+	seq.puts("<td colspan=""1"" >" & trim$(tdisg003.rqno) & "</td>",stat.fp)		|3
+	seq.puts("<td colspan=""1"" >" & str$(tdisg003.pono) & "</td>",stat.fp)		|4
+	seq.puts("<td colspan=""1"" >" & trim$(tdisg003.item) & "</td>",stat.fp)		|5
+	seq.puts("<td colspan=""1"" >" & tdisg002.orno & "</td>",stat.fp)		|6
+	seq.puts("<td colspan=""1"" >" & str$(tdisg002.pono) & "</td>",stat.fp)		|7
+	seq.puts("<td colspan=""1"" >" & trim$(tdpur400.otbp) & "</td>",stat.fp)		|8
+	seq.puts("<td colspan=""1"" >" & trim$(dmisg001.dttl) & "</td>",stat.fp)		|9
+	seq.puts("</tr>",stat.fp)
+	seq.puts("</TABLE>", stat.fp)
+	
+	seq.puts("</BODY>",stat.fp)
+	seq.puts("</HTML>",stat.fp)
+	seq.close(stat.fp)
+
+	user.id = logname$
+	
+	select 	bpmdm001.mail,tccom001.nama 
+	from 	tccom001,bpmdm001
+	where 	tccom001._index4 = {:user.id}
+	and	tccom001.emno refers to bpmdm001
+	as set with 1 rows
+	selectdo
+	selectempty
+		bpmdm001.mail = ""
+	endselect
+	
+	if isspace(bpmdm001.mail) then
+		message("Email ID for Approver/Rejector " &trim$(tccom001.nama) & " Not maintained")
+		return(1)
+	endif		
+	
+	|******* Email Header
+        message.ID = cmf.create()
+	line = "Drawing " & trim$(dmisg001.docn) & " Receipt " & trim$(dmisg001.revn) & " is "	
+	if dmisg001.ract.2 = tcyesno.yes then
+		line = line & "approved " & ":" & " Project " & dmisg001.cprj & tppdm600.seak
+	endif
+	
+	if dmisg001.ract.1 = tcyesno.yes then
+		line = line & "rejected " & ":" & " Project " & dmisg001.cprj & tppdm600.seak
+	endif
+	ret = cmf.setClass(message.ID, "CMF.NOTE.EMAIL")
+        ret = cmf.setSubject(message.ID,line)
+	
+	|******** from ID
+	from.ID = cmf.createRecipient(message.ID, ttcmf.role.from)  
+	ret = cmf.setRecipientName(from.ID,tccom001.nama)
+        ret = cmf.setRecipientAddress(from.ID, bpmdm001.mail)	
+	ret = cmf.setRecipientType(from.ID, "SMTP")
+
+	
+	select	tppdm600.seak
+	from	tppdm600
+	where	tppdm600._index1 = {:dmisg001.cprj}
+	selectdo
+	endselect
+	
+	
+	
+
+	|******** to ID
+	if dmisg001.aact.2 = tcyesno.yes then 
+		select 	bpmdm001.mail,tccom001.nama 
+		from 	tccom001,bpmdm001
+| 		where 	tccom001._index1 = {:dmisg001.user}
+		where 	tccom001._index4 = {:dmisg001.user}
+		and	tccom001.emno refers to bpmdm001
+		and 	bpmdm001.mail <> ""
+		selectdo
+			to.ID = cmf.createRecipient(message.ID, ttcmf.role.to)  
+			ret = cmf.setRecipientName(to.ID,tccom001.nama)
+			ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(to.ID, "TRUE")		
+			ret = cmf.setRecipientType(to.ID, "SMTP")
+		selectempty
+			message("Email ID for Creator" &trim$(tccom001.nama)&" not maintained" )
+			return(1)
+		endselect
+		
+		select 	bpmdm001.mail,tccom001.nama 
+		from 	tccom001,bpmdm001
+		where 	tccom001._index1 = {:dmisg001.rusr}
+		and	tccom001.emno refers to bpmdm001
+		and 	bpmdm001.mail <> ""
+		selectdo
+			cc.ID = cmf.createRecipient(message.ID, ttcmf.role.cc)  
+			ret = cmf.setRecipientName(cc.ID,tccom001.nama)
+			ret = cmf.setRecipientAddress(cc.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(cc.ID, "TRUE")		
+			ret = cmf.setRecipientType(cc.ID, "SMTP")
+		selectempty
+			message("Email ID for Reviewer" &trim$(tccom001.nama)&" not maintained" )
+			return(1)
+		endselect
+		
+		if dmisg001.revn <> "00" then
+			select 	bpmdm001.mail,tccom001.nama 
+			from 	tccom001,bpmdm001
+| 			where 	tccom001._index1 = {:dmisg001.ausr}
+			where 	tccom001._index1 = {:tdpur400.ccon}
+			and	tccom001.emno refers to bpmdm001
+			and 	bpmdm001.mail <> ""
+			selectdo
+				cc.ID = cmf.createRecipient(message.ID, ttcmf.role.cc)  
+				ret = cmf.setRecipientName(cc.ID,tccom001.nama)
+				ret = cmf.setRecipientAddress(cc.ID, bpmdm001.mail)	
+				ret = cmf.setRecipientResponsibility(cc.ID, "TRUE")		
+				ret = cmf.setRecipientType(cc.ID, "SMTP")
+			selectempty
+				message("Email ID for Buyer" &trim$(tccom001.nama)&" not maintained" )
+				return(1)
+			endselect
+		endif
+	endif
+	if dmisg001.aact.1 = tcyesno.yes then 
+		select 	bpmdm001.mail,tccom001.nama 
+		from 	tccom001,bpmdm001
+		where 	tccom001._index4 = {:dmisg001.user}
+		and	tccom001.emno refers to bpmdm001
+		and 	bpmdm001.mail <> ""
+		selectdo
+			to.ID = cmf.createRecipient(message.ID, ttcmf.role.to)  
+			ret = cmf.setRecipientName(to.ID,tccom001.nama)
+			ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(to.ID, "TRUE")		
+			ret = cmf.setRecipientType(to.ID, "SMTP")
+		selectempty
+			message("Email ID for Creator" &trim$(tccom001.nama)&" not maintained" )
+			return(1)
+		endselect
+		
+		select 	bpmdm001.mail,tccom001.nama 
+		from 	tccom001,bpmdm001
+		where 	tccom001._index1 = {:dmisg001.rusr}
+		and	tccom001.emno refers to bpmdm001
+		and 	bpmdm001.mail <> ""
+		selectdo
+			cc.ID = cmf.createRecipient(message.ID, ttcmf.role.cc)  
+			ret = cmf.setRecipientName(cc.ID,tccom001.nama)
+			ret = cmf.setRecipientAddress(cc.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(cc.ID, "TRUE")		
+			ret = cmf.setRecipientType(cc.ID, "SMTP")
+		selectempty
+			message("Email ID for Reviewer" &trim$(tccom001.nama)&" not maintained" )
+			return(1)
+		endselect
+	endif
+	
+	attachment.ID = cmf.createAttachment(message.ID)
+	ret = cmf.setAttachmentBody(attachment.ID,ttyeno.yes)
+	ret = cmf.setAttachmentMIME(attachment.ID,"text/HTML")
+	ret = cmf.setAttachmentFileName(attachment.ID,tmp.file)
+	
+	|*********  Send mail
+        if message.ID <>0 then
+                stat = cmf.startService("SMTP",2)
+                if stat<>0 then
+                        message("Message could not be sent "&
+                                "(Infor ERP Enterprise eMessage Connector"&
+                                " service did not start)")
+                        return(1)
+                endif
+                stat = cmf.send(message.ID,"SMTP")
+                if stat<>0 then
+                        message("Message could not be sent "& "(Infor ERP Enterprise eMessage Connector "&
+                                "service refused message)")
+                        cmf.stopService("SMTP",2)
+                        return(1)
+                endif
+                stat = cmf.stopService("SMTP",2)
+        endif
+	return(0)
+
+}							|ISGEC01157.en	
+
+
+
+
