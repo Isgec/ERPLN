@@ -7,7 +7,10 @@
 |* Main table tpisg220 Project Activity Master, Form Type 4
 |******************************************************************************
 |* ID: ISGEC01100, Sahil Sharma, VRC B61U a7 isg, 28-09-2018
-|* New Development for Updating Planned Progress 
+|* New Development for Updating Planned Progress
+|*
+|* ID: ISGEC016016, Sahil Sharma, VRC B61U a7 isg, 24-01-2019
+|* Added Function for insertion in tpisg251
 |****************************** declaration section ***************************
 | declaration:
 
@@ -19,7 +22,7 @@
 	table	ttpisg248
 	table	ttpisg249
 	table	ttpisg252
-
+	table	ttpisg251
 |--------------------------- Form Variables -----------------------------------
 	extern	domain	tccprj		cprj
 	extern	domain	tcdsca		cprj.dsca
@@ -31,7 +34,8 @@
 	extern	domain	tcmcs.long	FromOutline, ToOutline,i,NonWorkingDays, BalanceDays
 	domain	tcperc			Duration, ElapsedDays, ActualElapsedDays, OutlookElapsedDays
 	|extern	domain	tfgld.date	CurrentDate
-	domain	tcmcs.s200u	v.iref
+	domain	tcmcs.s200u		v.iref
+	domain	tcdate			finish.date, start.date
 
 
 |****************************** group section **********************************
@@ -207,7 +211,7 @@ function extern UpdateActualProgressAndElapsedDaysForParent(
 	and	tpisg220.acty = "PARENT"
 	|and	tpisg220.sub1 = :v.iref
 	|and	tpisg220.sdst <=:input.date
-	|and tpisg220.cact = "50070200M1S5"
+	|and	tpisg220.cact = "50990100M1"
 	selectdo
 		Duration = 0
 		ElapsedDays = 0
@@ -228,6 +232,9 @@ function extern UpdateActualProgressAndElapsedDaysForParent(
 		
 		if (tpisg220.ddur <> 0) and (SumElapsed <> 0) then
 				tpisg220.cpgv = SumElapsed/tpisg220.ddur * 100
+				if tpisg220.cpgv >100 then 	|added by Veena on 09-Mar-2019
+					tpisg220.cpgv = 100
+				endif
 		endif
 				
 		db.update(ttpisg220, db.retry, e)
@@ -526,7 +533,7 @@ Function extern UpdateActivityTypeLevelActualPercentage(domain tccprj Cprj)
 	commit.transaction()
 }
 
-Function extern long UpdatePlannedCurveData()
+Function extern long UpdatePlannedCurveData(domain	tccprj		i.cprj)		|#Sahil.Sharma.20.02.2019.n
 {
 	domain tpcalender.typ CalenderType
 	domain	tccprj	CTProject
@@ -534,7 +541,7 @@ Function extern long UpdatePlannedCurveData()
 	|CalanderType = "fivedays"
 	CTProject = ""
 	
-	select distinct cprj:CTProject from tpisg220 where cprj = "JB1123" order by cprj|** project hardcoded
+	select distinct cprj:CTProject from tpisg220 where cprj = :i.cprj order by cprj|** project hardcoded
 	selectdo
 		MinStartDate=0
 		MaxEndDate=0
@@ -593,10 +600,12 @@ Function extern long UpdateActualCurveData()
 	
 	select cprj:CTProject from tpisg220
 	where frez = tcyesno.yes
-	|where cprj = "JB1124" |** project hardcoded
 	group by cprj
 	order by cprj
 	selectdo
+		
+		start.date = utc.num()					|#ISGEC016016.n
+		
 		ParentDurationCalculation(CTProject)
 			
 		FromOutline = 9
@@ -621,7 +630,16 @@ Function extern long UpdateActualCurveData()
 		
 		UpdateActivityTypeLevelActualPercentage(CTProject)|** commented temporarily for testing projetwise data generation
 		
-|		return(2)
+		UpdateActualStartFinishDateInParentActivities(CTProject)				|Added by Veena on 07-03-2019
+		
+		finish.date = utc.num()								|#ISGEC016016.sn
+		
+		import("prog.name$", sess.code)
+		
+		insert_start_date_in_history(sess.code, tpisg220.cprj, start.date, finish.date)
+													|#ISGEC016016.en
+		
+
 	endselect
 	
 	return(1)
@@ -672,7 +690,7 @@ Function extern long UpdatePlannedProgressDaily()
 
 Function extern UpdateCurveData()
 {
-	UpdatePlannedCurveData()
+| 	UpdatePlannedCurveData()		|#Sahil.Sharma.20.02.2019.o
 	UpdateActualCurveData()	|Commented temporarily
 	UpdateDelayDays()		|Commented temporarily
 	UpdatePlannedProgressDaily()
@@ -694,6 +712,8 @@ Function extern UpdateDelayDays()
 	|where cprj = "JB1124" |** project hardcoded
 	order by cprj
 	selectdo
+		start.date = utc.num()	
+		
 		CalenderType = ltoe(0)		
 		select tpisg245.ctyp:CalenderType from tpisg245 where cprj = :CTProject selectdo endselect
 		
@@ -843,6 +863,14 @@ Function extern UpdateDelayDays()
 			db.update(ttpisg220, db.retry, e)			
 		endselect
 		commit.transaction()
+		
+		finish.date = utc.num()								|#ISGEC016016.sn
+		
+		import("prog.name$", sess.code)
+		
+		insert_start_date_in_history(sess.code, tpisg220.cprj, start.date, finish.date)
+													|#ISGEC016016.en
+		
 	endselect
 }
 
@@ -1461,3 +1489,30 @@ Function extern UpdateActivityTypeLevelOutlookPercentage(domain tccprj Cprj, dom
 	commit.transaction()
 }
 
+function extern insert_start_date_in_history(							|#ISGEC016016.sn
+						domain	tcsess	i.sess,
+						domain	tccprj	i.cprj,			
+						domain	tcdate	i.sdat,
+						domain	tcdate	i.fdat
+									)
+{
+	domain	tcsern		i.sern
+	
+	i.sern = 0
+	
+	select	tpisg251.*
+	from	tpisg251
+	where	tpisg251._index1 = {:i.sess,:i.cprj,:i.sdat}
+	selectdo
+	selectempty
+		tpisg251.sess = i.sess
+		tpisg251.proj = i.cprj				
+		tpisg251.sern = i.sern + 1
+		tpisg251.stdt = i.sdat
+		tpisg251.fsdt = i.fdat
+		tpisg251.user = logname$
+		db.insert(ttpisg251,db.skip.dupl,e)
+		commit.transaction()
+	endselect
+}
+	

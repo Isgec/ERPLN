@@ -114,6 +114,7 @@ function extern update.inspectionid.and.vehicle.placement.progress.in.220(	domai
 	where	tpisg207.bohd =:i.bohd
 	and	tpisg207.sitm =:i.sitm
 	and	tpisg207.iref =:i.iref
+	and 	tpisg207.cprj = :i.cprj				|Veena 10-03-2019
 	order by tpisg207.inid, tpisg207.mode
 	selectdo
 		if tpisg207.inid = o.inid then
@@ -161,6 +162,7 @@ function extern update.inspectionid.and.vehicle.placement.progress.in.220(	domai
 				where	atpisg207.bohd =:i.bohd
 				and	atpisg207.sitm =:i.sitm
 				and	atpisg207.iref =:i.iref
+				and 	atpisg207.cprj = :i.cprj				|Veena 10-03-2019
 				group by atpisg207.pono
 				selectdo
 					tot.perc = 0
@@ -232,6 +234,11 @@ function extern update.inspectionid.and.vehicle.placement.progress.in.220(	domai
 					wt.perc = (((tot.wght * 100)/allPOWght)*o.cpgv)/100
 				endif
 				
+				if wt.perc > 99.99 then		|Veena 10-03-2019
+					wt.perc = 100
+				endif
+				
+				
 				select	tpisg220.cpgv,tpisg220.acsd
 				from	tpisg220	for update
 				where	tpisg220._index1 = {:i.cprj}
@@ -279,6 +286,7 @@ function extern Shipment.and.ReceiptAtSite(
 	where	tpisg207.bohd =:i.bohd
 	and	tpisg207.sitm =:i.sitm
 	and	tpisg207.iref =:i.iref
+	and 	tpisg207.cprj = :i.cprj				|Veena 10-03-2019
 	group by tpisg207.pono
 	selectdo
 		select	tpisg239.icls
@@ -1218,6 +1226,11 @@ function extern update.project.activity.master.through.advance(domain 	tccprj		i
 				tpisg220.acsd = 0
 			endif
 		endif
+		
+		if FinalPerc > 100 then
+			FinalPerc = 100
+		endif
+		
 		tpisg220.cpgv = FinalPerc
 		ret = db.update(ttpisg220,db.retry,e)
 	selectempty
@@ -1265,6 +1278,10 @@ function extern update.project.activity.master.through.advance(domain 	tccprj		i
 				else
 					tpisg220.acsd = 0
 				endif
+			endif
+			
+			if FinalPerc > 100 then
+				FinalPerc = 100
 			endif
 			
 			tpisg220.cpgv = FinalPerc
@@ -2137,8 +2154,10 @@ function extern UpdateActualStartFinishDateInParentActivities(domain tccprj	i.cp
 		select	tpisg220.cprj,tpisg220.cact, tpisg220.cpgv
 		from	tpisg220	for update
 		where	tpisg220._index1 = {:i.cprj}
-		and	tpisg220.outl = :outline
+		|and	tpisg220.outl = :outline		|commented by #veena.23-01-2019
+		and	tpisg220.outl = :i			|#veena.23-01-2019
 		and	tpisg220.acty = "PARENT"
+ |		and	tpisg220.cact = "50570900M1"		|#For Testing Purpose by #Sahil.Sharma.21.02.2019
 		selectdo
 			MinStartDate = 0
 			MaxFinishDate = 0
