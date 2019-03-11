@@ -1,0 +1,85 @@
+|******************************************************************************
+|* tppdm600ue  0  VRC B61U a7 ind 
+|* User Exit for tppdm600
+|* tools
+|* 14-07-30 [15:37]
+|******************************************************************************
+|* Script Type: Library
+|******************************************************************************
+
+	table	ttppdm600
+#include <bic_dal>
+
+
+function extern long ue.before.before.save.object(long mode)
+{
+	on case mode
+	case DAL_NEW:
+| 		if	tdisg.dll0001.validate.project.wise.warehouse(tppdm600.cprj,
+| 			tppdm600.pwar, tppdm600.dwar)	then
+| 			return(DALHOOKERROR)
+| 		endif
+		break
+	case DAL_UPDATE:
+		if	tdisg.dll0001.validate.project.wise.warehouse(tppdm600.cprj,
+			tppdm600.pwar, tppdm600.dwar)	then
+			return(DALHOOKERROR)
+		endif
+		break
+	endcase
+	return(0)
+}
+
+function extern long ue.after.before.save.object(long mode)
+{
+	on case mode
+	case DAL_NEW:
+		break
+	case DAL_UPDATE:
+		break
+	endcase
+	return(0)
+}
+
+function extern long ue.before.after.save.object(long mode)
+{
+	on case mode
+	case DAL_NEW:
+		break
+	case DAL_UPDATE:
+		break
+	endcase
+	return(0)
+}
+
+function extern long ue.after.after.save.object(long mode)
+{
+	on case mode
+	case DAL_NEW:
+		break
+	case DAL_UPDATE:
+		break
+	endcase
+	return(0)
+}
+
+function extern long ue.before.before.destroy.object()
+{
+	return(0)
+}
+
+function extern long ue.after.before.destroy.object()
+{
+	return(0)
+}
+
+function extern long ue.before.after.destroy.object()
+{
+	return(0)
+}
+
+function extern long ue.after.after.destroy.object()
+{
+	return(0)
+}
+
