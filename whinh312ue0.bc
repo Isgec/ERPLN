@@ -67,6 +67,14 @@
 |*
 |* ID : ISGECGST001, IT0386, Saurabh Dubey, 21 June 2017, VRC B61U a7 isg
 |* GST Related Modifications
+|*
+|* IDENT: ISGEC018001, Mudit Sharma, 2018-03-20
+|* order to Stock Modifications
+|*
+|* ID: ISGEC018001, Dharmendra Singh, 07-08-2018
+|*
+|* ID: ISGEC01170,Prasanna Bhuyan, 07-03-2019, VRC B61U a7 isg
+|* Quantity adding not to be done if calling from Receipt Correction session 'whinh3121s000'
 |******************************************************************************
 #ident "@(#)ISG001012	Manish Kumar, IT0303, 20/02/2014 VRC B61U a7 live"
 #ident "@(#)ISG001041	Abhishek Singh, IT0352, 04/06/2014 VRC B61U a7 live"
@@ -100,6 +108,11 @@ table	ttccom000
 table	ttccom100
 table	ttccom130					|ISGEC002026.en
 table	twhinr110
+table	ttdisg027
+table	ttdisg030
+table	ttdisg026
+table	twhinh200					|#ISGEC018001.sn
+table	twhinh220					|#ISGEC018001.en
 
 extern	domain	tcorno	whinh301.micn
 | extern	domain	tcyesno	whinh301.lmcn
@@ -108,9 +121,23 @@ long	 yearno, monthno, month_dayno, recp_date			|#ISGEC015076.n
 domain	tfgld.date	o.tdisg831.cind, invoice_date, o.tdisg831.ivdt
 	domain	whinh.pksp	i.whinh310.dino			|#ISGEC002026.n
 	domain	tfgld.docn	o.irno	|#ISGECGST001.n
-
+	domain	tcyesno vendor
+	domain	tcqiv1		next.ven.rec
+extern domain	tcmcs.long	new.flag
+extern domain	tcqst1		assign.qty,receive.qty
+extern	domain	whinh.shpm	receipt
+extern	domain	tcpono		receipt.line
+	domain	tccwar		from.warehouse			|#ISGEC018001.sn
+	domain	tcorno		cwar.order, pur.order
+	domain	tcpono		cwar.pono, pur.pono, pur.seqn
+	domain	tcwset		cwar.set
+	domain	tcyesno		physical, source.conf
+	domain	tcitem		cwar.item
+								|#ISGEC018001.en
+	
 #include <bic_dal>
 #include "itdisgdll0003"
+#pragma used dll ottstpapihand
 
 function extern long ue.before.before.save.object(long mode)
 {
@@ -124,9 +151,20 @@ function extern long ue.before.before.save.object(long mode)
 	
 	domain	tcamnt		o.total.amnt
 	domain	tfgld.sess	calling.prog	|#ISGEC001082.sn
-	
+	long flag				
+	flag = 0
 	on case mode
 	case DAL_NEW :
+													|ISGEC018001.sn
+		select	whinh310.cwar
+		from	whinh310
+		where	whinh310._index1 = {:whinh312.rcno}
+		selectdo
+		endselect
+		if whinh310.cwar <> whinh312.cwar	then
+			dal.set.error.message("@Receipt cannot be linked as Warehouse do not match at Header & Line levels. Please amend PO & update the same.")
+			return(DALHOOKERROR)
+		endif											|ISGEC018001.en
 | 		if check_order_orgin() then				|#ISG001041.sn
 | 			if not insert.whisg312() then
 | 				dal.set.error.message("whisg312001")
@@ -162,6 +200,16 @@ function extern long ue.before.before.save.object(long mode)
 						|#ISGEC00165.en
 		break
 	case DAL_UPDATE :
+													|ISGEC018001.sn
+		select	whinh310.cwar
+		from	whinh310
+		where	whinh310._index1 = {:whinh312.rcno}
+		selectdo
+		endselect
+		if whinh310.cwar <> whinh312.cwar	then
+			dal.set.error.message("@Receipt cannot be linked, as Warehouse do not match at Header & Line levels. Please amend PO & update the same.")
+			return(DALHOOKERROR)
+		endif											|ISGEC018001.en
 		
 		|#sujeet.4
 | 		if not CheckGRExist() then					|ISG001012.sn
@@ -329,6 +377,221 @@ function extern long ue.before.before.save.object(long mode)
 		endif
 		whinh312.psno = o.psno
 	|#3739.en
+	
+	if whinh312.lsta = whinh.lstc.confirmed	then				|#ISGEC018001.sn
+		select tcmcs003.cdf_vewr, tcmcs003.cdf_phwr
+		from	tcmcs003
+		where	tcmcs003._index1 = {:whinh310.cwar}
+		selectdo
+			get.var(pid,"tcmcs003.cdf_vewr",vendor)
+			get.var(pid,"tcmcs003.cdf_phwr",physical)
+		endselect
+			
+		flag = 0
+		
+		if whinh312.qrcr > 0 then
+			if vendor = tcyesno.yes	then
+				select	tdisg027.*
+				from	tdisg027
+				where	tdisg027.rcno = :whinh312.rcno
+				and	tdisg027.recl = :whinh312.rcln
+				selectdo
+					flag = 1
+				endselect
+					
+				if flag <> 1	then
+					dal.set.error.message("@Warehouse is Vendor's. Please link Delivery Challan.")
+					return(DALHOOKERROR)
+				endif
+| 			else
+| 				select	tdisg030.iqty
+| 				from	tdisg030
+| 				where	tdisg030._index1 = {:whinh312.rcno,:whinh312.rcln,:whinh312.orno,:whinh312.pono}
+| 				and	tdisg030.iqty > 0
+| 				selectdo
+| 				selectempty
+| 					dal.set.error.message("@Kindly issue previous Vendor Material.")
+| 					return(DALHOOKERROR)
+| 				endselect
+			endif
+			
+			select	tdisg027.*
+			from	tdisg027
+			where	tdisg027._index2 = {:whinh312.orno,:whinh312.pono}
+			selectdo
+				select	whinh312.qrcr:next.ven.rec
+				from	whinh312
+				where	whinh312._index1 = {:tdisg027.rcno, :tdisg027.recl}
+				selectdo
+					select	tdisg030.iqty
+					from	tdisg030
+	 				where	tdisg030._index1 = {:whinh312.rcno,:whinh312.rcln,:whinh312.orno,:whinh312.pono}
+	 				and	tdisg030.iqty > 0
+	 				selectdo
+	 				selectempty
+	 					dal.set.error.message("@Kindly issue previous Vendor Material.")
+	 					return(DALHOOKERROR)
+	 				endselect
+| 					if (next.ven.rec - tdisg027.aqty) > 0 then
+| 						dal.set.error.message("@Kindly issue previous Vendor Material.")
+| 						return(DALHOOKERROR)
+| 					endif	
+				endselect
+			endselect
+		endif
+								|#ISGEC018001.sn
+		select	tdisg030.*
+		from	tdisg030
+		where 	tdisg030._index1 = {:whinh312.rcno, :whinh312.rcln}
+		selectdo
+			select	tdisg027.dech
+			from	tdisg027 
+			where 	tdisg027.srpo = :tdisg030.svpo
+			and	tdisg027.srpl = :tdisg030.svpl
+			and	tdisg027.rcno = :tdisg030.srcn
+			and	tdisg027.recl = :tdisg030.srcl
+			selectdo
+				select	tdisg026.stat
+				from	tdisg026
+				where	tdisg026._index1 = {:tdisg027.dech}
+				and	tdisg026.stat = tdisg.delv.created
+				selectdo
+					dal.set.error.message("@Kindly Freeze Delivery Challan.")
+					return(DALHOOKERROR)
+				endselect	
+			endselect
+			
+			select	a_whinh312.conf:source.conf
+			from	whinh312	a_whinh312
+			where 	a_whinh312._index1 = {:tdisg030.srcn, :tdisg030.srcl}
+			selectdo
+				if source.conf = tcyesno.no then
+					dal.set.error.message("@Source Receipt %s is not confirmed.", tdisg030.srcn)
+					return(DALHOOKERROR)
+				endif	
+			endselect
+		endselect	
+		
+		if calling.prog = "whinh3121s000" then						|#ISGEC01170.n
+		else										|#ISGEC01170.n
+			select	tdisg030.*
+			from	tdisg030 for update
+			where 	tdisg030._index1 = {:whinh312.rcno, :whinh312.rcln}
+			selectdo
+				select	tdisg027.aqty,tdisg027.dech
+				from	tdisg027 for update
+				where 	tdisg027.srpo = :tdisg030.svpo
+				and	tdisg027.srpl = :tdisg030.svpl
+				and	tdisg027.rcno = :tdisg030.srcn
+				and	tdisg027.recl = :tdisg030.srcl
+				selectdo
+					tdisg027.aqty = tdisg027.aqty + tdisg030.iqty
+					db.update(ttdisg027,db.retry)
+				endselect
+				
+				select	tdisg026.stat,tdisg026.dech
+				from	tdisg026 for update
+				where	tdisg026._index1 = {:tdisg027.dech}
+				selectdo
+					select	a_tdisg027.aqty:assign.qty,
+						a_tdisg027.rcno:receipt,
+						a_tdisg027.recl:receipt.line
+					from	tdisg027  a_tdisg027
+					where	a_tdisg027._index1 = {:tdisg026.dech}
+					selectdo
+						select	a_whinh312.qrcr:receive.qty
+						from	whinh312 a_whinh312
+						where	a_whinh312._index1 = {:receipt,:receipt.line}
+						selectdo
+							if assign.qty = receive.qty then
+								flag = 0
+							else
+								flag = 1
+							endif	
+						selectempty
+							flag = 1
+						endselect	
+					selectempty
+						flag = 1	
+					endselect
+					if flag = 0 then
+						tdisg026.stat = tdisg.delv.process
+						db.update(ttdisg026, db.retry)
+					endif
+				endselect
+				tdisg030.flag = 1
+				db.update(ttdisg030,db.retry)
+			endselect					
+		endif											|#ISGEC01170.n
+		
+		if physical = tcyesno.yes then
+			select	tdisg030.*
+			from	tdisg030 for update
+			where 	tdisg030._index1 = {:whinh312.rcno, :whinh312.rcln}
+			and	tdisg030.iqty > 0
+			selectdo
+				select	a_whinh312.cwar:from.warehouse,
+					a_whinh312.item:cwar.item,
+					a_whinh312.orno:pur.order,
+					a_whinh312.pono:pur.pono,
+					a_whinh312.seqn:pur.seqn
+				from	whinh312	a_whinh312
+				where 	a_whinh312._index1 = {:tdisg030.srcn, :tdisg030.srcl}
+				selectdo
+				endselect
+				
+				if isspace(tdisg030.whno) then
+					if not create.warehouse.order.header(
+									whinh.oorg.project.man,
+									whinh.ittp.transfer,
+									from.warehouse,
+									whinh312.cwar,
+									cwar.order,
+									cwar.set) then
+						tdisg030.whno = cwar.order
+					endif
+				else
+					cwar.order = tdisg030.whno
+					cwar.set = 1		
+				endif
+				
+				if not isspace(cwar.order) and tdisg030.whln = 0 then
+					select	tdpur401.cprj,tdpur401.cspa,tdpur401.cact,tdpur401.ccco
+					from	tdpur401
+					where	tdpur401._index1 = {:pur.order, :pur.pono, :pur.seqn}
+					selectdo
+					endselect
+					
+					select	whisg312.amnt, whisg312.qrec
+					from	whisg312
+					where	whisg312._index1 = {:tdisg030.srcn, :tdisg030.srcl}
+					selectdo
+					endselect
+					
+					if not create.warehouse.order.line(
+									whinh.oorg.project.man,
+									cwar.order,
+									cwar.set,
+									cwar.item,
+									tdisg030.iqty,
+									tdpur401.cprj,
+									tdpur401.cspa, 
+									tdpur401.cact,
+									tdpur401.ccco,
+									tcyesno.yes,
+									(whisg312.amnt/whisg312.qrec),
+									cwar.pono) then
+						tdisg030.whln = cwar.pono
+					endif
+				endif	
+				
+				db.update(ttdisg030,db.retry)
+				
+				process.warehouse.order()
+			endselect
+		endif	
+										|#ISGEC018001.en
+	endif
 	return(0)
 }
 
@@ -801,11 +1064,10 @@ function 	boolean update.whisg312()
 		dal.set.field("whisg312.amnt",whina113.amnt(1))
 		
 		|when receipt is confirmed ie the case of receipt correction
-		select  count(*):cnt 
-		from 	tdpur456 
-		where 	tdpur456.rcno = :whinh312.rcno 
-		and 	tdpur456.rseq = :whinh312.rcln
-		and 	tdpur456.rarc = 1
+		select count(*):cnt from tdpur456 
+		where tdpur456.rcno = :whinh312.rcno 
+		and tdpur456.rseq = :whinh312.rcln
+		and tdpur456.rarc = 1
 		selectdo endselect
 		
 		if cnt > 0 then
@@ -1027,7 +1289,7 @@ function long Update_IR_Receipt_Number
 		ret_val = dal.save.object("tfisg001")
 			
 		if ret_val <> 0 then
-		return(DALHOOKERROR)
+			return(DALHOOKERROR)
 		endif
 	endselect
 	
@@ -1439,3 +1701,111 @@ function boolean check.reciept.linked()
 	return(true)
 }
 										|#ISGEC016050.en
+										
+										|#ISGEC018001.sn
+function long create.warehouse.order.header
+				(
+				domain	whinh.oorg	i.oorg,		|Order Origin
+				domain	whinh.ittp	i.ittp,		|Inventory Transaction Type
+				domain	tccshp		i.sfco,		|Ship From
+				domain	tccshp		i.stco,		|Ship To
+			ref 	domain	tcorno		o.orno,		|Warehouse Order
+			ref 	domain	tcwset		o.oset		|Set
+				)
+{
+	long ret_val
+	
+	dal.new.object("whinh200")
+	dal.set.field("whinh200.oorg",i.oorg)
+	dal.set.field("whinh200.ittp",i.ittp)
+	dal.set.field("whinh200.sfco",i.sfco)
+	dal.set.field("whinh200.stco",i.stco)
+	ret_val = dal.save.object("whinh200")
+	
+	if ret_val  = 0 then
+		o.orno = whinh200.orno
+		o.oset = whinh200.oset
+	else
+		return(DALHOOKERROR)
+	endif
+	
+	return(0)
+
+}
+
+function long create.warehouse.order.line
+				(
+				domain	whinh.oorg	i.oorg,		|Order Origin
+				domain	tcorno		i.orno,		|Warehouse Order
+				domain	tcwset		i.oset,		|Set
+				domain	tcitem		i.item,		|Item
+				domain	tcqst1		i.qoro,		|Quantity
+				domain	tccprj		i.fprj,		|Project
+				domain	tcpdm.cspa	i.fspa,		|Element
+				domain	tcpdm.cact	i.fact,		|Activity
+				domain	tccpcp		i.fcco,		|From Cost Compoent
+				domain	tcyesno		i.uwop,		|Use Warehouse Order Price
+				domain	tcpric		i.orpr,		|Order Price	
+			ref 	domain	tcpono		o.pono		|Position
+| 			ref 	domain	tcpono		o.seqn		|Sequence
+				
+				)
+{
+	long ret_val
+	
+	dal.new.object("whinh220")
+	
+	dal.set.field("whinh220.oorg",i.oorg)
+	dal.set.field("whinh220.orno",i.orno)
+	dal.set.field("whinh220.oset",i.oset)
+	dal.set.field("whinh220.item",i.item)
+	dal.set.field("whinh220.qoro",i.qoro)
+	dal.set.field("whinh220.fprj",i.fprj)
+	dal.set.field("whinh220.fspa",i.fspa)
+	dal.set.field("whinh220.fact",i.fact)
+	dal.set.field("whinh220.fcco",i.fcco)
+	dal.set.field("whinh220.tprj",i.fprj)
+	dal.set.field("whinh220.tspa",i.fspa)
+	dal.set.field("whinh220.tact",i.fact)
+	dal.set.field("whinh220.tcco",i.fcco)
+	
+	dal.set.field("whinh220.uwop",i.uwop)
+	dal.set.field("whinh220.orpr",i.orpr)
+	ret_val = dal.save.object("whinh220")
+	if ret_val  = 0 then
+		o.pono = whinh220.pono
+| 		o.seqn = whinh220.seqn
+	else
+		return(DALHOOKERROR)
+	endif
+	return(0)
+
+}
+
+
+function process.warehouse.order()
+{
+	string		error.msg(100)
+	long ret_val
+	
+	stpapi.put.field("whinh2100m000", "whinh200.oorg", str$(whinh.oorg.project.man))			
+	stpapi.put.field("whinh2100m000", "whinh200.orno", str$(cwar.order))			
+	stpapi.put.field("whinh2100m000", "whinh200.oset", str$(cwar.set))			
+	ret_val = stpapi.find("whinh2100m000", error.msg)
+	if ret_val = 1 then
+		ret_val = stpapi.mark("whinh2100m000", error.msg)
+		if ret_val = 1 then
+			stpapi.form.command("whinh2100m000",2,"automatic.process",error.msg)
+			stpapi.end.session("whinh2100m000")
+		else
+			stpapi.end.session("whinh2100m000")
+		endif		
+	else
+		stpapi.end.session("whinh2100m000")
+	endif
+}
+
+
+									|#ISGEC018001.en
+
+				

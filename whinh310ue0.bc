@@ -5,21 +5,42 @@
 |* 14-08-02 [12:38]
 |******************************************************************************
 |* Script Type: Library
+|* IDNET: ISGEC018001, Mudit Sharma, 2018-02-23
+|* Modifications
+|*
+|* ID: ISGEC018001, Mudit Sharma, 2018-06-14
+|* Check for DC
+|*
+|* ID: ISGEC018001, Dharmendra Singh, 2018-07-09
+|* T-53448, CR154- Order to stock process
+|*
 |* ID: ISGEC016015,Manav singh,21-01-2019,VRC B61U a7 live
 |* Modification as per cdf field Delivery term input process block on confirmed status 
-
 |******************************************************************************
                                                                                 
 #include <bic_dal>
 
 	table	twhinh310
+	table	twhinh312
 	table	ttfacp100
-		domain	tcmcs.str30	old.value,new.value
-		domain	tccdec		hold.cdec
+	table	ttdpur401
+	table	ttpisg229
+	table	ttcmcs003
+	table	ttdisg027
+	table	ttdisg030
+	
+	domain	tfgld.user	user
+	long srno
+	domain	tcyesno vendor
+	domain	tcmcs.str30	old.value,new.value
+	domain	tccdec		hold.cdec
 
 
 function extern long ue.before.before.save.object(long mode)
 {
+	long flag									|#ISGEC018001.n
+	flag = 0
+	
 	get.var(pid,"whinh310.cdf_cdec",hold.cdec)				|#Sahil.Sharma.21.02.2019.sn
 	
 	select	tcmcs041.cdec
@@ -31,10 +52,64 @@ function extern long ue.before.before.save.object(long mode)
 		return(DALHOOKERROR)
 	endselect
 										|#Sahil.Sharma.21.02.2019.en
-
-
+	
 	on case mode
 	case DAL_NEW:
+		if whinh310.stat = whinh.rhst.confirmed	then				|#ISGEC018001.sn	
+| 			select tcmcs003.cdf_vewr
+| 			from	tcmcs003
+| 			where	tcmcs003._index1 = {:whinh310.cwar}
+| 			selectdo
+| 				get.var(pid,"tcmcs003.cdf_vewr",vendor)
+| 			endselect
+| 			
+| 			select	whinh312.orno,whinh312.pono, whinh312.rcno, whinh312.rcln, whinh312.qrcr
+| 			from	whinh312
+| 			where	whinh312._index1 = {:whinh310.rcno}
+| 			selectdo
+| 				flag = 0
+| 				if whinh312.qrcr > 0 then
+| 				if vendor = tcyesno.yes	then
+| 					select	tdisg027.*
+| 					from	tdisg027
+| 					where	tdisg027.rcno = :whinh310.rcno
+| 					and	tdisg027.recl = :whinh312.rcln
+| 					selectdo
+| 						flag = 1
+| 					endselect
+| 		
+| 					if flag <> 1	then
+| 						dal.set.error.message("@Warehouse is Vendor's. Please link Delivery Challan.")
+| 						return(DALHOOKERROR)
+| 					endif
+| 				else
+| 					select	tdisg030.iqty
+| 					from	tdisg030
+| 					where	tdisg030._index1 = {:whinh312.rcno,:whinh312.rcln,:whinh312.orno,:whinh312.pono}
+| 					and	tdisg030.iqty > 0
+| 					selectdo
+| 					selectempty
+| 						dal.set.error.message("@Kindly issue previous Vendor Material.")
+| 						return(DALHOOKERROR)
+| 					endselect
+| 				endif
+| 				endif
+| 			endselect	
+		endif									|#ISGEC018001.en
+		
+											|#ISGEC018001.sn
+| 		if whinh310.stat = whinh.rhst.open	then
+| 			select	whinh312.cwar
+| 			from	whinh312
+| 			where	whinh312._index1 = {:whinh310.rcno}
+| 			selectdo
+| 			endselect
+| 			if whinh310.cwar <> whinh312.cwar	then
+| 				dal.set.error.message("@Receipt cannot be confirmed as Warehouse doesn’t match at Header & Line levels. Please amend PO & update the same.")
+| 				return(DALHOOKERROR)
+| 			endif
+| 		endif
+											|#ISGEC018001.en
 					|#ISGECGST001.sn
 		if not tcisgdll0100.check.IR.is.project.purchase(lval(whinh310.dino)) then
 			dal.set.error.message("@Only IR Related To Project Purchase Could be Linked...")
@@ -43,12 +118,85 @@ function extern long ue.before.before.save.object(long mode)
 					|#ISGECGST001.en
 		break
 	case DAL_UPDATE:
+											|#ISGEC018001.sn
+		if whinh310.stat = whinh.rhst.open	then
+			select	whinh312.cwar
+			from	whinh312
+			where	whinh312._index1 = {:whinh310.rcno}
+			selectdo
+				if whinh310.cwar <> whinh312.cwar	then
+					dal.set.error.message("@Receipt cannot be linked, as Warehouse do not match at Header & Line levels. Please amend PO & update the same.")
+					return(DALHOOKERROR)
+				endif
+			endselect
+		endif
+											|#ISGEC018001.en
 					|#ISGECGST001.sn
 		if not tcisgdll0100.check.IR.is.project.purchase(lval(whinh310.dino)) then
 			dal.set.error.message("@Only IR Related To Project Purchase Could be Linked...")
 			return(DALHOOKERROR)
 		endif
 					|#ISGECGST001.en
+					
+		if whinh310.stat = whinh.rhst.confirmed	then				|#ISGEC018001.sn
+| 			select tcmcs003.cdf_vewr
+| 			from	tcmcs003
+| 			where	tcmcs003._index1 = {:whinh310.cwar}
+| 			selectdo
+| 				get.var(pid,"tcmcs003.cdf_vewr",vendor)
+| 			endselect
+| 			
+| 			select	whinh312.orno,whinh312.pono, whinh312.rcno, whinh312.rcln, whinh312.qrcr
+| 			from	whinh312
+| 			where	whinh312._index1 = {:whinh310.rcno}
+| 			selectdo
+| 				flag = 0
+| 				if whinh312.qrcr > 0 then
+| 				if vendor = tcyesno.yes	then
+| 					select	tdisg027.*
+| 					from	tdisg027
+| 					where	tdisg027.rcno = :whinh310.rcno
+| 					and	tdisg027.recl = :whinh312.rcln
+| 					selectdo
+| 						flag = 1
+| 					endselect
+| 					
+| 					if flag <> 1	then
+| 						dal.set.error.message("@Warehouse is Vendor's. Please link Delivery Challan.")
+| 						return(DALHOOKERROR)
+| 					endif
+| 				else
+| 					select	tdisg030.iqty
+| 					from	tdisg030
+| 					where	tdisg030._index1 = {:whinh312.rcno,:whinh312.rcln,:whinh312.orno,:whinh312.pono}
+| 					and	tdisg030.iqty > 0
+| 					selectdo
+| 					selectempty
+| 						dal.set.error.message("@Kindly issue previous Vendor Material.")
+| 						return(DALHOOKERROR)
+| 					endselect
+| 				endif
+| 				endif
+| 			endselect
+| 									|#ISGEC018001.so
+| 			select	tdisg027.*
+| 			from	tdisg027 for update
+| 			where	tdisg027._index2 = {:whinh312.orno,:whinh312.pono}
+| 			selectdo
+| 				select	tdisg030.aqty, tdisg030.iqty, tdisg030.flag 
+| 				from	tdisg030 for update
+| 				where	tdisg030._index2 = {:tdisg027.rcno, :tdisg027.recl, :whinh312.orno,:whinh312.pono}
+| 				selectdo
+| 					tdisg030.aqty = tdisg030.aqty + tdisg030.iqty
+| 					tdisg030.flag = 1
+| 					db.update(ttdisg030, db.retry, e)
+| 				endselect
+| 				
+| 				tdisg027.aqty = tdisg030.aqty
+| 				db.update(ttdisg027,db.retry,e)
+| 			endselect
+									|#ISGEC018001.eo
+		endif									|#ISGEC018001.en
 		break
 	endcase
 	return(0)
@@ -94,10 +242,17 @@ function extern long ue.after.after.save.object(long mode)
 					return(DALHOOKERROR)
 				 endif
 		endif						   |#ISGEC016015.en
+		
 		break
 	endcase
+	
 	return(0)
 }
+
+function get.old.value()						|#ISGEC016015.sn
+{
+	get.var(pid,"whinh310.cdf_cdec",old.value)
+}								|#ISGEC016015.en
 
 function extern long ue.before.before.destroy.object()
 {
@@ -153,8 +308,5 @@ function get.project.element.against.receipt.line
 	
 }
 
-function get.old.value()						|#ISGEC016015.sn
-{
-	get.var(pid,"whinh310.cdf_cdec",old.value)
-}								|#ISGEC016015.en
+
 

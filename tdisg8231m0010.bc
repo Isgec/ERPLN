@@ -52,6 +52,12 @@
 |*  Suspend compose invoice application for multiple users 
 |*
 |* IDENT ISGEC017021,Shilpa Janardanan, 15-05-2017
+|*
+|* ID:ISGEC01169,Bharti Garg, 25-02-2019
+|* Added a code for updating tdisg873
+|*
+|* ID: ISGEC01170,Prasanna Bhuyan, 06-03-2019, VRC B61U a7 isg
+|* Modifications
 |****************************** declaration section ***************************
 declaration:
 
@@ -81,6 +87,10 @@ table	ttdisg867
 table	ttdisg873
 table	twhinh220
 table	ttdisg867
+table	ttpisg012		|ISGEC01169.n
+table	ttpisg011		|ISGEC01169.n
+table	ttdisg027		|ISGEC01169.n
+table	ttpisg014		|ISGEC01169.n
 |***************  Form Variables ************************************************
 extern 	domain  tcorno           cinv.f    fixed
 
@@ -126,6 +136,9 @@ domain	tcqsl1		on.hand
 						|#34495.en
 	domain	whinh.shpm	i.rcno	
 extern	domain	tcorno	advice.number	
+extern domain	tcmcs.str80	error.message	|ISGEC01169.n
+extern	domain	tcpono		found.same.proj	|#ISGEC01169.n
+extern	domain	tcamnt		sanction_amnt	|ISGEC01169.n
 
 long	ret		|#ISGEC002022.n
 #include <bic_dam>
@@ -138,7 +151,9 @@ before.program:
 	
 before.display.object:
 	select	tdisg831.flag,
-		tdisg831.stat
+		tdisg831.stat,
+		tdisg831.edrn,			|ISGEC01169.n
+		tdisg831.cprj			|ISGEC01169.n
 	from	tdisg831
 	where	tdisg831._index3 = {:import.cinv}
 	as set with 1 rows 
@@ -165,6 +180,11 @@ init.group:
 |***************************** choice section **********************************
 choice.generate:
 before.choice:
+	
+	if not check.element()	then					|ISGEC01169.sn
+		choice.again()
+	endif								|ISGEC01169.en
+
 							|# ISGEC01082.sn
 	if all.lines.are.without.tobe.filled() then						
 		if subcon.advice.present.for.all.lines() then						
@@ -234,8 +254,8 @@ before.choice:
 	and	tppdm740.fcrt = tcfcrt.docd
 	selectdo
 	selectempty
-		message("Cannot Process as Fixed Currency rate is not Document Date.") 
-		choice.again()							      
+		message("Cannot Process as Fixed Currency rate is not Document Date.")
+		choice.again()
 	endselect
 	
 						|#ISGEC001208.en
@@ -282,7 +302,12 @@ on.choice:
 		from	tdisg831
 		where	tdisg831._index3 = {:cinv.f}
 		selectdo
-			tdisgdll0831.update.billing.advice.process.status(tdisg831.edrn,tdisg.stat.process)
+| 			tdisgdll0831.update.billing.advice.process.status(tdisg831.edrn,tdisg.stat.process)   |ISGEC01170.o
+			if found.same.proj = 0 then			|#ISGEC01169.sn
+				insert.tpisg014()
+				approve.tpisg014()
+			endif						|#ISGEC01169.en
+			tdisgdll0831.update.billing.advice.process.status(tdisg831.edrn,tdisg.stat.process)   |ISGEC01170.n
 		endselect
 		
 		commit.transaction()
@@ -432,6 +457,7 @@ function long update.tax.data()
 			abort.transaction()
 		endif
 	endselect
+	
 			|#SD05062017.sn, 
 	select 	tdisg831.rnso.l, tdisg831.rnso.l
 	from	tdisg831 for update
@@ -543,11 +569,18 @@ function long process.billing.advice.with.installment
 							
 		
 								|# ISGEC01082.sn
-		if check.subcon.advice.and.process(
-					tdisg832.orno,
-					tdisg832.pono) then
+| 		if check.subcon.advice.and.process(				|#ISGEC01170.so
+| 					tdisg832.orno,
+| 					tdisg832.pono) then
+| 			return(DALHOOKERROR)
+| 		endif								|#ISGEC01170.eo
+
+		if check.subcon.advice.and.process(				|#ISGEC01170.sn
+					tdisg832.edrn,
+					tdisg832.rcno,
+					tdisg832.rcln) then
 			return(DALHOOKERROR)
-		endif			
+		endif								|#ISGEC01170.en
 
 
 		if not isspace(whisg312.cwar) then		|# ISGEC01082.en		
@@ -1217,14 +1250,20 @@ function boolean check_receipt_status_against_v1()					|#ISGEC002027.sn
 	from	tdisg832
 	where	tdisg832._index3 = {:cinv.f}
 	selectdo
-		select	tdisg867.*
-		from	tdisg867
-		where	tdisg867._index2 = {:tdisg832.orno, :tdisg832.pono}
-		selectdo
+| 		select	tdisg867.*						|ISGEC01169.so
+| 		from	tdisg867
+| 		where	tdisg867._index2 = {:tdisg832.orno, :tdisg832.pono}
+| 		selectdo							|ISGEC01169.eo
+		select	tdisg027.*						|ISGEC01169.sn
+		from	tdisg027
+		where	tdisg027._index2 = {:tdisg832.orno,:tdisg832.pono}
+		selectdo							|ISGEC01169.en
 			select	tdisg873.rcno,tdisg873.rcln
 			from	tdisg873
 			where	tdisg873._index1 = {:tdisg831.edrn, :tdisg832.rcno, :tdisg832.rcln,
-						:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+| 						:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}		|ISGEC01169.o
+						:tdisg027.dech, :tdisg027.rcno, :tdisg027.recl}		|ISGEC01169.n
+
 			selectdo
 				select	whisg312.conf
 				from	whisg312
@@ -1283,8 +1322,8 @@ function check_receipt_confirmation_date()			|ISGEC002022.n
 			ardt = date.to.num  (yearno,  monthno,  month_dayno)
 			
 			if ardt > o.tdisg831.cind then
-				mess("tcgenstring",1,"Invoice date cannot be less than receipt confirmation date") 
-				choice.again()	
+				mess("tcgenstring",1,"Invoice date cannot be less than receipt confirmation date")
+				choice.again()
 			endif
 		endselect
 	endselect
@@ -1296,12 +1335,14 @@ function check_receipt_confirmation_date()			|ISGEC002022.n
 
 								|# ISGEC01082.sn
 function long check.subcon.advice.and.process(
-				domain tcorno i.orno,
-				domain tcpono i.pono)
+				domain tcorno 		i.edrn,				|#ISGEC01170.sn
+				domain	whinh.shpm	i.rcno,
+				domain tcpono		i.rcln)				|#ISGEC01170.en
 {
 	domain	tcorno	o.orno
 	domain	tcwset	o.oset
-	domain	tccprj	o.cprj
+	domain	tccprj	o.cprj,
+			i.cprj					|#ISGEC01170.n
 	domain tcorno	o.worn
 	domain tcpono 	o.wlin
 	domain tcpono	o.wseq
@@ -1317,37 +1358,52 @@ function long check.subcon.advice.and.process(
 	domain	tcdate		o.tdisg831.ivdt		|#ISGEC002022.n
 	domain	whinh.shpm	o.shpm
 	domain	tcpono		o.shln			|#ISGEC0020.en
+	domain	tcyesno		physical		|#ISGEC01169.n
+	domain	tccwar		phy.warehouse		|#ISGEC01169.n
 	
-	select	tdisg867.*
-	from	tdisg867
-	where	tdisg867._index2 = {:i.orno, :i.pono}
-	selectdo
+| 	select	tdisg867.*				|#ISGEC01169.so		
+| 	from	tdisg867
+| 	where	tdisg867._index2 = {:i.orno, :i.pono}
+| 	selectdo					|#ISGEC01169.eo
+	physical = tcyesno.no				|#ISGEC01169.sn
+	
+	
+| 	select	tdisg027.*				|#ISGEC01170.so
+| 	from	tdisg027
+| 	where	tdisg027._index2 = {:i.orno, :i.pono}
+| 	selectdo					|#ISGEC01170.eo
 		select	tdisg873.*
 		from	tdisg873 for update 
-		where	tdisg873._index1 = {:tdisg832.edrn, :tdisg832.rcno, :tdisg832.rcln,
-					:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+		where	tdisg873._index1 = {:i.edrn, :i.rcno, :i.rcln}			|#ISGEC01170.n
+					|:tdisg027.dech, :tdisg027.rcno, :tdisg027.recl}
 		selectdo
 			if tdisg873.issu = 0.00 then			|#ISGEC002027.sn
 				continue
 			endif						|#ISGEC002027.en
-			select	isg831.cprj:o.cprj
+			select	isg831.cprj:o.cprj			
 			from	tdisg831 isg831
-			where	isg831._index1 = {:tdisg867.edrn}
+| 			where	isg831._index1 = {:tdisg867.edrn}
+			where	isg831._index1 = {:tdisg873.sdrn}
 			selectdo
-			endselect
+			endselect					
 			
 			select	isg832.worn:o.worn,
 				isg832.wlin:o.wlin,
 				isg312.cwar:o.cwar,
-				isg832.item:o.item,
+| 				isg832.item:o.item,	|ISGEC01169.o
+				isg312.item:o.item,	|ISGEC01169.n
 				isg312.cspa:o.cspa,
 				isg312.cact:o.cact,
 				isg312.ccco:o.ccco,
-				isg312.amnt:o.amnt
+				isg312.amnt:o.amnt,
+				isg312.cprj:i.cprj			|#ISGEC01170.n
 			from	tdisg832 isg832,
 				whisg312 isg312
-			where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
-			and	isg832.cmbc refers to isg312
+| 			where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}	|ISGEC01169.o
+			where	isg832._index1 = {:tdisg873.sdrn, :tdisg873.scno, :tdisg873.scln}	|ISGEC01169.N
+| 			where	isg832._index1 = {:tdisg873.sdrn, :tdisg873.rcno, :tdisg873.rcln}	|ISGEC01169.N
+| 			and	isg832.cmbc refers to isg312		|ISGEC01169.o
+			and	isg312._index1 = {:tdisg873.rcno,:tdisg873.rcln}	|ISGEC01169.n
 			selectdo
 			endselect
 			
@@ -1357,8 +1413,26 @@ function long check.subcon.advice.and.process(
 			selectdo
 			endselect
 			
+			select	a_whinh312.cwar:phy.warehouse					|#ISGEC01169.sn
+			from	whinh312	a_whinh312
+| 			where	a_whinh312._index1 = {:tdisg873.scno, :tdisg873.scln}
+			where	a_whinh312._index1 = {:tdisg873.rcno, :tdisg873.rcln}
+			selectdo
+			endselect
+						
+			select tcmcs003.cdf_phwr
+			from	tcmcs003
+			where	tcmcs003._index1 = {:phy.warehouse}
+			selectdo
+				get.var(pid,"tcmcs003.cdf_phwr",physical)
+			endselect								|#ISGEC01169.en
+			
 			if item.type = tckitm.purchase or item.type = tckitm.manufacture then
 				if isspace(tdisg873.worn) then
+					if physical = tcyesno.yes then			|#ISGEC01169.sn
+						o.cwar = phy.warehouse
+					endif						|#ISGEC01169.en
+						
 					if tdisgdll0831.create.warehouse.order.header(
 								whinh.oorg.project.man,
 								whinh.ittp.issue,
@@ -1366,7 +1440,8 @@ function long check.subcon.advice.and.process(
 								o.cprj,
 								o.orno,
 								o.oset) then
-						update.error.flag(tdisg867.edrn,10)	
+| 						update.error.flag(tdisg867.edrn,10)	|#ISGEC01169.o	
+						update.error.flag(tdisg873.sdrn,10)	|#ISGEC01169.n	
 						return(DALHOOKERROR)
 					else
 						tdisg873.worn = o.orno
@@ -1381,7 +1456,7 @@ function long check.subcon.advice.and.process(
 							o.oset,
 							o.item,
 							tdisg873.issu,
-							o.cprj,
+							i.cprj,
 							o.cspa,
 							o.cact,
 							o.ccco,
@@ -1389,7 +1464,8 @@ function long check.subcon.advice.and.process(
 							(o.amnt/tdisg873.issu),
 							o.wlin,
 							o.wseq) then
-						update.error.flag(tdisg867.edrn,20) 					
+| 						update.error.flag(tdisg867.edrn,20)		|#ISGEC01169.o 					
+						update.error.flag(tdisg873.sdrn,20) 		|#ISGEC01169.n			
 						return(DALHOOKERROR)
 					else
 						tdisg873.wlin = o.wlin
@@ -1400,23 +1476,29 @@ function long check.subcon.advice.and.process(
 				commit.transaction()
 			endif	
 		endselect		
-	endselect
+| 	endselect							|#ISGEC01170.o
 	
-	select	tdisg867.*
-	from	tdisg867
-	where	tdisg867._index2 = {:i.orno, :i.pono}
-	selectdo
+| 	select	tdisg867.*						|#ISGEC01169.so
+| 	from	tdisg867
+| 	where	tdisg867._index2 = {:i.orno, :i.pono}
+| 	selectdo							|#ISGEC01169.eo
+	| 	select	tdisg027.*						|#ISGEC01170.so
+| 	from	tdisg027
+| 	where	tdisg027._index2 = {:i.orno, :i.pono}
+| 	selectdo							|#ISGEC01170.eo
 		select	tdisg873.*
-		from	tdisg873 
-		where	tdisg873._index1 = {:tdisg832.edrn, :tdisg832.rcno, :tdisg832.rcln,
-					:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+		from	tdisg873 for update 
+		where	tdisg873._index1 = {:i.edrn, :i.rcno, :i.rcln}		|#ISGEC01170.n
+					|:tdisg027.dech, :tdisg027.rcno, :tdisg027.recl}
 		selectdo
 			if tdisg873.issu = 0.00 then			|#ISGEC002027.sn
 				continue
 			endif						|#ISGEC002027.en
 			select	isg832.item:o.item
 			from	tdisg832 isg832
-			where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+| 			where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}	|ISGEC01169.o
+			where	isg832._index1 = {:tdisg873.sdrn, :tdisg873.rcno, :tdisg873.rcln}	|ISGEC01169.n
+
 			selectdo
 			endselect
 			
@@ -1455,7 +1537,8 @@ function long check.subcon.advice.and.process(
 				as set with 1 rows
 				selectdo
 				selectempty
-					update.error.flag(tdisg867.edrn,30)	|Error in Process Outbound 					
+| 					update.error.flag(tdisg867.edrn,30)	|Error in Process Outbound 	|ISGEC01169.o					
+					update.error.flag(tdisg873.sdrn,30)	|Error in Process Outbound 	|ISGEC01169.n				
 					dal.set.error.message("@ Inventory Not Transferred!! Please Process Again...")
 					return(DALHOOKERROR)	
 				endselect
@@ -1464,20 +1547,24 @@ function long check.subcon.advice.and.process(
 		
 		select	isg832.qnty:isg832.qnty
 		from	tdisg832 isg832
-		where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+| 		where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}		|ISGEC01169.o
+		where	isg832._index1 = {:tdisg873.sdrn, :tdisg873.scno, :tdisg873.scln}		|ISGEC01169.n
 		selectdo
 		endselect
 			
 		select	sum(isg873.issu):isg873.qnty
 		from	tdisg873 isg873
-		where	isg873._index2 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+| 		where	isg873._index2 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}		|ISGEC01169.o
+		where	isg873._index2 = {:tdisg027.dech, :tdisg027.rcno, :tdisg027.recl}		|ISGEC01169.n
+
 		selectdo
 		endselect
 
-		if isg832.qnty = isg873.qnty then
-			tdisgdll0831.update.billing.advice.process.status(tdisg867.edrn,tdisg.stat.process)
-		endif	
-	endselect
+
+| 		if isg832.qnty = isg873.qnty then					|#ISGEC01170.so
+| 			tdisgdll0831.update.billing.advice.process.status(tdisg873.sdrn,tdisg.stat.process)
+| 		endif									 
+| 	endselect								|#ISGEC01170.eo
 
 	return(0)
 }
@@ -1708,13 +1795,20 @@ function boolean subcon.advice.present.for.all.lines()
 		where	tdisg832._index1 = {:tdisg831.edrn}
 		and	tdisg832.tobi = tcyesno.no 
 		selectdo
-			select	tdisg867.*
-			from	tdisg867
-			where 	tdisg867._index1 = {:tdisg831.edrn, :tdisg832.rcno, :tdisg832.rcln}
+| 			select	tdisg867.*						|ISGEC01169.so
+| 			from	tdisg867
+| 			where 	tdisg867._index1 = {:tdisg831.edrn, :tdisg832.rcno, :tdisg832.rcln}
+| 			selectdo
+| 			selectempty
+| 				subcon.found = 1
+| 			endselect							|ISGEC01169.eo
+			select	tdisg873.*						|ISGEC01169.sn
+			from	tdisg873
+			where 	tdisg873._index1 = {:tdisg831.edrn, :tdisg832.rcno, :tdisg832.rcln}
 			selectdo
 			selectempty
 				subcon.found = 1
-			endselect
+			endselect							|ISGEC01169.en
 		endselect
 	endselect
 	if subcon.found = 0 then
@@ -1724,4 +1818,322 @@ function boolean subcon.advice.present.for.all.lines()
 	return(false)
 }
 									|# ISGEC01082.en
+									
+									
+function boolean check.element()						|ISGEC01169.sn
+{	
+	long brp_id,flag1
+	flag1 = 0
+	found.same.proj = 0
+	
+	select	tdisg832.rcno,tdisg832.rcln
+	from	tdisg832
+	where	tdisg832._index1 = {:tdisg831.edrn}
+	selectdo
+		brp_id = brp.open("rtdisg813100099","D",1)
+		select	whisg312.cprj,whisg312.cspa,whisg312.amnt
+		from	whisg312
+		where	whisg312._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+		selectdo
+		endselect
+		if whisg312.cprj <> tdisg831.cprj	then
+			found.same.proj = 0
+			
+			select	tpisg012.elem,tpisg012.avai,tpisg012.levl
+			from	tpisg012
+			where	tpisg012._index1 = {:tdisg831.cprj}
+			and	tpisg012.elem = :whisg312.cspa
+			selectdo
+				if tpisg012.levl => 3	then
+					if tpisg012.avai < whisg312.amnt	then
+						error.message = "Sanction Available is less than Receipt Amount"
+						flag1 = 1
+						brp.ready(brp_id)
+					endif
+				else
+					error.message = "Element should be of Level 4 or above"
+					flag1 = 1
+					brp.ready(brp_id)
+				endif
+			selectempty
+				error.message = "Line's Element not present in Header's Project"
+				flag1 = 1
+				brp.ready(brp_id)
+			endselect
+		else
+			found.same.proj = 1
+		endif
+	endselect
+	brp.close(brp_id)
+	if flag1 = 1	then
+		return(false)
+	endif
+	return(true)
+
+}										
+
+function insert.tpisg014()
+{
+	domain	tcpono	max.seqn.line,max.seqn.header,ret,temp.var,
+			max_seqn_line, max_seqn_header			|#ISGEC01170.n
+	temp.var = 0
+	
+	select	tdisg832.*, whisg312.cprj, whisg312.cspa			
+	from	tdisg832, whisg312						
+	where	tdisg832._index1 = {:tdisg831.edrn}
+	and	whisg312._index1 = {tdisg832.rcno, tdisg832.rcln}		
+	selectdo
+| 		temp.var = temp.var + 1				|#ISGEC01170.o
+		max.seqn.line = 0				|#ISGEC01170.n
+		max.seqn.header = 0				|#ISGEC01170.n
+		max.seqn.line = get.max.seqn(whisg312.cprj, whisg312.cspa)	
+| 		max.seqn.line = max.seqn.line + temp.var	|#ISGEC01170.o
+		max.seqn.line = max.seqn.line + 1		|#ISGEC01170.n
+		max.seqn.header = get.max.seqn(tdisg831.cprj, whisg312.cspa)	
+| 		max.seqn.header = max.seqn.header + temp.var	|#ISGEC01170.o
+		max.seqn.header = max.seqn.header + 1		|#ISGEC01170.n
+		
+		select	whisg312.amnt
+		from	whisg312
+		where	whisg312._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+		selectdo
+		endselect
+		
+		select	tpisg014.*
+		from	tpisg014
+		where	tpisg014._index1 = {:whisg312.cprj,:whisg312.cspa,:max.seqn.line}	
+		selectdo
+		selectempty
+			dal.new.object("tpisg014")
+			dal.set.field("tpisg014.cprj",whisg312.cprj)		
+			dal.set.field("tpisg014.cspa",whisg312.cspa)		
+			dal.set.field("tpisg014.seqn",max.seqn.line)
+			dal.set.field("tpisg014.amnt",-1*whisg312.amnt)
+			dal.set.field("tpisg014.bill",tcyesno.yes)
+			dal.set.field("tpisg014.edrn",tdisg832.edrn)
+			dal.set.field("tpisg014.rcno",tdisg832.rcno)
+			dal.set.field("tpisg014.rcln",tdisg832.rcln)	
+			ret = dal.save.object("tpisg014")
+		endselect
+		
+		select	tpisg014.*
+		from	tpisg014
+		where	tpisg014._index1 = {:tdisg831.cprj,:whisg312.cspa,:max.seqn.header}	
+		selectdo
+		selectempty
+			dal.new.object("tpisg014")
+			dal.set.field("tpisg014.cprj",tdisg831.cprj)				
+			dal.set.field("tpisg014.cspa",whisg312.cspa)				
+			dal.set.field("tpisg014.seqn",max.seqn.header)
+			dal.set.field("tpisg014.amnt",whisg312.amnt)
+			dal.set.field("tpisg014.bill",tcyesno.yes)
+			dal.set.field("tpisg014.edrn",tdisg832.edrn)
+			dal.set.field("tpisg014.rcno",tdisg832.rcno)
+			dal.set.field("tpisg014.rcln",tdisg832.rcln)	
+			ret = dal.save.object("tpisg014")
+		endselect
+		
+		|****************** Line ************************			 
+		
+		select	tdisg873.rcno,tdisg873.rcln,tdisg873.issu,				|ISGEC01169.sn.01.03
+			tdisg873.edrn
+		from	tdisg873
+		where	tdisg873._index1 = {:tdisg832.edrn,:tdisg832.rcno,:tdisg832.rcln}
+		and	tdisg873.issu <> 0 
+		selectdo
+			sanction_amnt = 0
+			select	whisg312.qrec,whisg312.cprj,whisg312.cspa,whisg312.amnt
+			from	whisg312
+			where	whisg312._index1 = {:tdisg873.rcno,:tdisg873.rcln}
+			selectdo
+				sanction_amnt = ((tdisg873.issu*whisg312.amnt)/whisg312.qrec)
+			endselect
+			max_seqn_line = 0					|#ISGEC01170.n
+			max_seqn_line = get.max.seqn(whisg312.cprj, whisg312.cspa)		|#ISGEC01170.sn
+			max_seqn_line = max_seqn_line + 1					|#ISGEC01170.en
+	| 			max.seqn.line = max.seqn.line + 1 					|#ISGEC01170.o
+			select	tpisg014.*
+			from	tpisg014
+			where 	tpisg014._index1 = {:whisg312.cprj,:whisg312.cspa,:max_seqn_line}
+			selectdo
+			selectempty
+				dal.new.object("tpisg014")
+				dal.set.field("tpisg014.cprj",whisg312.cprj)				
+				dal.set.field("tpisg014.cspa",whisg312.cspa)				
+				dal.set.field("tpisg014.seqn",max_seqn_line)
+				dal.set.field("tpisg014.amnt",-1*sanction_amnt)
+				dal.set.field("tpisg014.bill",tcyesno.yes)
+				dal.set.field("tpisg014.edrn",tdisg873.edrn)
+				dal.set.field("tpisg014.rcno",tdisg873.rcno)
+				dal.set.field("tpisg014.rcln",tdisg873.rcln)	
+				ret = dal.save.object("tpisg014")
+			endselect
+		endselect						
+	endselect
+	
+	
+	|****************** Header ********************
+	
+	select	tdisg873.rcno,tdisg873.rcln,tdisg873.issu,
+		tdisg873.edrn
+	from	tdisg873
+	where	tdisg873._index1 = {:tdisg831.edrn}
+	and	tdisg873.issu <> 0 
+	selectdo
+		sanction_amnt = 0
+		select	whisg312.qrec,whisg312.cprj,whisg312.cspa,whisg312.amnt
+		from	whisg312
+		where	whisg312._index1 = {:tdisg873.rcno,:tdisg873.rcln}
+		selectdo
+			sanction_amnt = tdisg873.issu*whisg312.amnt/whisg312.qrec
+		endselect
+		max_seqn_header = 0					|#ISGEC01170.n
+		max_seqn_header = get.max.seqn(tdisg831.cprj, whisg312.cspa)	|#ISGEC01170.sn
+		max_seqn_header = max_seqn_header + 1				|#ISGEC01170.en
+| 			max.seqn.header = max.seqn.header + 1				|#ISGEC01170.o
+		select	tpisg014.*
+		from	tpisg014
+		where 	tpisg014._index1 = {:tdisg831.cprj,:whisg312.cspa,:max_seqn_header}
+		selectdo
+		selectempty
+			dal.new.object("tpisg014")
+			dal.set.field("tpisg014.cprj",tdisg831.cprj)				
+			dal.set.field("tpisg014.cspa",whisg312.cspa)				
+			dal.set.field("tpisg014.seqn",max_seqn_header)
+			dal.set.field("tpisg014.amnt",sanction_amnt)
+			dal.set.field("tpisg014.bill",tcyesno.yes)
+			dal.set.field("tpisg014.edrn",tdisg873.edrn)
+			dal.set.field("tpisg014.rcno",tdisg873.rcno)
+			dal.set.field("tpisg014.rcln",tdisg873.rcln)	
+			ret = dal.save.object("tpisg014")
+		endselect
+	endselect									|ISGEC01169.en.01.03
+}
+
+function long get.max.seqn(	domain tccprj i.cprj,
+				domain tccspa i.cspa)
+{
+	long max.seqn1
+	
+	select	max(tpisg014.seqn):max.seqn1
+	from	tpisg014
+	where	tpisg014._index1 = {:i.cprj,:i.cspa}
+	selectdo
+	selectempty
+		max.seqn1 = 0						|#ISGEC01170.n
+	endselect
+	return(max.seqn1)
+}
+
+function approve.tpisg014()
+{
+	select	tdisg832.*, whisg312.cspa, whisg312.cprj		
+	from	tdisg832, whisg312 					
+	where	tdisg832._index1 = {:tdisg831.edrn}
+	and	whisg312._index1 = {tdisg832.rcno, tdisg832.rcln}	
+	selectdo
+		select	tpisg014.*
+		from	tpisg014 for update
+		where	tpisg014._index1 = {:whisg312.cprj,:whisg312.cspa}	
+		and	tpisg014.rcno = :tdisg832.rcno
+		and	tpisg014.rcln = :tdisg832.rcln
+		selectdo
+			dal.start.business.method("tpisg014","process",ret)
+			select 	tpisg011.vers
+			from	tpisg011
+			where	tpisg011._index1 = {:tpisg014.cprj}
+			as set with 1 rows
+			selectdo
+			endselect
+			
+			tpisgdll0012.SanctionControlLine(tpisg014.cprj,tpisg011.vers,tpisg014.cspa)
+			if ret <> 0 then
+				show.dal.messages(MSG.ALL)
+			else
+				commit.transaction()
+			endif
+		endselect
+		
+		select	tpisg014.*
+		from	tpisg014 for update
+		where	tpisg014._index1 = {:tdisg831.cprj,:whisg312.cspa}		
+		and	tpisg014.rcno = :tdisg832.rcno
+		and	tpisg014.rcln = :tdisg832.rcln
+		selectdo
+			dal.start.business.method("tpisg014","process",ret)
+			select 	tpisg011.vers
+			from	tpisg011
+			where	tpisg011._index1 = {:tpisg014.cprj}
+			as set with 1 rows
+			selectdo
+			endselect
+			
+			tpisgdll0012.SanctionControlLine(tpisg014.cprj,tpisg011.vers,tpisg014.cspa)
+			if ret <> 0 then
+				show.dal.messages(MSG.ALL)
+			else
+				commit.transaction()
+			endif
+		endselect
+		
+		|**********************************************************************************************
+		select	tdisg873.rcno,tdisg873.rcln,tdisg873.issu,				|#ISGEC01170.sn
+			tdisg873.edrn, whisg312.cspa, whisg312.cprj
+		from	tdisg873, whisg312
+		where	tdisg873._index1 = {:tdisg832.edrn,:tdisg832.rcno,:tdisg832.rcln}
+		and	whisg312._index1 = {tdisg873.rcno, tdisg873.rcln}	 
+		selectdo
+			select	tpisg014.*
+			from	tpisg014 for update
+			where	tpisg014._index1 = {:whisg312.cprj,:whisg312.cspa}	 
+			and	tpisg014.rcno = :tdisg873.rcno
+			and	tpisg014.rcln = :tdisg873.rcln
+			selectdo
+				if tpisg014.aprr = tcyesno.no then
+					dal.start.business.method("tpisg014","process",ret)
+				endif
+				select 	tpisg011.vers
+				from	tpisg011
+				where	tpisg011._index1 = {:tpisg014.cprj}
+				as set with 1 rows
+				selectdo
+				endselect
+				
+				tpisgdll0012.SanctionControlLine(tpisg014.cprj,tpisg011.vers,tpisg014.cspa)
+				if ret <> 0 then
+					show.dal.messages(MSG.ALL)
+				else
+					commit.transaction()
+				endif
+			endselect
+			
+			select	tpisg014.*
+			from	tpisg014 for update
+			where	tpisg014._index1 = {:tdisg831.cprj,:whisg312.cspa}		 
+			and	tpisg014.rcno = :tdisg873.rcno
+			and	tpisg014.rcln = :tdisg873.rcln
+			selectdo
+				if tpisg014.aprr = tcyesno.no then
+					dal.start.business.method("tpisg014","process",ret)
+				endif
+				select 	tpisg011.vers
+				from	tpisg011
+				where	tpisg011._index1 = {:tpisg014.cprj}
+				as set with 1 rows
+				selectdo
+				endselect
+				
+				tpisgdll0012.SanctionControlLine(tpisg014.cprj,tpisg011.vers,tpisg014.cspa)
+				if ret <> 0 then
+					show.dal.messages(MSG.ALL)
+				else
+					commit.transaction()
+				endif
+			endselect
+		endselect									|#ISGEC01170.en
+	endselect
+
+}
+											|ISGEC01169.en
+									
 

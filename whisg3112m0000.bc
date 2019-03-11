@@ -8,7 +8,12 @@
 |******************************************************************************
 |* ISGEC015079, IT0417, Vishal Anand, Dt. 07-01-2016, VRC B61U a7 live
 |* Flag required for handling Free Issue to Vendor and FICH Billing Advises for Export Projects 
-                                                                                
+|*
+|* IDENT: ISGEC018001, Mudit Sharma, 2018-03-20, VRC B61U a7 live
+|* Order to Stock Modifications
+|* 
+|* ID: ISGEC01169,Bharti Garg, 01-03-2019
+|* Added a new logic. 
 |****************************** declaration section ***************************
 declaration:
 
@@ -20,13 +25,39 @@ declaration:
 
 extern	domain	tcorno		import.edrn
 extern	domain	tcorno		i.inrq
+extern	domain	tccprj		cprj1
 long ret_val
 extern	domain	tcqsl1		receipt.qnty
+	domain	tcpono		type.flag
+	domain	tcmcs.str13 	session.code
 #include <bic_dam>
 |****************************** program section ********************************
 before.program:
-	import("tdisg832.edrn",import.edrn)
-	query.extension = "whisg312.inrq = :i.inrq"
+	import("tdisg832.edrn",import.edrn)			
+									|ISGEC018001.sn
+	import("prog.name$",session.code)
+	if session.code = "tdisg8132m000" then
+		import("flag99",type.flag)
+		import("tdisg831.cprj",cprj1)
+		if type.flag = 1	then
+| 			query.extension = "whisg312.inrq = :i.inrq and whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr <> tcyesno.yes)"		|bharti.test.11-03
+			query.extension = "whisg312.inrq = :i.inrq and ((whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr <> tcyesno.yes)) or (whisg312.cwar = " " )) and whisg312.cprj in (select tppdm600.cprj from tppdm600 where tppdm600.cprj = :cprj1)"		
+												|bharti.test.11-03
+		else if type.flag = 2	then
+| 			query.extension = "whisg312.inrq = :i.inrq and whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr = tcyesno.yes)"
+| 			query.extension = "whisg312.inrq = :i.inrq and whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr = tcyesno.yes) and whisg312.cprj in (select tppdm600.cprj from tppdm600 where tppdm600.cprj = :cprj1)"
+			query.extension = "whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr = tcyesno.yes) and whisg312.cprj in (select tppdm600.cprj from tppdm600 where tppdm600.cprj = :cprj1)"
+		else if type.flag = 3	then
+			query.extension = "whisg312.inrq = :i.inrq and whisg312.cwar in (select tcmcs003.cwar from tcmcs003 where tcmcs003.cdf_phwr = tcyesno.yes) and whisg312.cprj in (select tppdm600.cprj from tppdm600 where tppdm600.cprj <> :cprj1)"
+		endif
+		endif
+		endif						
+	else								|ISGEC018001.en
+		import("tdisg832.edrn",import.edrn)			|ISGEC018001.o
+		query.extension = "whisg312.inrq = :i.inrq"		|ISGEC018001.o
+	endif
+	
+	
 |****************************** choice section **********************************
 
 choice.cont.tag.receipt:
@@ -37,12 +68,22 @@ on.choice:
 	else
 		commit.transaction()
 	endif
-
+	
 after.choice:
 	execute(end.program)
+	
 choice.end.program:
 before.choice:
 	refresh.parent(-1)
+	check.link.receipt()			|ISGEC01169.n
+	
+choice.abort.program:				|ISGEC01169.sn
+before.choice:
+	check.link.receipt()			|ISGEC01169.en
+	
+
+	
+
 	
 |************** FIELD SECTION ******************	
 field.whisg312.qrec:
@@ -125,4 +166,35 @@ function billable_yes_no()
 
 }
 								|#ISGEC015079.en
+								
+								
+function check.link.receipt()					|#ISGEC01169.sn
+{
+	select	whisg312.*
+	from	whisg312
+	where	whisg312._index1 = {:whisg312.rcno,:whisg312.rcln}
+	and	whisg312.sele = tcyesno.yes
+	and	whisg312.inrq = ""
+	as set with 1 rows
+	selectdo
+		if (ask.enum("tdtdisg000002", tcyesno.yes) = tcyesno.no) then
+			select	whisg312.*
+			from	whisg312	for update
+			where	whisg312._index1 = {:whisg312.rcno,:whisg312.rcln}
+			and	whisg312.sele = tcyesno.yes
+			and	whisg312.inrq = ""
+			selectdo
+				whisg312.sele = tcyesno.no
+				db.update(twhisg312,db.retry,e)
+				if e = 0 then
+					commit.transaction()
+				else
+					abort.transaction()
+				endif
+			endselect
+		else
+			choice.again()
+		endif
+	endselect
+}								|#ISGEC01169.en
 

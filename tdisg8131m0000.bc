@@ -39,6 +39,12 @@
 |* ID : ISGEC017006, IT0386, Saurabh Dubey, 18 May 2017, VRC B61U a7 isg
 |* GST Related Modifications
 |* Isgec Onsite Deployment
+|*
+|* IDENT: ISGEC018001, Mudit Sharma, 2018-03-21
+|* Order to Stock Modifications
+|*
+|* ID: ISGEC01170,Prasanna Bhuyan, 07-03-2019, VRC B61U a7 isg
+|* Moved Logic from line to header(In freeze command)
 |****************************** declaration section ***************************
 declaration:
 
@@ -76,6 +82,9 @@ declaration:
 	table	ttdisg867			|#ISGECDV001082.n
 	table	ttdisg873
 	table	ttpisg122	|#ISGEC017006.n
+	table	ttpisg012				|ISGEC018001.n
+	table	ttdisg027				|#ISGEC01170.sn
+	table	ttdisg030				|#ISGEC01170.en
 	
 	extern	domain	tcdsca		var.temp		|#ISGECDV001062.n
 	extern	domain	tcdesc		v.comp
@@ -120,6 +129,12 @@ declaration:
 	string		error(100),error1(100)					
 	boolean		record.found
 	
+	long sql, temp1			|ISGEC018001.n						|#ISGEC01170.sn
+	extern	domain	tcorno	new.orno,new.var.orno,stack.orno(99999),var.ornoj		|test.n	
+	extern	domain	tcpono	new.pono,new.var.pono,var.ponoj		|test.n	
+	extern  domain  tcsern	    l.count,var.count,l.count1
+	long 		            stack.pono(99999),ret.val,sql.by.level(99999),sql.x	|#ISGEC01170.en
+		
 	extern	domain	tcamnt		var.lcmt		|#ISGECDV001089.n
 |************* Global Variable ***********
 	extern	domain	tcyesno		i.comm								|#ISG001041.en
@@ -149,6 +164,7 @@ declaration:
 		domain	tcccty		gstn.s.ccty
 		domain	tcmcs.cste	gstn.b.cste, gstn.c.cste, gstn.s.cste
 							|#ISGEC017006.en
+	extern domain	tcmcs.str80	error.message	|ISGEC018001.n
 #include <bic_dam>	
 #pragma used dll ottstpapihand
 #include"itcisg00001"
@@ -193,6 +209,10 @@ on.choice:
 
 choice.freeze:
 before.choice:
+	if not check.element()		then					|ISGEC018001.sn
+| 		message("Element %s not present in Project %s",tpisg012.elem,tdisg831.cprj)
+		choice.again()
+	endif									|ISGEC018001.en
 	record.found = false
 	check.freeze.command()			|#ISGECDV001082.n
 	
@@ -262,6 +282,14 @@ on.choice:
 	endif
 	
 	tdisgdll0831.update.linked.ir.details(tdisg831.edrn,1)
+	
+	select	tdisg832.*					|#ISGEC01170.sn
+	from	tdisg832
+	where	tdisg832._index1 = {:tdisg831.edrn}
+	selectdo
+		insert.in.tdisg873()				
+		update.quantity.in.tdisg873()			
+	endselect						|#ISGEC01170.en
 	
 	execute(find.data)
 
@@ -1261,3 +1289,515 @@ function display.all.form.fields()
 	display("gstn.s.cste.desc")
 }
 			|#ISGEC017006.en
+function boolean check.element()						|ISGEC018001.sn
+{	
+	long brp_id,flag1
+	flag1 = 0
+	
+	select	tdisg832.rcno,tdisg832.rcln
+	from	tdisg832
+	where	tdisg832._index1 = {:tdisg831.edrn}
+	selectdo
+		brp_id = brp.open("rtdisg813100099","D",0)
+		select	whisg312.cprj,whisg312.cspa,whisg312.amnt
+		from	whisg312
+		where	whisg312._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+		selectdo
+		endselect
+		if whisg312.cprj <> tdisg831.cprj	then
+			select	tpisg012.elem,tpisg012.avai,tpisg012.levl
+			from	tpisg012
+			where	tpisg012._index1 = {:tdisg831.cprj}
+			and	tpisg012.elem = :whisg312.cspa			|#ISGEC018001.n
+| 			and	tpisg012.levl > 3				|#Level Should be greater than 3
+			selectdo
+				if tpisg012.levl => 3	then
+					if tpisg012.avai < whisg312.amnt	then
+						error.message = "Sanction Available is less than Receipt Amount"
+| 						return(false)
+						flag1 = 1
+						brp.ready(brp_id)
+					endif
+				else
+					error.message = "Element should be of Level 4 or above"
+					flag1 = 1
+					brp.ready(brp_id)
+				endif
+			selectempty
+				error.message = "Line's Element not present in Header's Project"
+				flag1 = 1
+				brp.ready(brp_id)
+| 				return(false)
+			endselect
+		endif
+	endselect
+	brp.close(brp_id)
+	if flag1 = 1	then
+		return(false)
+	endif
+	return(true)
+
+}										|ISGEC018001.en
+
+function insert.in.tdisg873()								|#ISGEC01170.sn
+{
+	domain tcqiv1	receipt.qty, i.issu
+	domain	tdisg.stat	bind.stat
+	
+	db.retry.point()
+	select	tdisg867.*
+	from	tdisg867
+	where	tdisg867._index2 = {:tdisg832.orno, :tdisg832.pono}
+	selectdo		|#GSTLIVE01004.sn
+		select	a_tdisg831.stat:bind.stat
+		from	tdisg831 a_tdisg831
+		where	a_tdisg831._index1 = {:tdisg867.edrn}
+		selectdo
+		selectempty
+			bind.stat = empty
+		endselect
+				
+		if bind.stat = tdisg.stat.process then
+			message("Billing Advice %s is Already Processed. Can't be Linked....", tdisg867.edrn)
+			continue
+		endif	
+				|#GSTLIVE01004.en
+		select	isg832.qnty:receipt.qty
+		from	tdisg832 isg832
+		where	isg832._index1 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+		selectdo
+		endselect
+		
+		select	sum(tdisg873.issu):i.issu
+		from	tdisg873 
+		where	tdisg873._index2 = {:tdisg867.edrn, :tdisg867.rcno, :tdisg867.rcln}
+		selectdo
+		selectempty
+			i.issu	=	0
+		endselect
+		
+		select	tdisg873.*
+		from	tdisg873
+		where	tdisg873._index1 = {
+					:tdisg832.edrn, 
+					:tdisg832.rcno, 
+					:tdisg832.rcln,
+					:tdisg867.edrn, 
+					:tdisg867.rcno, 
+					:tdisg867.rcln
+					}
+		selectdo
+		selectempty
+			tdisg873.sdrn = tdisg832.edrn
+			tdisg873.scno = tdisg832.rcno
+			tdisg873.scln = tdisg832.rcln
+			tdisg873.edrn = tdisg867.edrn
+			tdisg873.rcno = tdisg867.rcno
+			tdisg873.rcln = tdisg867.rcln
+| 			tdisg873.qnty = 0
+			tdisg873.qnty = i.issu
+			tdisg873.balc = receipt.qty	-	i.issu
+			tdisg873.issu = 0
+			tdisg873.frez = tcyesno.no
+			db.insert(ttdisg873, db.retry)
+		endselect	
+	endselect
+	temp1 = 0
+| 	insert.for.DC(tdisg832.orno, tdisg832.pono)				|ISGEC018001.sn
+	insert.for.DC.new()								|ISGEC018001.sn
+	sql  = 0
+| 	select	tdisg027.*
+| 	from	tdisg027
+| 	where	tdisg027._index1 = {:tdisg832.orno, :tdisg832.pono}
+| 	selectdo
+| 		
+| 		select whisg312.qrec:receipt.qty
+| 		from	whsig312
+| 		where	whisg312._index1 = {:tdisg027.rcno,:tdisg312.rcln}
+| 		selectdo
+| 		endselect
+| 		
+| 		select	tdisg873.*
+| 		from	tdisg873
+| 		where	tdisg873._index1 = {
+| 					:tdisg832.edrn, 
+| 					:tdisg832.rcno, 
+| 					:tdisg832.rcln,
+| 					:tdisg027.dech, 
+| 					:tdisg027.rcno, 
+| 					:tdisg027.recl
+| 					}
+| 		selectdo
+| 		selectempty
+| 			tdisg873.sdrn = tdisg832.edrn
+| 			tdisg873.scno = tdisg832.rcno
+| 			tdisg873.scln = tdisg832.rcln
+| 			tdisg873.edrn = tdisg027.dech
+| 			tdisg873.rcno = tdisg027.rcno
+| 			tdisg873.rcln = tdisg027.recl
+			|tdisg873.qnty = 0
+| 			tdisg873.qnty = i.issu
+| 			tdisg873.balc = receipt.qty	-	i.issu
+| 			tdisg873.issu = 0
+| 			tdisg873.frez = tcyesno.no
+| 			db.insert(ttdisg873, db.retry)
+| 		endselect	
+| 	endselect								|ISGEC018001.en
+
+	
+	commit.transaction()
+}
+									|# ISGEC004024.en
+									|ISGEC018001.sn
+| function insert.for.DC(domain tcorno	var.orno, domain tcpono var.pono)
+function extern long insert.for.DC()
+{
+	static domain tcorno		var.orno
+	static domain tcpono 		var.pono
+	static domain tcqiv1		receipt.qty, i.issu
+	static domain	tdisg.stat	bind.stat
+	static domain	tcpono 		ret|,temp1
+	
+	if temp1 > 0	then
+		var.orno = tdisg027.srpo
+		var.pono = tdisg027.srpl
+	else
+		var.orno = tdisg832.orno
+		var.pono = tdisg832.pono
+		temp1 = temp1 + 1
+	endif
+	
+| 	if (not sql)	then
+| 		sql = sql.parse(
+| 				"select	tdisg027.* " &
+| 				"from	tdisg027 " &
+| 				"where	tdisg027._index2 = {:1, :2}")
+| 	endif
+| 	sql.where.bind(sql, 1, var.orno)
+| 	sql.where.bind(sql, 2, var.pono)
+| 	ret = sql.exec(sql)
+| 	ret = sql.fetch(sql)
+| 	if not ret	then
+| 		while true
+| 		while (sql.exec(sql) = 0)
+		select	tdisg027.* 
+		from	tdisg027
+		where	tdisg027._index2 = {:var.orno,:var.pono}
+		selectdo
+			select whisg312.qrec:receipt.qty
+			from	whisg312
+			where	whisg312._index1 = {:tdisg027.rcno,:tdisg027.recl}
+			selectdo
+			endselect
+			
+			select	tdisg873.*
+			from	tdisg873
+			where	tdisg873._index1 = {
+						:tdisg832.edrn, 
+						:tdisg832.rcno, 
+						:tdisg832.rcln,
+						:tdisg027.dech, 
+						:tdisg027.rcno, 
+						:tdisg027.recl
+						}
+			selectdo
+			selectempty
+				tdisg873.sdrn = tdisg832.edrn
+				tdisg873.scno = tdisg832.rcno
+				tdisg873.scln = tdisg832.rcln
+				tdisg873.edrn = tdisg027.dech
+				tdisg873.rcno = tdisg027.rcno
+				tdisg873.rcln = tdisg027.recl
+		| 		tdisg873.qnty = 0
+| 				tdisg873.qnty = i.issu
+				tdisg873.qnty = receipt.qty
+				tdisg873.balc = receipt.qty	-	i.issu
+				tdisg873.issu = 0
+				tdisg873.frez = tcyesno.no
+				db.insert(ttdisg873, db.skip.dupl,e)
+				if e = 0 then
+					commit.transaction()
+				endif	
+			endselect
+	| 		var.orno = tdisg027.srpo
+	| 		var.pono = tdisg027.srpl
+	| 		insert.for.DC(tdisg027.srpo,tdisg027.srpl)
+	 		ret = insert.for.DC()  |Priya.n
+		selectempty
+| 			return
+		endselect
+		
+| 		insert.for.DC()	|Priya.o
+| 		endwhile
+| 	endif
+| 	sql.close(sql)
+| 	sql  = 0
+	return(0)
+}
+
+function insert.for.DC.new()				|Priya.sn
+{
+	static domain tcorno		var.orno
+	static domain tcpono 		var.pono
+	static domain tcqiv1		receipt.qty, i.issu
+	static domain	tdisg.stat	bind.stat
+	static domain	tcpono 		ret|,temp1
+	
+| 	if temp1 > 0	then
+| 		var.orno = tdisg027.srpo
+| 		var.pono = tdisg027.srpl
+| 	else
+		var.orno = tdisg832.orno
+		var.pono = tdisg832.pono
+		temp1 = temp1 + 1
+| 	endif
+| 	
+| 	if (not sql)	then
+| 		sql = sql.parse(
+| 				"select	tdisg027.* " &
+| 				"from	tdisg027 " &
+| 				"where	tdisg027._index2 = {:1, :2}")
+| 	endif
+| 	sql.where.bind(sql, 1, var.orno)
+| 	sql.where.bind(sql, 2, var.pono)
+| 	ret = sql.exec(sql)
+| 	ret = sql.fetch(sql)
+| 	if not ret	then
+| 		while true
+| 		while (sql.exec(sql) = 0)
+		select	tdisg027.*
+		from	tdisg027
+		where	tdisg027._index2 = {:var.orno,:var.pono}
+		selectdo
+			select whisg312.qrec:receipt.qty
+			from	whisg312
+			where	whisg312._index1 = {:tdisg027.rcno,:tdisg027.recl}
+			selectdo
+			endselect
+| 			
+			select	tdisg030.*
+			from	tdisg030
+			where	tdisg030._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+			and	tdisg030.srcn = :tdisg027.rcno
+			and	tdisg030.srcl = :tdisg027.recl
+			selectdo
+			selectempty
+				tdisg030.iqty = 0				|#ISGEC01170.n
+			endselect	
+			
+			select	tdisg873.*
+			from	tdisg873
+			where	tdisg873._index1 = {
+						:tdisg832.edrn, 
+						:tdisg832.rcno, 
+						:tdisg832.rcln,
+						:tdisg027.dech, 
+						:tdisg027.rcno, 
+						:tdisg027.recl
+						}
+			selectdo
+			selectempty
+				tdisg873.sdrn = tdisg832.edrn
+				tdisg873.scno = tdisg832.rcno
+				tdisg873.scln = tdisg832.rcln
+				tdisg873.edrn = tdisg027.dech
+				tdisg873.rcno = tdisg027.rcno
+				tdisg873.rcln = tdisg027.recl
+		| 		tdisg873.qnty = 0
+| 				tdisg873.qnty = i.issu
+				tdisg873.qnty = receipt.qty
+				tdisg873.balc = receipt.qty	-	i.issu
+| 				tdisg873.issu = 0
+				tdisg873.issu = tdisg030.iqty
+				tdisg873.frez = tcyesno.no
+				db.insert(ttdisg873, db.skip.dupl,e)
+				if e = 0 then
+					commit.transaction()
+				endif	
+				
+			endselect
+	| 		var.orno = tdisg027.srpo
+	| 		var.pono = tdisg027.srpl
+	| 		insert.for.DC(tdisg027.srpo,tdisg027.srpl)
+| 			temp1 = 0 	
+		
+| 			ret = insert.for.DC()  |Priya.n  |test.o
+			new.orno = tdisg027.srpo  |test.sn
+			new.pono = tdisg027.srpl
+			var.count = 1
+			var.ornoj = ""
+			l.count1 = 1
+			stack.orno(1,1) = new.orno
+			stack.pono(1) = new.pono
+			insert.for.DC.bom()	  |test.en
+		selectempty
+		endselect
+		
+| 		insert.for.DC()	|Priya.o
+| 		endwhile
+| 	endif
+| 	sql.close(sql)
+| 	sql  = 0
+}								|Priya.en
+
+function insert.for.DC.bom()
+{
+	static domain tcqiv1	receipt.qty, i.issu
+	new.var.orno = ""
+	new.var.orno = stack.orno(1,l.count1)
+	new.var.pono = stack.pono(l.count1)
+
+	l.count1 = l.count1 + 1
+        sql.x=sql.parse(" select tdisg027.* 
+^			 from 	tdisg027
+^			 where	tdisg027._index2 = {:1,:2}")
+	
+        sql.where.bind(sql.x,1,new.var.orno)
+        sql.where.bind(sql.x,2,new.var.pono)
+	sql.by.level(l.count1) = sql.x
+
+	sql.exec(sql.x)     
+
+        while	(true)
+                
+                ret.val = (sql.fetch(sql.x))
+		if ret.val = eendfile then
+			break
+		endif
+		if var.ornoj = tdisg027.srpo and var.ponoj = tdisg027.srpl then
+			break
+		endif
+			
+		stack.orno(1,l.count1) = tdisg027.srpo
+		stack.pono(l.count1) = tdisg027.srpl
+		var.ornoj=tdisg027.srpo
+		var.ponoj=tdisg027.srpl
+		
+		select whisg312.qrec:receipt.qty
+		from	whisg312
+		where	whisg312._index1 = {:tdisg027.rcno,:tdisg027.recl}
+		selectdo
+		endselect
+		
+		select	tdisg873.*
+		from	tdisg873
+		where	tdisg873._index1 = {
+					:tdisg832.edrn, 
+					:tdisg832.rcno, 
+					:tdisg832.rcln,
+					:tdisg027.dech, 
+					:tdisg027.rcno, 
+					:tdisg027.recl
+					}
+		selectdo
+		selectempty
+			tdisg873.sdrn = tdisg832.edrn
+			tdisg873.scno = tdisg832.rcno
+			tdisg873.scln = tdisg832.rcln
+			tdisg873.edrn = tdisg027.dech
+			tdisg873.rcno = tdisg027.rcno
+			tdisg873.rcln = tdisg027.recl
+	| 		tdisg873.qnty = 0
+| 			tdisg873.qnty = i.issu
+			tdisg873.qnty = receipt.qty
+			tdisg873.balc = receipt.qty	-	i.issu
+			tdisg873.issu = 0
+			tdisg873.frez = tcyesno.no
+			db.insert(ttdisg873, db.skip.dupl,e)
+			if e = 0 then
+				commit.transaction()
+			endif	
+		endselect
+| 		l.count1 = l.count1 - 1
+
+	
+		
+
+| 		l.count1 = l.count1 + 1
+| 		var.count =  var.count + 1	
+		insert.for.DC.bom()	
+
+
+			
+	endwhile
+	sql.close(sql.x)
+	
+	l.count1 = l.count1 - 1
+	sql.x = sql.by.level(l.count1)
+	
+
+
+}
+
+function update.quantity.in.tdisg873()
+{
+	static domain tcorno		var.orno
+	static domain tcpono 		var.pono
+	static domain tcqiv1		receipt.qty, i.issu
+	static domain	tdisg.stat	bind.stat
+	static domain	tcpono 		ret|,temp1
+	
+	if temp1 > 0	then
+		var.orno = tdisg027.srpo
+		var.pono = tdisg027.srpl
+	else
+		var.orno = tdisg832.orno
+		var.pono = tdisg832.pono
+		temp1 = temp1 + 1
+	endif
+
+| 	select	tdisg030.*
+| 	from	tdisg030
+| 	where	tdisg030._index2 = {:tdisg027.rcno, :tdisg027.recl, tdisg027.foco, 
+| 				:tdisg027.focp, :tdisg832.rcno, :tdisg832.rcln}
+| 	selectdo
+| 		select	tdisg873.qnty, tdisg873.issu, tdisg873.frez, tdisg873.balc
+| 		from	tdisg873 for update
+| 		where	tdisg873._index1 = {:tdisg832.edrn, :tdisg832.rcno, :tdisg832.rcln}
+| 		and	tdisg873.rcno = :tdisg030.srcn
+| 		and	tdisg873.rcln = :tdisg030.srcl
+| 		selectdo
+| 			tdisg873.qnty = tdisg030.aqty
+| 			tdisg873.issu = tdisg030.iqty
+| 			tdisg873.balc = tdisg030.rqty - tdisg030.aqty
+| 			tdisg873.frez = tcyesno.yes
+| 			db.update(ttdisg873, db.retry)
+| 			commit.transaction()
+| 		endselect
+| 	endselect
+	
+	select	tdisg027.* 
+	from	tdisg027
+	where	tdisg027._index2 = {:var.orno,:var.pono}
+	selectdo
+		select whisg312.qrec:receipt.qty
+		from	whisg312
+		where	whisg312._index1 = {:tdisg027.rcno,:tdisg027.recl}
+		selectdo
+		endselect
+			
+		select	tdisg873.*
+		from	tdisg873 for update
+		where	tdisg873._index1 = {
+					:tdisg832.edrn, 
+					:tdisg832.rcno, 
+					:tdisg832.rcln,
+					:tdisg027.dech, 
+					:tdisg027.rcno, 
+					:tdisg027.recl
+					}
+		selectdo
+			tdisg873.qnty = tdisg027.aqty
+			tdisg873.balc = receipt.qty
+			tdisg873.frez = tcyesno.yes
+			db.update(ttdisg873, db.retry)
+			commit.transaction()
+		endselect
+	selectempty
+		return
+	endselect
+		
+	update.quantity.in.tdisg873()
+	
+}											|#ISGEC01170.en
+
