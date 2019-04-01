@@ -671,7 +671,7 @@ function extern long ue.after.after.save.object(long mode)
 		if	tdpur400.hdst = tdpur.hdst.approved	then
 			update.progress.update.transaction()		|#Anadi
 			update_pmdl()
-			update_strt_date_in_proj_act_mastr()
+			|update_strt_date_in_proj_act_mastr()		|commented by Veena on 01-04-2019
 		endif
 		
 		if	tdpur400.hdst = tdpur.hdst.cancelled	then			|#ISGEC01100.sn
