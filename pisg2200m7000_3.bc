@@ -468,6 +468,8 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 					break
 					
 				endcase
+			selectempty
+				assign.zero.perc(tpisg220.cprj, tpisg220.sub1, tpisg220.cact) |#veena.29-03-2019
 			endselect
  		else
 			on case trim$(tpisg220.bohd)
@@ -555,13 +557,26 @@ function update.activity.master.through.document.approval(domain tcorno		i.pcod,
 						 	   domain tcmcs.s200u		tp.iref,	
 							   domain tcmcs.str30		i.cact)
 {
-	if trim$(dm.iref) = trim$(tp.iref) then
-		tpisg220.acsd = docsapproval.least.date(tp.iref,i.cprj)
-	endif
+| 	if trim$(dm.iref) = trim$(tp.iref) then					|#Veena 19-03-2019 old logic commented by Veena
+| 		tpisg220.acsd = docsapproval.least.date(tp.iref,i.cprj)
+| 	endif
+| 	
+| 	if trim$(dm.iref) = trim$(i.cact) then
+| 		tpisg220.acsd = docsapproval.least.date(i.cact,i.cprj)
+| 	endif
+
+	|A new scenario has come after starting implementation in EPC 
+	|that for same record of tpisg220, Activity code and Item Referece both can exist in PMDL in different drawings
+	|To handle this new scenario Sachin proposed to consider the activity code first and if activity code found Item reference not to be considered 
+	|If Activity code not matched with PMDL then Item Reference to be considered
 	
-	if trim$(dm.iref) = trim$(i.cact) then
+	if trim$(dm.iref) = trim$(i.cact) then						|#Veena 29-03-2019.sn
 		tpisg220.acsd = docsapproval.least.date(i.cact,i.cprj)
-	endif
+	else 
+		if trim$(dm.iref) = trim$(tp.iref) then
+			tpisg220.acsd = docsapproval.least.date(tp.iref,i.cprj)
+		endif
+	endif										|#Veena 29-03-2019.en
 		
 	assign.perc(dm.iref,tp.iref,i.cprj,i.cact)
 }
@@ -850,7 +865,8 @@ function manufacturing.progress.update(
 	| 						endif
 							
 							if TotalPOManufacturingPerc<> 0 and i.po.perc<> 0 then		|#veena.22-01-2019
-								t.cpgv = t.cpgv + (TotalPOManufacturingPerc / i.po.perc)*100
+								|t.cpgv = t.cpgv + (TotalPOManufacturingPerc / i.po.perc)*100 |#veena.02-04-2019 commented
+								t.cpgv = t.cpgv + (TotalPOManufacturingPerc * i.po.perc)/100 |#veena.02-04-2019
 							else
 								t.cpgv = 0
 							endif
@@ -934,12 +950,28 @@ function assign.perc(domain tcmcs.s200u	dm.iref,
 {	
 	FinalPerc = 0
 	
-	if (trim$(dm.iref) = trim$(tp.iref)) then
-		calculate.perc(tp.iref,i.cprj)
-	else if (trim$(dm.iref) = trim$(i.cact)) then
+	|A new scenario has come after starting implementation in EPC 
+	|that for same record of tpisg220, Activity code and Item Referece both can exist in PMDL in different drawings
+	|To handle this new scenario Sachin proposed to consider the activity code first and if activity code found Item reference not to be considered 
+	|If Activity code not matched with PMDL then Item Reference to be considered
+	
+| 	if (trim$(dm.iref) = trim$(tp.iref)) then			|#Veena 29-03-2019  commented
+| 		calculate.perc(tp.iref,i.cprj)
+| 	else if (trim$(dm.iref) = trim$(i.cact)) then
+| 		calculate.perc(i.cact,i.cprj)
+| 		endif
+| 	endif
+	
+	if (trim$(dm.iref) = trim$(i.cact)) then			|#Veena 29-03-2019.sn
 		calculate.perc(i.cact,i.cprj)
+	else
+		if (trim$(dm.iref) = trim$(tp.iref)) then
+			calculate.perc(tp.iref,i.cprj)
 		endif
-	endif
+	endif								|#Veena 29-03-2019.en
+	
+	
+	
 	
 | 	If count%<100 and weight% < 100
 |	Then update the higher %
@@ -1295,7 +1327,7 @@ function RFQOfferReceived.perc(domain	tccprj		i.cprj,
 			select count(*):RFQNumerator 
 			from	dmisg168 
 			where	dmisg168.pwfd = :dmisg167.wfid 
-			and	dmisg168.stat in("Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received")
+			and	dmisg168.stat in("Technical offer Received","Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received")|"Technical offer Received" added by veena on 19-03-2019 after discussion with Sachin and Rajeev
 		selectdo 
 		endselect
 			
@@ -1327,7 +1359,7 @@ function RFQOfferReceived.perc(domain	tccprj		i.cprj,
 			select count(*):RFQDenominator 
 			from	dmisg168 
 			where	dmisg168.pwfd = :dmisg167.wfid 
-			and	dmisg168.stat in("Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received")
+			and	dmisg168.stat in("Technical offer Received","Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received")|"Technical offer Received" added by veena on 19-03-2019 after discussion with Sachin and Rajeev
 			selectdo
 			endselect
 			
@@ -2299,4 +2331,16 @@ function UpdateManufacturingWIPProgress(domain tcorno		i.pcod,
 			endif
 		endif
 	endif
+}
+
+function assign.zero.perc( domain tccprj i.cprj,domain tcmcs.s200u tp.iref, domain tcmcs.str30 i.cact) 	|#Veena 29-03-2019.sn
+{	
+	if trim$(tpisg220.bohd) = "CT_DOCUMENTAPPROVED" then			
+		tpisg220.cpgv = 0
+		tpisg220.acsd = 0
+		tpisg220.acfn = 0
+	endif
+										
+	db.update(ttpisg220,db.retry,e)
+	commit.transaction()											|#Veena 29-03-2019.en
 }

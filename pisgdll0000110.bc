@@ -202,7 +202,13 @@ function extern update.inspectionid.and.vehicle.placement.progress.in.220(	domai
 | 						TotalPOManufacturingPerc = tpisg207.prpo
 						|TotalPOManufacturingPerc = tot.perc
 					|endif
-					t.cpgv = t.cpgv + (TotalPOManufacturingPerc / o.cpgv)*100
+					if o.cpgv > 0 then					|#veena 02-04-2019 If condition added 
+												|to avoid fatal error when PO Progress is zero
+						t.cpgv = t.cpgv + (TotalPOManufacturingPerc / o.cpgv)*100
+					else
+						t.cpgv = 0
+					endif
+					
 				endselect
 				
 				if t.cpgv > 99.99 then
@@ -1599,6 +1605,7 @@ function extern domain tcwght	 AllPOSubItemWeight(
 	and	dmisg140.cprj = :i.cprj
 	and	dmisg140.iref = :i.iref
 	and	dmisg002.sitm = :i.sitm
+	and	dmisg002.revn = "00"
 	selectdo
 	endselect
 	
@@ -1889,7 +1896,6 @@ function extern ParentOutlookDurationCalculation(domain tccprj	cprj)
 	endfor
 }
 
-
 function extern UpdateFinishDateInProjectActivityMaster(domain tccprj i.cprj)
 {
 	domain	tcdate		get.date, chk.date
@@ -1900,7 +1906,8 @@ function extern UpdateFinishDateInProjectActivityMaster(domain tccprj i.cprj)
 	select	tpisg220.cprj,tpisg220.sub1,tpisg220.bohd,tpisg220.cact,tpisg220.acfn,tpisg220.cpgv,tpisg220.pcod
 	from	tpisg220	for update
 	where	tpisg220._index1 = {:i.cprj}
-	and 	tpisg220.bohd not in("CT_PROPOSAL","CT_ESTIMATION","CT_ERECTION","CT_NOTAPPLICABLE","CT_PROJECT","CT_MARKETING","CT_COMMISSIONING","CT_LOGISTIC")
+	and 	tpisg220.bohd not in("CT_PROPOSAL","CT_ESTIMATION","CT_ERECTION","CT_NOTAPPLICABLE","CT_PROJECT","CT_MARKETING",
+	"CT_COMMISSIONING","CT_LOGISTIC","CT_CIVIL","CT_ENGG","CT_MATL","CT_APCE")
 	and	tpisg220.manu = tcyesno.no					|#ISGEC01128.n
 | 	and	tpisg220.sub1 = "HP DOSING SYSTEM"
 | 	and	tpisg220.bohd = "CT_MANUFACTURING"
@@ -2179,6 +2186,8 @@ function extern UpdateActualStartFinishDateInParentActivities(domain tccprj	i.cp
 				selectdo
 				endselect
 				tpisg220.acfn = MaxFinishDate
+			else
+				tpisg220.acfn = 0				|#Veena 30-03-2019
 			endif
 			
 			db.update(ttpisg220, db.retry, e)
