@@ -56,7 +56,8 @@ function extern long before.open.object.set()
 	return(0)
 }
 
-function extern long before.save.object(long type)
+| function extern long before.save.object(long type)
+function extern long after.save.object(long type)
 {
 	on case type									|#ISGEC01179.sn								
 	case DAL_UPDATE :
@@ -73,8 +74,8 @@ function extern long before.save.object(long type)
 	return(0)
 }
 
-function extern long after.save.object(long type)
-{
+| function extern long after.save.object(long type)
+| {
 | 	on case type
 | 		case 	DAL_NEW :
 | 		case	DAL_UPDATE :
@@ -85,8 +86,8 @@ function extern long after.save.object(long type)
 | 				endif
 | 			break
 | 	endcase
-	return(0)
-}
+| 	return(0)
+| }
 
 function extern long before.destroy.object()
 {
