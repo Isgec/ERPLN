@@ -21,6 +21,9 @@
 |* ID: ISGEC01181, Prasanna Bhuyan, VRC B61U a7 isg, 28-03-2019
 |* Insertion in log table "tpisg254" when something is updated in session "tpisg2120m013"
 |* And Input is Disabled in session "tpisg2120m013" Whose Document No. doesn't exist 
+|*
+|* Adarsh Pal, VRC B61U a7 isg, 26-04-2019
+|* Updation of Dal for Materials New Session for RFQ-TO-PO
 |******************************************************************************
 |------------------------ Declaration Section ---------------------------------
 #include <bic_dal2>
@@ -61,10 +64,12 @@ function extern long after.save.object(long type)
 {
 	on case type									|#ISGEC01179.sn								
 	case DAL_UPDATE :
-			if sess.code1 = "tpisg2120m014" then
+| 			if sess.code1 = "tpisg2120m014" then						|#Adarsh.26.04.2019.o
+			if sess.code1 = "tpisg2120m014" or sess.code1 = "tpisg2120m015" then		|#Adarsh.26.04.2019.n
 				with.old.object.values.do(insert.old.values.in.control.tower.flag.log.file)
 			else								|#ISGEC01181.sn
-				if sess.code1 = "tpisg2120m013" then
+| 				if sess.code1 = "tpisg2120m013" then					|#Adarsh.26.04.2019.o
+				if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016"  then	|#Adarsh.26.04.2019.n
 					with.old.object.values.do(insert.old.values.in.manual.activity.progress.log.file)
 				endif
 			endif								|#ISGEC01181.en
@@ -76,6 +81,7 @@ function extern long after.save.object(long type)
 
 | function extern long after.save.object(long type)
 | {
+| 	
 | 	on case type
 | 		case 	DAL_NEW :
 | 		case	DAL_UPDATE :
@@ -174,8 +180,8 @@ function extern boolean tpisg220.cact.is.mandatory(long mode)
 | 	if	tpisg220.cpgv <> 100	then
 | 		return(false)
 | 	endif
-| 	
-| 	return(true)
+|
+|	 return(true)
 | }
 
 function extern boolean tpisg220.cact.is.valid(long mode)
@@ -242,46 +248,48 @@ function extern boolean tpisg220.pact.is.valid(long mode)
 function handle.field.dependencies()
 {
 	dal.field.depends.on("tpisg220.pcod",HOOK_UPDATE,"tpisg220.cprj")
- 	dal.field.depends.on("tpisg220.manu",HOOK_IS_READONLY,"tpisg220.frez")				|#ISGEC01128.sn
- 	dal.field.depends.on("tpisg220.rmcm",HOOK_IS_READONLY,"tpisg220.frez")		
+	dal.field.depends.on("tpisg220.manu",HOOK_IS_READONLY,"tpisg220.frez")				|#ISGEC01128.sn
+	dal.field.depends.on("tpisg220.rmcm",HOOK_IS_READONLY,"tpisg220.frez")	
+	
 	dal.field.depends.on("tpisg220.cpgv",HOOK_IS_READONLY,"tpisg220.manu")				|#ISGEC01181.sn
 	dal.field.depends.on("tpisg220.acsd",HOOK_IS_READONLY,"tpisg220.manu")				
-	dal.field.depends.on("tpisg220.acfn",HOOK_IS_READONLY,"tpisg220.manu")				 
+	dal.field.depends.on("tpisg220.acfn",HOOK_IS_READONLY,"tpisg220.manu")				
 }
-
-| function extern boolean tpisg220.cpgv.is.readonly()	| commented by Veena on 15-04-2019 for GITHUB#66
+													|#Adarsh.26.04.2019.so	
+| function extern boolean tpisg220.cpgv.is.readonly()
 | {
-| 	if sess.code1 = "tpisg2120m013" then					
+| 	if sess.code1 = "tpisg2120m013" then								|#Adarsh.26.04.2019.o				
+| 	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then				|#Adarsh.26.04.2019.n	
 | 		check_document_no(tpisg220.pcod, tpisg220.cprj, tpisg220.sub1, tpisg220.cact, docn)
 | 		
 | 		if not isspace(docn)	then
 | 			return(false)
 | 		endif
-| 
+
 | 	endif
 | 	
 | 	return(true)
 | }
 
-
-| function extern boolean tpisg220.acsd.is.readonly()	| commented by Veena on 15-04-2019 for GITHUB#66
+| function extern boolean tpisg220.acsd.is.readonly()
 | {
-| 	if sess.code1 = "tpisg2120m013" then					
+| 	if sess.code1 = "tpisg2120m013" then								|#Adarsh.26.04.2019.o
+| 	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then				|#Adarsh.26.04.2019.n	
 | 		check_document_no(tpisg220.pcod, tpisg220.cprj, tpisg220.sub1, tpisg220.cact, docn)
 | 		
 | 		if not isspace(docn)	then
 | 			return(false)
 | 		endif
-| 
+
 | 	endif
 | 	
 | 	return(true)
 | }
 
-
-| function extern boolean tpisg220.acfn.is.readonly()	| commented by Veena on 15-04-2019 for GITHUB#66
+| function extern boolean tpisg220.acfn.is.readonly()
 | {
-| 	if sess.code1 = "tpisg2120m013" then					
+| 	if sess.code1 = "tpisg2120m013" then								|#Adarsh.26.04.2019.o
+| 	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then				|#Adarsh.26.04.2019.n	
 | 		check_document_no(tpisg220.pcod, tpisg220.cprj, tpisg220.sub1, tpisg220.cact, docn)
 | 		
 | 		if not isspace(docn)	then
@@ -291,11 +299,12 @@ function handle.field.dependencies()
 | 	endif
 | 	
 | 	return(true)
-| }													|#ISGEC01181.en
-
- function extern boolean tpisg220.rmcm.is.readonly()
+| }												|#ISGEC01181.en
+													|#Adarsh.26.04.2019.eo
+function extern boolean tpisg220.rmcm.is.readonly()
 {
-	if sess.code1 <> "tpisg2120m014" then					|#ISGEC016016.n
+| 	if sess.code1 <> "tpisg2120m014"  then					|#ISGEC016016.n		|#Adarsh.26.04.2019.o
+	if sess.code1 <> "tpisg2120m014" and sess.code1 <> "tpisg2120m015" then				|#Adarsh.26.04.2019.n
 | 		if	tpisg220.frez <> tcyesno.yes	then			|#ISGEC016016.o
 		if	tpisg220.frez = tcyesno.yes	then			|#ISGEC016016.n
 			return(true)
@@ -305,11 +314,12 @@ function handle.field.dependencies()
 	endif
 	
 	return(false)
-}
+}													 
 
- function extern boolean tpisg220.manu.is.readonly()
+function extern boolean tpisg220.manu.is.readonly()
 {
-	if sess.code1 <> "tpisg2120m014" then					|#ISGEC016016.n
+| 	if sess.code1 <> "tpisg2120m014" then					|#ISGEC016016.n		|#Adarsh.26.04.2019.o
+	if sess.code1 <> "tpisg2120m014" and sess.code1 <> "tpisg2120m015" then				|#Adarsh.26.04.2019.n
 | 		if	tpisg220.frez <> tcyesno.yes	then			|#ISGEC016016.o
 		if	tpisg220.frez = tcyesno.yes	then			|#ISGEC016016.n
 			return(true)
@@ -322,7 +332,6 @@ function handle.field.dependencies()
 | 		return(true)							|#ISGEC016016.o
 	return(false)
 }													|#ISGEC01128.en
-													|#ISGEC01128.en
 
 
 
@@ -477,7 +486,7 @@ function insert.old.values.in.control.tower.flag.log.file()					|#ISGEC01179.sn
 		tpisg253.user = logname$
 		db.insert(ttpisg253,db.skip.dupl,e)
 	endselect
-}										|#ISGEC01179.en
+}												|#ISGEC01179.en
 
 function insert.old.values.in.manual.activity.progress.log.file()				|#ISGEC01181.sn
 {
@@ -503,6 +512,7 @@ function insert.old.values.in.manual.activity.progress.log.file()				|#ISGEC0118
 		db.insert(ttpisg254,db.skip.dupl,e)
 	endselect
 }												|#ISGEC01181.en
+
 | function boolean valid.finish.date
 | 					(
 | 						domain	tcamnt		i.cpgv
