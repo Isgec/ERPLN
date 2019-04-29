@@ -99,18 +99,18 @@ before.choice:
 		mess("tigenstring", 1, "Please Specify a File")
 		choice.again()
 	endif
-	
-	if ask.enum("tpisg2200m2001",tcyesno.no) = tcyesno.yes	then
-		select	tpisg210.*
-		from	tpisg210	for update
-		where	tpisg210._index1 = {:f.cprd}
-		selectdo
-			db.delete(ttpisg210,db.retry,e)
-			commit.transaction()
-		endselect
-	endif
-	
-	
+										|25.04.19.Adarsh.so
+| 	if ask.enum("tpisg2200m2001",tcyesno.no) = tcyesno.yes	then
+| 		select	tpisg210.*
+| 		from	tpisg210	for update
+| 		where	tpisg210._index1 = {:f.cprd}
+| 		selectdo
+| 			db.delete(ttpisg210,db.retry,e)
+| 			commit.transaction()
+| 		endselect
+| 	endif
+										|25.04.19.Adarsh.eo
+										
 on.choice:
 	upload.product.wise.activity.relationship()
 
@@ -297,11 +297,18 @@ function long insert.all.activity()
 		|*****************End**********************
 		
 			select	tpisg210.*
-			from	tpisg210
+| 			from	tpisg210				|25.04.19.Adarsh.o
+			from	tpisg210	for update		|25.04.19.Adarsh.n
 			where	tpisg210._index1 = {:f.cprd,
 						    :cact_data,
 						    :i.pred}
 			selectdo
+									|25.04.19.Adarsh.sn
+				tpisg210.rltp = i.rltp			
+				tpisg210.lead = lead_data
+				
+				db.update(ttpisg210,DB.RETRY)
+									|25.04.19.Adarsh.en
 			selectempty
 				tpisg210.cprd = f.cprd
 				tpisg210.cact = cact_data
