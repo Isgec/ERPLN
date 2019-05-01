@@ -24,6 +24,9 @@
 |*
 |* Adarsh Pal, VRC B61U a7 isg, 26-04-2019
 |* Updation of Dal for Materials New Session for RFQ-TO-PO
+|*
+|* Adarsh Pal, VRC B61U a7 isg
+|* New Checks on Start and Finish Dates on Cumulative Progress Basis
 |******************************************************************************
 |------------------------ Declaration Section ---------------------------------
 #include <bic_dal2>
@@ -214,7 +217,6 @@ function extern boolean tpisg220.pact.is.valid(long mode)
 	
 	return(true)
 }
-
 | function extern boolean tpisg220.sele.is.valid(long mode)
 | {
 | 	if tpisg220.sele = tcyesno.yes then
@@ -252,9 +254,78 @@ function handle.field.dependencies()
 	dal.field.depends.on("tpisg220.rmcm",HOOK_IS_READONLY,"tpisg220.frez")	
 	
 	dal.field.depends.on("tpisg220.cpgv",HOOK_IS_READONLY,"tpisg220.manu")				|#ISGEC01181.sn
-	dal.field.depends.on("tpisg220.acsd",HOOK_IS_READONLY,"tpisg220.manu")				
-	dal.field.depends.on("tpisg220.acfn",HOOK_IS_READONLY,"tpisg220.manu")				
+																	|01.05.19.Adarsh.so
+| 	dal.field.depends.on("tpisg220.acsd",HOOK_IS_READONLY,"tpisg220.manu")								
+| 	dal.field.depends.on("tpisg220.acfn",HOOK_IS_READONLY,"tpisg220.manu")					
+																	|01.05.19.Adarsh.eo
+																	|01.05.19.Adarsh.sn
+	dal.field.depends.on("tpisg220.acsd",HOOK_IS_READONLY,"tpisg220.manu",HOOK_IS_APPLICABLE + HOOK_IS_MANDATORY,"tpisg220.cpgv")				
+	dal.field.depends.on("tpisg220.acfn",HOOK_IS_READONLY,"tpisg220.manu",HOOK_IS_APPLICABLE + HOOK_IS_MANDATORY,"tpisg220.cpgv")			
+																	|01.05.19.Adarsh.en
 }
+																	|01.05.19.Adarsh.sn
+function extern	boolean tpisg220.acsd.is.applicable()
+{
+	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then
+		if tpisg220.cpgv = 0 then
+			return(false)
+		else
+			if tpisg220.cpgv > 0 and tpisg220.cpgv < 100 then
+				return(true)
+			else
+				if tpisg220.cpgv = 100 then
+					return(true)
+				endif
+			endif
+		endif
+	endif	
+	return(false)
+}
+
+function extern	boolean tpisg220.acfn.is.applicable()
+{
+	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then
+		if tpisg220.cpgv = 0 then
+			return(false)
+		else
+			if tpisg220.cpgv > 0 and tpisg220.cpgv < 100 then
+				return(false)
+			else
+				if tpisg220.cpgv = 100 then
+					return(true)
+				endif
+			endif
+		endif
+	endif	
+	return(false)
+}
+
+function extern	boolean	tpisg220.acsd.is.mandatory()
+{
+	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then
+		if tpisg220.cpgv > 0 and tpisg220.cpgv < 100 then
+				return(true)
+		else
+			if tpisg220.cpgv = 100 then
+				return(true)
+			else
+				return(false)
+			endif
+		endif
+	endif
+	return(false)
+}
+
+function extern	boolean	tpisg220.acfn.is.mandatory()
+{
+	if sess.code1 = "tpisg2120m013" or sess.code1 = "tpisg2120m016" then
+		if tpisg220.cpgv = 100 then
+			return(true)
+		endif
+	endif
+	return(false)
+}
+																	|01.05.19.Adarsh.en
 													|#Adarsh.26.04.2019.so	
 | function extern boolean tpisg220.cpgv.is.readonly()
 | {
@@ -304,7 +375,7 @@ function handle.field.dependencies()
 function extern boolean tpisg220.rmcm.is.readonly()
 {
 | 	if sess.code1 <> "tpisg2120m014"  then					|#ISGEC016016.n		|#Adarsh.26.04.2019.o
-	if sess.code1 <> "tpisg2120m014" and sess.code1 <> "tpisg2120m015" then				|#Adarsh.26.04.2019.n
+	if sess.code1 <> "tpisg2120m014" or sess.code1 <> "tpisg2120m015" then				|#Adarsh.26.04.2019.n
 | 		if	tpisg220.frez <> tcyesno.yes	then			|#ISGEC016016.o
 		if	tpisg220.frez = tcyesno.yes	then			|#ISGEC016016.n
 			return(true)
