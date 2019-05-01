@@ -10,11 +10,16 @@
 |* ID ISGEC01119, Priya Jindal, 30/10/2018, VRC B61U a7 live
 |* Changes for zoom
 |*  
-                                                                                
+|* Adarsh Pal, 01-05-19, VRC B61U a7 isg
+|* Adding Item Group and Group Desc. in display.
 |****************************** DECLARATION SECTION ***************************
 declaration:
 	table	ttpptc120
 	table	tdmisg005
+												|01.05.19.Adarsh.sn
+	table	ttcibd001
+	table	ttcmcs023
+												|01.05.19.Adarsh.en
 	extern	domain	tccprj		i.cprj
 	extern	domain	tccspa		i.cspa
 	extern	domain	tcitem		i.item
@@ -22,6 +27,10 @@ declaration:
 
 
 	extern	domain	tcdsca	desc.item
+												|01.05.19.Adarsh.sn
+	extern	domain	tccitg	citg
+	extern	domain	tcdsca	dsca
+												|01.05.19.Adarsh.en
 |****************************** PROGRAM     SECTION ***************************
 
 before.program:
@@ -56,4 +65,31 @@ before.field:
 	as set with 1 rows
 	selectdo
 	endselect
-	
+												|01.05.19.Adarsh.sn
+before.display.object:
+	select	tpptc120.item
+	from	tpptc120
+	where	tpptc120._index1 = {:tpptc120.cprj,:tpptc120.cspa,:tpptc120.sern}
+	selectdo
+		select	tcibd001.citg
+		from	tcibd001
+		where	tcibd001._index1 = {:tpptc120.item}
+		selectdo
+			citg = tcibd001.citg
+			select	tcmcs023.dsca
+			from	tcmcs023
+			where	tcmcs023._index1 = {:tcibd001.citg}
+			selectdo
+				dsca = tcmcs023.dsca
+			selectempty
+				dsca = ""
+			endselect
+		selectempty
+			citg = ""
+			dsca = ""
+		endselect
+	selectempty
+		citg = ""
+		dsca = ""
+	endselect
+												|01.05.19.Adarsh.en
