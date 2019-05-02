@@ -21,6 +21,12 @@
 |* ID: ISGEC01155, Sahil Sharma, VRC B61U a7 isg, 11-01-2019	
 |* Update Weight in Item Reference Master when all drawings 
 |* of perticular item reference have Actual Release Date  
+|*
+|* Adarsh Pal, 29-04-19, VRC B61U a7 isg
+|* Updation of table tpisg255 for activity wise log
+|*
+|* Adarsh Pal, 30-04-19, VRC B61U a7 isg
+|* Modifications for getting the duration of each activity
 |****************************** declaration section ***************************
 declaration:
 
@@ -43,6 +49,7 @@ declaration:
 	table	ttiisg910			|#ISGEC01139.n
 	table	ttpisg239			|#ISGEC01145.n
 	table	ttpisg250
+	table	ttpisg255			|30.04.19.Adarsh.n
 |------------------------ form variables --------------------------------------
 	extern	domain 	tccprj		i.cprj							
 	extern	domain	tcmcs.str100	dsca
@@ -66,6 +73,11 @@ declaration:
 	domain	tcmcs.str50		from.bohd, to.bohd
 	domain	tcsess			sess.code
 	domain	tcnama			user.name
+	
+											|30.04.19.Adarsh.sn
+	extern	domain	tcdate		o.stdt.1,o.stdt.2
+	extern	domain	tcamnt		o.duration					
+											|30.04.19.Adarsh.sn
 |****************************** program section ********************************
 before.program:
 	import("prog.name$", sess.code)
@@ -88,7 +100,11 @@ before.program:
 	test.date = 0
 	
 	user.name = logname$
-	
+											|30.04.19.Adarsh.sn
+	o.stdt.1 = 0
+	o.stdt.2 = 0
+	o.duration = 0
+											|30.04.19.Adarsh.en
 											|#Sahil.Sharma.21.02.2019.sn
 | 	if (trim$(user.name) = "merino1") or (trim$(user.name) = "0330") then
 | 	else
@@ -343,6 +359,10 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 | 	and	tpisg220.bohd = "CT_RESTADVANCERELEASE" or tpisg220.bohd = "CT_FIRSTADVANCERELEASE"
  |	and 	tpisg220.cact = "50990000M1C6"			|Veena.20|12|2018
 	selectdo
+														|30.04.19.Adarsh.sn
+		calculate.duration()					
+		update.activity.wise.log(tpisg220.cprj,tpisg220.pcod,tpisg220.cact,utc.num(),o.duration)
+														|30.04.19.Adarsh.en
 		if	trim$(tpisg220.bohd) <> "CT_RFQRAISED" and trim$(tpisg220.bohd) <> "CT_RFQOFFERECEIVED" and
 			trim$(tpisg220.bohd) <> "CT_RFQCOMMERCIALFINALISED" and trim$(tpisg220.bohd) <> "CT_MANUFACTURING" and 
 			trim$(tpisg220.bohd) <> "CT_FIRSTADVANCERELEASE" and trim$(tpisg220.bohd) <> "CT_RESTADVANCERELEASE" and 
@@ -432,9 +452,14 @@ function update.data.in.pmdl.and.activty.master(domain	tccprj	i.cprj)
 					break
 					
 					
+| 					case "CT_ISSUEPO":	
+| 						update.poissue.in.220(
+| 									tpisg220.cprj,
+| 									tpisg220.sitm)
 					case "CT_ISSUEPO":	
 						update.poissue.in.220(
 									tpisg220.cprj,
+									dmisg140.iref,
 									tpisg220.sitm)
 					break
 					
@@ -800,7 +825,7 @@ function manufacturing.progress.update(
 		selectdo endselect
 		tpisg220.cpgv = sum.tpgv
 		db.update(ttpisg220,db.retry,e)
-		commit.transaction()
+|		commit.transaction()
 	else							|#veena.11-01-2019.en
 
 		select	tpisg183.orno
@@ -2340,7 +2365,49 @@ function assign.zero.perc( domain tccprj i.cprj,domain tcmcs.s200u tp.iref, doma
 		tpisg220.acsd = 0
 		tpisg220.acfn = 0
 	endif
-										
+														|29.04.19.Adarsh.sn
+| 	long	table.id,ret
+
+| 	table.id = db.bind("ttpisg220")
+| 	ret = db.lock.table(table.id)
+														|29.04.19.Adarsh.en
 	db.update(ttpisg220,db.retry,e)
 	commit.transaction()											|#Veena 29-03-2019.en
 }
+														|30.04.19.Adarsh.sn
+function calculate.duration()
+{
+| 	o.stdt.2 =  time.num()
+	o.stdt.2 =  utc.num()
+	
+	if o.stdt.1 <> 0 then
+		o.duration = o.stdt.2 - o.stdt.1
+		o.duration = o.duration/60
+	else
+		o.duration = 0
+	endif
+| 	o.stdt.1 = time.num()
+	o.stdt.1 = utc.num()
+}
+function update.activity.wise.log(	domain	tccprj		i.cprj,
+					domain	tcorno		i.pcod,
+					domain	tcmcs.str30	i.cact,
+					domain	tcdate		i.stdt,
+					domain	tcamnt		i.duration)
+{
+	select	tpisg255.*
+	from	tpisg255
+	where	tpisg255._index1 = {:i.cprj,:i.pcod,:i.cact,:i.stdt}
+	selectdo
+	selectempty
+		tpisg255.cprj = i.cprj
+		tpisg255.pcod = i.pcod
+		tpisg255.cact = i.cact
+		tpisg255.sess = prog.name$
+		tpisg255.user = logname$
+		tpisg255.stdt = i.stdt
+		tpisg255.durn = i.duration
+		db.insert(ttpisg255,DB.SKIP.DUPL,e)
+	endselect
+}
+														|30.04.19.Adarsh.en
