@@ -15,12 +15,12 @@
 |* Form field added for no. of drwg attached and released
 |*
 |* ID: ISGEC01128, Prasanna Bhuyan, VRC B61U a7 isg, 26-11-2018
-|* Modifications  
+|* Modifications
 |*
 |* ID: ISGEC01181, Prasanna Bhuyan, VRC B61U a7 isg, 29-03-2019
 |* Modifications
-|*
-|* Adarsh Pal, 13-05-19, VRC B61U a7 isg
+|*	
+|* Adarsh Pal, 13-05-19, VRC B61U a7 isg	
 |* Additional logic for Drawaings attached and released
 |****************************** declaration section ***************************
 declaration:
@@ -34,6 +34,7 @@ declaration:
 	table	ttpisg240
 	table	ttpisg216
 	table	tdmisg140
+| 	table	tdmisg167
 	
 	|---------------------- Form Variables ---------------------------------
 	
@@ -463,7 +464,8 @@ before.display:
 		where	dmisg140._index2 = {:tpisg220.cprj}
 		and	((dmisg140.iref = :tpisg220.sub1)
 		or	(dmisg140.iref = :tpisg220.cact))
-		and	dmisg140.adct > :i.acdt								
+| 		and	dmisg140.adct > :i.acdt									|13.05.19.Adarsh.o								
+		and	dmisg140.acdt > :i.acdt									|13.05.19.Adarsh.n								
 		and	dmisg140.orgn = "ISG"					|#ISGEC01181.sn
 | 		and	dmisg140.cext = tcyesno.yes				|#ISGEC01181.en			|13.05.19.Adarsh.o
 		selectdo
@@ -478,7 +480,7 @@ before.display:
 		where	dmisg140._index2 = {:tpisg220.cprj}
 		and	((dmisg140.iref = :tpisg220.sub1)
 		or	(dmisg140.iref = :tpisg220.cact))
-		and	dmisg140.adct > :i.acdt								
+		and	dmisg140.acdt > :i.acdt								
 		and	dmisg140.orgn = "VEN"			
 		selectdo
 		selectempty
@@ -489,10 +491,44 @@ before.display:
 		drwg.release = 0
 	endif	
 														|13.05.19.Adarsh.en
-	
-								
 								|#ISGECMOD035.en
-	
+												|#Sahil.Sharma.18.02.2019.sn
+| field.tpisg220.numv:
+| before.display:
+| 	select	dmisg167.wfid,count(dmisg167.wfid):tpisg220.numv
+| 	from	dmisg140, dmisg167, dmisg168
+| 	where	dmisg140._index1 = {:tpisg220.pcod, :tpisg220.cprj}
+| 	and	dmisg140.iref =:tpisg220.sub1
+| 	and	dmisg167.docn = dmisg140.docn
+| 	and	dmisg168.wfid = dmisg167.wfid
+| 	and	dmisg168.pwfd = 0
+| 	and	dmisg168.stat in ("Enquiry Raised","Technical offer Received","Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received" )
+| 	group by dmisg167.wfid
+| 	selectdo
+| 	selectempty
+| 		tpisg220.numv = 0
+| 	endselect
+
+| field.tpisg220.numo:
+| before.display:
+| 	select	dmisg167.wfid
+| 	from	dmisg140, dmisg167
+| 	where	dmisg140._index1 = {:tpisg220.pcod, :tpisg220.cprj}
+| 	and	dmisg140.iref =:tpisg220.sub1
+| 	and	dmisg167.docn = dmisg140.docn
+| 	group by dmisg167.wfid
+| 	selectdo
+| 		select	count(dmisg168.wfid):tpisg220.numo
+| 		from	dmisg168
+| 		where	dmisg168.pwfd = :dmisg167.wfid
+| 		and	dmisg168.pwfd <> 0
+| 		and	dmisg168.stat in("Technical offer Received","Enquiry For Techno Commercial Negotiation Completed","Commercial offer Received")
+| 		selectdo
+| 		selectempty
+| 			tpisg220.numo = 0
+| 		endselect
+| 	endselect
+												|#Sahil.Sharma.18.02.2019.en
 |********************************* Function Section ******************************
 
 functions:
