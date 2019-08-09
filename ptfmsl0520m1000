@@ -26,9 +26,20 @@ declaration:
 domain	tcloco		log_name
 extern domain	tcmcs.str100		adrq
 domain	tcmcs.str15	session_code
+domain	tcemno		user
 
 	#include "itfisg2100"			|#ISGEC002017.n
 |****************************** program section ********************************
+before.program:
+	user = logname$
+	
+	select	tccom001.emno
+	from	tccom001
+	where	tccom001._index4 = {:user}
+	selectdo
+	selectempty
+		tccom001.emno = ""
+	endselect
 
 choice.mark.occur:
 after.choice:
@@ -59,22 +70,29 @@ on.choice:
 		tfmsl070.maxv = 0
 	endselect
 | 	if tfmsl020.sapr = tcyesno.yes then
-		select 	tfmsl020.stts 
+| 		select 	tfmsl020.stts 
+		select 	tfmsl020.stts,tfmsl020.aamt,tfmsl020.stat,tfmsl020.adrq
 		from 	tfmsl020 for update
 		where 	tfmsl020.sapr = tcyesno.yes
 		and	tfmsl020.stts = tfmsl.stat.pend
 		selectdo
-			tfmsl020.stts = tfmsl.stat.appr		
-			tfmsl020.apdt = utc.num()
-			tfmsl020.appr = logname$
-			tfmsl020.stat = tfmsl.lc.stat.appr
-			db.update(ttfmsl020,db.retry)
+			if (tfmsl020.aamt >= tfmsl070.minv) and (tfmsl020.aamt <= tfmsl070.maxv) and ((tfmsl020.stts <> tfmsl.stat.verf)
+				and (tfmsl020.stts <> tfmsl.stat.appr) and (tfmsl020.stat=tfmsl.lc.stat.sapr or tfmsl020.stat=tfmsl.lc.stat.rejc))then
+				
+				tfmsl020.stts = tfmsl.stat.appr		
+				tfmsl020.apdt = utc.num()
+				tfmsl020.appr = logname$
+				tfmsl020.stat = tfmsl.lc.stat.appr
+				tfmsl020.sapr = tcyesno.no
+				db.update(ttfmsl020,db.retry)
+				itfisg2100.update.history(tfmsl020.adrq,utc.num())
+			endif	
 		endselect
 | 	endif
 after.choice:
 	commit.transaction()
 
-	itfisg2100.update.history(tfmsl020.adrq,utc.num())		|#ISGEC002017.n
+| 	itfisg2100.update.history(tfmsl020.adrq,utc.num())		|#ISGEC002017.n
 	
 choice.reject:
 on.choice:
