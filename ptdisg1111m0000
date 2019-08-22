@@ -1,0 +1,34 @@
+|******************************************************************************
+|* tdisg1111m000  0  VRC B61U a7 isg 
+|* Maintain Indent Tracking sheet
+|* Adarsh Pal                    
+|* 2019-07-08
+|******************************************************************************
+|* Main table tdisg111 Indent Tracking Sheet, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdisg111 | Indent Tracking Sheet
+
+|****************************** program section ********************************
+before.program:
+	inputfield.invisible("tdisg111.item.segment.1")
+
+after.form.read:
+	enable.save.on.occ.change()
+	
+|****************************** group section **********************************
+|****************************** field section **********************************
+field.tdisg111.drn1:
+when.field.changes:
+	tdisg111.drd1 = date.num()
+
+field.tdisg111.drn2:
+when.field.changes:
+	tdisg111.drd2 = date.num()
+	
+field.tdisg111.drn3:
+when.field.changes:
+	tdisg111.drd3 = date.num()	
