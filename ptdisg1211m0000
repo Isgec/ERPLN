@@ -833,6 +833,7 @@ function insert.or.update.indent.tracking.sheet()
 		tdisg111.abgr = get.abg.received.date(tdpur401.orno)
 		tdisg111.ardt = get.1st.advance.request.date(tdpur401.orno)
 		tdisg111.ared = get.1st.advance.release.date(tdpur401.orno)
+		tdisg111.code = ""
 		db.insert(ttdisg111,DB.RETRY)
 		commit.transaction()
 	endselect
