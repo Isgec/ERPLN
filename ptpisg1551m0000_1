@@ -190,7 +190,9 @@ function get.data()
 	ardc.3 = ardc.1 - ardc.2
 	ardi.3 = ardi.1 - ardi.2
 	rtbt.3 = rtbt.1 - rtbt.2
-	aebt.3 = aebt.1 - aebt.2 + cons + tpisg152.tbud - tpisg152.ctcm
+| 	aebt.3 = aebt.1 - aebt.2 + cons + tpisg152.tbud - tpisg152.ctcm
+| 	aebt.3 = aebt.1 - aebt.2 + tpisg152.tbud - tpisg152.ctcm
+	aebt.3 = aebt.1 - aebt.2 - tpisg152.ctcm
 	vari.3 = aebt.3 - rtbt.3
 	rtbt.4 = rtbt.3
 	tcth = aebt.3

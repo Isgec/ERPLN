@@ -284,6 +284,7 @@ function freeze.contract.curr.revn(
 			tpisg151.tdct = tpisg101.tdct
 			tpisg151.tdc2 = tpisg101.tdc2
 			tpisg151.icah = tpisg101.icah
+			tpisg151.eife = tpisg101.eife
 			tpisg151.user = logname$
 			tpisg151.fdat = utc.num()
 			db.insert(ttpisg151,DB.RETRY)
@@ -620,6 +621,7 @@ function get.data()
 	from	tpisg102
 	where	tpisg102._index1 = {:tpisg101.ccod}
 	and	tpisg102.elem <> "99180000"
+	and	tpisg102.levl = 2
 	selectdo
 	endselect
 	
@@ -635,10 +637,13 @@ function get.data()
 	ardc.3 = ardc.1 - ardc.2
 	ardi.3 = ardi.1 - ardi.2
 	rtbt.3 = rtbt.1 - rtbt.2
-	aebt.3 = aebt.1 - aebt.2 + cons + tpisg102.tbud - tpisg102.ctcm
+| 	aebt.3 = aebt.1 - aebt.2 + cons + tpisg102.tbud - tpisg102.ctcm
+| 	aebt.3 = aebt.1 - aebt.2 + tpisg102.tbud - tpisg102.ctcm
+	aebt.3 = aebt.1 - aebt.2 - tpisg102.ctcm
 	vari.3 = aebt.3 - rtbt.3
 	rtbt.4 = rtbt.3
 	tcth = aebt.3
+	stcs = tpisg101.cssh + cons + tpisg102.tbud
 	
 	rprt_send()
 }
