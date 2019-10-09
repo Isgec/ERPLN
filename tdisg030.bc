@@ -1,0 +1,97 @@
+|******************************************************************************
+|* tdisg030  0  VRC B61U a7 isg 
+|* Dal for table tdisg030
+|* merino1
+|* 18-06-11 [15:01]
+|******************************************************************************
+|* Script Type: DAL
+|******************************************************************************
+                                                                                
+#include <bic_dal2>
+table	ttdisg030
+table	ttdisg027
+
+extern	domain	tcqiv1	issue.qty
+
+function extern long before.open.object.set()
+{
+	set.dependencies()
+	return(0)
+}
+
+function extern long before.save.object(long type)
+{
+	domain	tcqiv1	aqty1
+	on case type
+	case DAL_NEW:
+| 		select	tdisg027.aqty
+| 		from	tdisg027 for update
+| 		where	tdisg027._index2 = {:tdisg030.orno,:tdisg030.pono}
+| 		selectdo
+| 			tdisg030.aqty = tdisg027.aqty
+| 			db.update(ttdisg027,db.retry,e)
+| 		endselect
+		break
+	case DAL_UPDATE:
+| 		select	tdisg027.aqty
+| 		from	tdisg027 for update
+| 		where	tdisg027._index2 = {:tdisg030.orno,:tdisg030.pono}
+| 		selectdo
+| 			aqty1 = tdisg030.aqty + tdisg030.iqty
+| 			tdisg030.aqty = aqty1
+| 			tdisg027.aqty = tdisg030.aqty
+| 			db.update(ttdisg027,db.retry,e)
+| 		endselect
+		break
+	endcase
+	return(0)
+}
+
+|*tdisg030.aqty
+function extern boolean tdisg030.aqty.is.derived()
+{
+	return(true)
+| 	tdisg030.flag = 1
+}
+
+function extern void tdisg030.aqty.update()
+{
+| 	tdisg030.aqty = tdisg030.aqty + tdisg030.iqty
+| 
+}
+
+|*tdisg030.iqty
+function extern boolean tdisg030.iqty.is.valid()
+{
+	if tdisg030.iqty <= 0	then
+		return(false)
+	else 
+		if tdisg030.iqty > tdisg030.rqty	then
+			return(false)
+| 	else if (tdisg030.iqty + tdisg030.aqty) > tdisg030.rqty	then
+| 		return(false)
+| 	endif
+		else
+			select sum(a_tdisg030.iqty):issue.qty
+			from	tdisg030 a_tdisg030
+			where	a_tdisg030.svpo = :tdisg030.svpo
+			and	a_tdisg030.svpl = :tdisg030.svpl
+			and	a_tdisg030.srcn = :tdisg030.srcn
+			and	a_tdisg030.srcl = :tdisg030.srcl
+			selectdo
+			endselect
+			issue.qty = issue.qty + tdisg030.iqty
+			if issue.qty > tdisg030.rqty then
+				return(false)
+			endif
+		endif
+	endif
+	
+	return(true)
+}
+
+function set.dependencies()
+{
+	dal.field.depends.on("tdisg030.aqty", HOOK_IS_DERIVED, "tdisg030.iqty")
+	dal.field.depends.on("tdisg030.aqty", HOOK_UPDATE, "tdisg030.iqty")
+}
