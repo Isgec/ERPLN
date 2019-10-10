@@ -247,7 +247,49 @@ function extern long ue.before.before.save.object(long mode)
 | 		
 | 		if o.hdst <> tdpur400.hdst then
 | 			tdisgdll0400.get.lines.project.element(tdpur400.orno)
-| 		endif		
+| 		endif	
+										|#Adarsh.09.10.2019.sn
+		if hold.hdst = tdpur.hdst.created or hold.hdst = tdpur.hdst.modified then				|
+			if tdpur400.hdst = tdpur.hdst.approved then	
+| 				select	tcibd001.kitm
+| 				from	tcibd001
+| 				where	tcibd001._index1 = {:tdpur401.item}
+| 				and	tcibd001.kitm = 1
+| 				selectdo
+| 					select	tdpur402.rqno
+| 					from	tdpur402
+| 					where	tdpur402._index1 = {:tdpur401.orno,:tdpur401.pono}
+| 					and	tdpur402.rqno = ""
+| 					and	tdpur402.rqpo = 0
+| 					selectdo
+| 						select	tdisg002.slct
+| 						from	tdisg002
+| 						where	tdisg002._index1 = {:tdpur401.orno,:tdpur401.pono}
+| 						and	tdisg002.slct = 1
+| 						and	tdisg002.stat = 1
+| 						as set with 1 rows
+| 						selectdo
+| 						selectempty
+| 							dal.set.error.message("@Child Item linking is mandatory in %s/%d",tdpur401.orno,tdpur401.pono)
+| 							return(DALHOOKERROR)
+| 						endselect
+| 					selectempty
+| 					endselect
+| 				selectempty
+| 				endselect
+
+				select	tdisg002.slct
+				from	tdisg002
+				where	tdisg002._index1 = {:tdpur401.orno,:tdpur401.pono}
+				and	(tdisg002.slct = 2 or tdisg002.stat = 2)
+				selectdo
+					dal.set.error.message("@Still unselected/unfreezed Child Items exist in %s/%d",tdpur401.orno,tdpur401.pono)
+					return(DALHOOKERROR)
+				selectempty
+				endselect
+			endif
+		endif
+											|#Adarsh.09.10.2019.en
 
 	break							
 		
