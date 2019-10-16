@@ -24,7 +24,7 @@ before.program:
 	
 	query.str = "tpisg069._index2 = {" & quoted.string(trim$(cprj)) & 
 			"} and ((tpisg069.chco = " & quoted.string(trim$(elem)) & 
-			"and (tpisg069.cspa ="""" and tpisg069.lcsp = """" )) " & 
+			"and tpisg069.iprj <> 2 and (tpisg069.cspa ="""" and tpisg069.lcsp = """" )) " & 
 			"or (tpisg069.otyp <> " & quoted.string("OPB") & " and tpisg069.leac in(" & 
 			quoted.string("2510210") & "," & quoted.string("2530211") & ")))"
 	
@@ -33,7 +33,7 @@ before.program:
 	else
 		query.extend.where("tpisg069._index2 = {" & quoted.string(trim$(cprj)) & 
 					"} and tpisg069.chco = " & quoted.string(trim$(elem)) & 
-					" and (tpisg069.cspa ="""" and tpisg069.lcsp = """" )")
+					" and tpisg069.iprj <> 2 and(tpisg069.cspa ="""" and tpisg069.lcsp = """" )")
 	endif
 
 |****************************** group section **********************************
