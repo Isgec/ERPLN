@@ -72,4 +72,33 @@ before.display:
 		endselect
 	endif	
 	endif
+endif
+ 
+functions:
+
+function extern boolean tpisg0562m000.is.allowed()
+{
+	if tpisg056.levl = 2 and tpisg056.elem(1;1) <> "C" and tpisg056.elem(1;1) <> "D" then
+		return(true)
 	endif
+	
+	return(false)
+}
+
+function extern boolean tpisg0569m000.is.allowed()
+{
+	if tpisg056.levl = 2 and tpisg056.elem(1;1) <> "C" and tpisg056.elem(1;1) <> "D" then
+		return(true)
+	endif
+	
+	return(false)
+}
+
+function extern boolean tpisg0569m001.is.allowed()
+{
+	if (tpisg056.elem(1;1) = "C" or tpisg056.elem(1;1) = "D") then
+		return(true)
+	endif
+	
+	return(false)
+}
