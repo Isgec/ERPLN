@@ -454,10 +454,22 @@ function domain	tfgld.date get.1st.enquiry.sent.on.date(domain tcpono i.rfqn)
 	
 	min.date = 0
 	
-	select	min(dmisg169.date):min.date
-	from	dmisg169
-	where	dmisg169.pwfd = :i.rfqn
-	and	dmisg169.stat = "Enquiry Raised"
+| 	select	min(dmisg169.date):min.date
+| 	from	dmisg169
+| 	where	dmisg169.pwfd = :i.rfqn
+| 	and	dmisg169.stat = "Enquiry Raised"
+| 	selectdo
+| 		if min.date <> 0 then
+| 			min.date = get.date(min.date)
+| 		endif
+| 	selectempty
+| 		min.date = 0
+| 	endselect
+	
+	select min(dmisg140.rfqd):min.date
+	from dmisg140,dmisg167
+	where dmisg167._index1 = {:i.rfqn}
+	and dmisg167.docn = dmisg140.docn
 	selectdo
 		if min.date <> 0 then
 			min.date = get.date(min.date)
@@ -475,10 +487,18 @@ function domain	tcpono get.enquiry.sent.to.no.of.suppliers(domain tcpono i.rfqn)
 	
 	count.no = 0
 	
+| 	select	count(*):count.no
+| 	from	dmisg169
+| 	where	dmisg169.pwfd = :i.rfqn
+| 	and	dmisg169.stat = "Enquiry Raised"
+| 	selectdo
+| 	selectempty
+| 		count.no = 0
+| 	endselect
+
 	select	count(*):count.no
-	from	dmisg169
-	where	dmisg169.pwfd = :i.rfqn
-	and	dmisg169.stat = "Enquiry Raised"
+	from	dmisg168
+	where	dmisg168.pwfd = :i.rfqn
 	selectdo
 	selectempty
 		count.no = 0
