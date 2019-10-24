@@ -1,4 +1,4 @@
-  |******************************************************************************
+|******************************************************************************
 |* tdisg4400m000  0  VRC B61U a7 live
 |* Print Purchase Order Revision Wise
 |* Tools                         
@@ -135,6 +135,12 @@
 |* 
 |* GH115CR459, Adarsh Pal, 09-08-2019, VRC B61U a7 isg
 |* PO Print Amendments
+|*
+|* GH163CR000, RAvi Kumar, 11-10-2019, VRC B61U a7 isg
+|* Deleted line printing in PO
+|*
+|* #GH187CR503, Adarsh Pal, 24-10-2019, VRC B61U a7 isg
+|* Modification in Basic Value as per Indent in Report Layout
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -182,6 +188,7 @@ declaration:
 	table	ttttxt010
 	table	ttdisg214			|#Atul.24.11.2018.sn
 	table	ttdisg215			|#Atul.24.11.2018.n
+	table	ttdisg461			|#GH187CR503.n
 	
 	extern	domain	tcorno	i.orno
 	extern	domain	tcsern	i.vrsn,last.vrsn
@@ -196,6 +203,7 @@ declaration:
 	extern	domain	tcamnt	igst.amnt, tot.sgst, ind.igst, igst.rate	|#ISGEC017006.n
 	extern	domain	tcamnt	ind.exc,ind.stx,ind.oth1,ind.oth2,ind.bas
 	extern	domain	tcamnt	tot.oth.stx,oth.stx,oth.exc			|#ISGEC001071.n
+	extern	domain	tcamnt	amnt.amti					|#GH187CR503.n
 	extern	domain	tcwght	iwgt.m
 	extern	domain	tcaitm	ialt.m
 	extern	domain	tcdsca	oDs1.m,oDs2.m
@@ -407,9 +415,11 @@ function read.main.table()
 	domain	tcmcs.str100m	temp.ln02	
 	domain	tcmcs.str100m	temp.ln03	
 	domain	tcmcs.str100m	temp.ln04
-	domain	tctax.seqn	o.gstn.c	|* ISGEC GSTIN Seq.		
+	domain	tctax.seqn	o.gstn.c	|* ISGEC GSTIN Seq.	
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
 					|#ISGEC01034.sn
 	printed = false
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
 	select	tdisg869.*
 	from	tdisg869
 	where	tdisg869._index1 = {:i.orno}
@@ -937,124 +947,128 @@ function read.main.table()
 		and	tdpur401.item refers to tcibd001
 		and	tdpur401.cprj refers to tcmcs052 unref clear
 		selectdo
-			if not highest.vrsn then
-				if not select.line.from.history() then
-					continue
+			delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+			if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+				if not highest.vrsn then
+					if not select.line.from.history() then
+						continue
+					endif
+				endif		
+		| 		get.var(pid, "tdpur401.cdf_ldat", ldat.c)			|#ISGEC001071.o
+		| 		get.ld.date()			|#ISGEC015006.n						|#ISGEC001071.n
+				add.qty = 0.0
+				if highest.vrsn then
+					add.qty = get.additional.qty.from.401()
+				else
+					add.qty = get.additional.qty.from.501()
 				endif
-			endif		
-	| 		get.var(pid, "tdpur401.cdf_ldat", ldat.c)			|#ISGEC001071.o
-	| 		get.ld.date()			|#ISGEC015006.n						|#ISGEC001071.n
-			add.qty = 0.0
-			if highest.vrsn then
-				add.qty = get.additional.qty.from.401()
-			else
-				add.qty = get.additional.qty.from.501()
-			endif
-			if isspace(tdpur401.cprj) then
-				tcmcs052.dsca = ""
-			endif
-			
-			tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-			tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-			tdpur401.qoor = add.qty			|#ISGEC017006.n
-			iamt.m = 0
-			exc.amnt = 0
-			sgst.amnt = 0	|#ISGEC017006.n
-			cess.amnt = 0	|#ISGECMOD020.n
-			cgst.rate = 0	
-			cgst.amnt = 0	
-			igst.rate = 0	
-			igst.amnt = 0
-			sgst.rate = 0	|#ISGEC017006.n
-			cess.rate = 0	|#ISGECMOD020.n
-			exc.rate = 0
-			stx.rate = 0
-			stx.amnt = 0
-			o.kkcess.rate = 0	|#ISGECFIN012.n
-			tot.amnt = 0
-			oth.chg1 = 0
-			oth.chg2 = 0
-			ialt.m = ""
-			aX1a.m = ""
-			|#ISGEC0104.sn
-			Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-			|#ISGEC0104.en
-			|#ISGEC0104.so
-				| borf = str$(tdpur401.pono)&"/"&str$(tdpur401.sqnb)
-				| select tclct200.* from tclct200
-				| where tclct200._index1 = {2}
-				| and	tclct200.bobj = :tdpur400.orno
-				| and	tclct200.borf = :borf
-				| order by tclct200._index1
-				| as set with 2 rows
-				| selectdo
-				| 	if not highest.vrsn then
-				| 		select tcmsl200.* from tcmsl200
-				| 		where tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
-				| 		as set with 1 rows
-				| 		selectdo
-				| 			tdmsl.dll0500.move.tcmsl200.to.tclct200()
-				| 		endselect
-				| 	endif
-				| 	if oth.chg1 = 0 then
-				| 		oth.chg1 = tclct200.lcam
-				| 	else
-				| 		oth.chg2 = tclct200.lcam
-				| 	endif
-				| endselect
-			|#ISGEC0104.eo
-			if isspace(tdpur401.item(1;9)) then
-				select tcibd004.aitc:ialt.m 
-				from tcibd004
-				where tcibd004._index1 = {"SUP",:tdpur401.otbp,:tdpur401.item}
-				as set with 1 rows
-				selectdo
-				endselect
-			endif
-			iWgt.m = 0
-			if highest.vrsn then
-				select sum(tdisg002.wght):iwgt.m from tdisg002
-				where tdisg002._index1 = {:tdpur401.orno,:tdpur401.pono}
-				and	tdisg002.slct = tcyesno.yes
-				and	tdisg002.stat = tcyesno.yes
-				selectdo
-				endselect
-			else
-				select sum(tdisg502.wght):iwgt.m from tdisg502
-				where tdisg502._index1 = {:tdpur401.orno,:i.vrsn,:tdpur401.pono}
-				and	tdisg502.slct = tcyesno.yes
-				and	tdisg502.stat = tcyesno.yes
-				selectdo
-				endselect
-			endif
-			
-	| 		aX1a.m = "Details as per Annexure I(a) attached"
-			
-			populate.tax.amounts()
-										|#ISGEC001071.sn
-			exc.amnt = exc.amnt + oth.exc
-			stx.amnt = stx.amnt + oth.stx
-										|#ISGEC001071.en
-										|#ISGEC016048.sn
-			get.line.text()
-										|#ISGEC016048.en
+				if isspace(tdpur401.cprj) then
+					tcmcs052.dsca = ""
+				endif
 				
-			tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 
-					+ sgst.amnt + cgst.amnt + igst.amnt 	|#ISGEC017006.n
-					+ cess.amnt				|#ISGECMOD020.n
-			aBd2.m = "for project " & strip$(tdpur401.cprj) & " / " & strip$(tcmcs052.dsca)
-			tdpur401.ddta = get.last.ld.date()		|#ISGEC001107.n
-			line.indc = 1
-			insert.into.tdisg215()				|#Atul.24.11.2018.n
-			rprt_send()
-			line.indc = 2
-			send.document.detail()
-			line.indc = 3
-			send.document.detail()
+				tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+				tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+	| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+				tdpur401.qoor = add.qty			|#ISGEC017006.n
+				iamt.m = 0
+				exc.amnt = 0
+				sgst.amnt = 0	|#ISGEC017006.n
+				cess.amnt = 0	|#ISGECMOD020.n
+				cgst.rate = 0	
+				cgst.amnt = 0	
+				igst.rate = 0	
+				igst.amnt = 0
+				sgst.rate = 0	|#ISGEC017006.n
+				cess.rate = 0	|#ISGECMOD020.n
+				exc.rate = 0
+				stx.rate = 0
+				stx.amnt = 0
+				o.kkcess.rate = 0	|#ISGECFIN012.n
+				tot.amnt = 0
+				oth.chg1 = 0
+				oth.chg2 = 0
+				ialt.m = ""
+				aX1a.m = ""
+				|#ISGEC0104.sn
+				Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+				|#ISGEC0104.en
+				|#ISGEC0104.so
+					| borf = str$(tdpur401.pono)&"/"&str$(tdpur401.sqnb)
+					| select tclct200.* from tclct200
+					| where tclct200._index1 = {2}
+					| and	tclct200.bobj = :tdpur400.orno
+					| and	tclct200.borf = :borf
+					| order by tclct200._index1
+					| as set with 2 rows
+					| selectdo
+					| 	if not highest.vrsn then
+					| 		select tcmsl200.* from tcmsl200
+					| 		where tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
+					| 		as set with 1 rows
+					| 		selectdo
+					| 			tdmsl.dll0500.move.tcmsl200.to.tclct200()
+					| 		endselect
+					| 	endif
+					| 	if oth.chg1 = 0 then
+					| 		oth.chg1 = tclct200.lcam
+					| 	else
+					| 		oth.chg2 = tclct200.lcam
+					| 	endif
+					| endselect
+				|#ISGEC0104.eo
+				if isspace(tdpur401.item(1;9)) then
+					select tcibd004.aitc:ialt.m 
+					from tcibd004
+					where tcibd004._index1 = {"SUP",:tdpur401.otbp,:tdpur401.item}
+					as set with 1 rows
+					selectdo
+					endselect
+				endif
+				iWgt.m = 0
+				if highest.vrsn then
+					select sum(tdisg002.wght):iwgt.m from tdisg002
+					where tdisg002._index1 = {:tdpur401.orno,:tdpur401.pono}
+					and	tdisg002.slct = tcyesno.yes
+					and	tdisg002.stat = tcyesno.yes
+					selectdo
+					endselect
+				else
+					select sum(tdisg502.wght):iwgt.m from tdisg502
+					where tdisg502._index1 = {:tdpur401.orno,:i.vrsn,:tdpur401.pono}
+					and	tdisg502.slct = tcyesno.yes
+					and	tdisg502.stat = tcyesno.yes
+					selectdo
+					endselect
+				endif
+				
+		| 		aX1a.m = "Details as per Annexure I(a) attached"
+				
+				populate.tax.amounts()
+											|#ISGEC001071.sn
+				exc.amnt = exc.amnt + oth.exc
+				stx.amnt = stx.amnt + oth.stx
+											|#ISGEC001071.en
+											|#ISGEC016048.sn
+				get.line.text()
+											|#ISGEC016048.en
+					
+				tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 
+						+ sgst.amnt + cgst.amnt + igst.amnt 	|#ISGEC017006.n
+						+ cess.amnt				|#ISGECMOD020.n
+				aBd2.m = "for project " & strip$(tdpur401.cprj) & " / " & strip$(tcmcs052.dsca)
+				tdpur401.ddta = get.last.ld.date()		|#ISGEC001107.n
+				line.indc = 1
+				insert.into.tdisg215()				|#Atul.24.11.2018.n
+				rprt_send()
+				line.indc = 2
+				send.document.detail()
+				line.indc = 3
+				send.document.detail()
+			endif
 		selectempty						|#ISGEC016032.sn
 			if	last.vrsn	<>	tdmsl501.vrsn	then
 				latest.version = tdmsl501.vrsn + 1			|#ISGEC017006.sn
@@ -1080,23 +1094,27 @@ function read.main.table()
 		and	tdpur401.item 		refers to 	tcibd001
 		and	tdpur401.cprj 		refers to 	tcmcs052 unref clear
 		selectdo
-			if	tdpur401.pono	=	v.pono	then
-				continue
-			endif
-			v.pono	=	tdpur401.pono
-			get.line.text()						|#ISGEC016048.n
-			select 	tdmsl501.pono
-			from 	tdmsl501
-			where 	tdmsl501._index1 	= 		{:tdpur401.orno,:i.vrsn,:tdpur401.pono}
-			as	set with 1 rows
-			selectdo
-				if	v.count	=	1	and
-					i.vrsn	=	0	then
-					process.data.revision.wise()
+			delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+			if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+				if	tdpur401.pono	=	v.pono	then
+					continue
 				endif
-			selectempty
-				process.data.revision.wise()
-			endselect	
+				v.pono	=	tdpur401.pono
+				get.line.text()						|#ISGEC016048.n
+				select 	tdmsl501.pono
+				from 	tdmsl501
+				where 	tdmsl501._index1 	= 		{:tdpur401.orno,:i.vrsn,:tdpur401.pono}
+				as	set with 1 rows
+				selectdo
+					if	v.count	=	1	and
+						i.vrsn	=	0	then
+						process.data.revision.wise()
+					endif
+				selectempty
+					process.data.revision.wise()
+				endselect
+			endif
 		endselect	
 	endif	
 								|#ISGEC016032.en
@@ -1479,12 +1497,14 @@ function domain tcqsl1	get.additional.qty.from.501()
 	domain tcqsl1 ord.qty,app.qty,diff.qty,bac.qty
 	domain tcqsl1 final.rcpt.qnty, non.final.rcpt.qnty	|#ISGEC017006.n
 	domain tcqsl1 final.rcpt,non.final.rcpt		|#ISGEC002024.n	
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
 	
 	ord.qty = 0
 	app.qty = 0
 	bac.qty = 0
 	non.final.rcpt.qnty = 0	|#ISGEC017006.n
 	final.rcpt.qnty = 0	|#ISGEC017006.n
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
 					|#ISGEC017006.so
 | 	select atdmsl501.qoor:ord.qty,atdmsl501.qiap:app.qty,
 | 		atdmsl501.qibo:bac.qty
@@ -1529,6 +1549,7 @@ function domain tcqsl1	get.additional.qty.from.501()
 }
 function get.po.totals()
 {	
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
 	v.vrsn = 0			|MUDIT.n
 	v.pono = 0			|MUDIT.n
 	tot.exc = 0
@@ -1545,7 +1566,10 @@ function get.po.totals()
 	ind.oth1 = 0
 	ind.oth2 = 0
 	ind.bas = 0
+	amnt.amti = 0	|#GH187CR503.n
+	
 	print.data.not.in.history	=	false
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
 	select 	tdmsl501.*,								|#ISGEC016032.sn (Shilpa)
 		tcibd001.*,
 		tcmcs052.dsca 
@@ -1571,118 +1595,152 @@ function get.po.totals()
 	where tdpur401._index1 = {:i.orno,:tdmsl501.pono}			|#ISGEC016032.n
 	and	tdpur401.oltp in (1,4)
 	selectdo
-		if not highest.vrsn then
-			if not select.line.from.history() then
-				continue
+		delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+		if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+			if not highest.vrsn then
+				if not select.line.from.history() then
+					continue
+				endif
+			endif		
+			select tdpur402.rqno,tdpur402.rqpo,tdpur201.*
+			from tdpur402,tdpur201
+			where tdpur402._index1 = {:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
+			and tdpur402.cmbe refers to tdpur201
+			as set with 1 rows
+			selectdo
+											|#GH187CR503.sn
+				select	tdisg461.reqn,
+					tdisg461.orno,
+					tdisg461.pono,
+					tdisg461.sqnb,
+					tdisg461.indn,
+					tdisg461.indl
+				from	tdisg461
+				where	tdisg461._index3 = {:tdpur402.rqno,:tdpur402.rqpo}
+				selectdo
+					select	tdisg460.reqn
+					from	tdisg460
+					where	tdisg460._index1 = {:tdisg461.reqn,:tdisg461.orno}
+					and	tdisg460.stat = 2
+					selectdo
+						select	a_tdisg461.amti:amnt.amti
+						from	tdisg461 a_tdisg461
+						where	a_tdisg461._index1 = {	:tdisg461.reqn,
+										:tdisg461.orno,
+										:tdisg461.pono,
+										:tdisg461.sqnb,
+										:tdisg461.indn,
+										:tdisg461.indl	}
+						selectdo
+							ind.bas = ind.bas + amnt.amti
+						endselect
+					endselect
+				endselect
+										|#GH187CR503.en
+				ind.exc = 0
+				ind.stx = 0
+				ind.oth1 = 0
+				ind.oth2 = 0
+				ind.bas = ind.bas + tdpur201.oamt			
+			endselect
+			add.qty = 0.0
+			
+			if highest.vrsn then
+				add.qty = get.additional.qty.from.401()
+			else
+				add.qty = get.additional.qty.from.501()
 			endif
-		endif		
-		select tdpur402.rqno,tdpur402.rqpo,tdpur201.*
-		from tdpur402,tdpur201
-		where tdpur402._index1 = {:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
-		and tdpur402.cmbe refers to tdpur201
-		as set with 1 rows
-		selectdo
-			ind.exc = 0
-			ind.stx = 0
-			ind.oth1 = 0
-			ind.oth2 = 0
-			ind.bas = ind.bas + tdpur201.oamt			
-		endselect
-		add.qty = 0.0
-		
-		if highest.vrsn then
-			add.qty = get.additional.qty.from.401()
-		else
-			add.qty = get.additional.qty.from.501()
-		endif
-		
-		tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-		tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-		tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-		tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-		tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-		tdpur401.qoor = add.qty			|#ISGEC017006.n
-		iamt.m = 0
-		exc.amnt = 0
-		sgst.amnt = 0	|#ISGEC017006.sn
-		cgst.amnt = 0	
-		igst.amnt = 0	|#ISGEC017006.en
-		exc.rate = 0
-		stx.rate = 0
-		sgst.rate = 0	|#ISGEC017006.sn
-		cgst.rate = 0
-		igst.rate = 0	|#ISGEC017006.en
-		stx.amnt = 0
-		tot.amnt = 0
-		oth.chg1 = 0
-		oth.chg2 = 0
-		cess.amnt = 0	|#ISGECMOD020.sn
-		cess.rate = 0	|#ISGECMOD020.en
-				|#ISGEC019007.sn
-		sgst.rate.t	=	0			
-		sgst.amnt.t	=	0			
-		utgs.rate.t	=	0			
-		utgs.amnt.t	=	0			
-				|#ISGEC019007.en		
-		|#ISGEC0104.sn
-		rate = 0		|#ISG10102.n
-		
-		Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-		|#ISGEC0104.en
-		|#ISGEC0104.so
-			| borf = str$(tdpur401.pono)&"/"&str$(tdpur401.sqnb)
-			| select tclct200.* from tclct200
-			| where tclct200._index1 = {2}
-			| and	tclct200.bobj = :tdpur400.orno
-			| and	tclct200.borf = :borf
-			| order by tclct200._index1
-			| as set with 2 rows
-			| selectdo
-			| 	if not highest.vrsn then
-			| 		select tcmsl200.* from tcmsl200
-			| 		where tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
-			| 		as set with 1 rows
-			| 		selectdo
-			| 			tdmsl.dll0500.move.tcmsl200.to.tclct200()
-			| 		endselect
-			| 	endif
-			| 	if oth.chg1 = 0 then
-			| 		oth.chg1 = tclct200.lcam
-			| 	else
-			| 		oth.chg2 = tclct200.lcam
-			| 	endif
-			| endselect
-		|#ISGEC0104.eo
-		populate.tax.amounts()
-								|#ISGEC001071.so
-| 		tot.exc = tot.exc + exc.amnt 
-| 		tot.stx = tot.stx + stx.amnt 
-								|#ISGEC001071.eo
-								|#ISGEC001071.sn
-		tot.exc = tot.exc + exc.amnt + oth.exc
- 		tot.stx = tot.stx + stx.amnt + oth.stx
-		tot.sgst = tot.sgst + sgst.amnt	|#ISGEC017006.n
-		tot.cgst = tot.cgst + cgst.amnt	|#ISGEC017006.n
-		tot.sgst = tot.sgst + igst.amnt	|#ISGEC017006.n
-								|#ISGEC001071.en
-		tot.oth1 = tot.oth1 + oth.chg1
-		tot.oth2 = tot.oth2 + oth.chg2
-		cess = cess + cess.amnt				|#ISGECMOD020.n
-| 		tot.bas = tot.bas + tdpur401.oamt			|#ISGEC016032.sn (Shilpa)
+			
+			tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+			tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+			tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+			tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+			tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+	| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+			tdpur401.qoor = add.qty			|#ISGEC017006.n
+			iamt.m = 0
+			exc.amnt = 0
+			sgst.amnt = 0	|#ISGEC017006.sn
+			cgst.amnt = 0	
+			igst.amnt = 0	|#ISGEC017006.en
+			exc.rate = 0
+			stx.rate = 0
+			sgst.rate = 0	|#ISGEC017006.sn
+			cgst.rate = 0
+			igst.rate = 0	|#ISGEC017006.en
+			stx.amnt = 0
+			tot.amnt = 0
+			oth.chg1 = 0
+			oth.chg2 = 0
+			cess.amnt = 0	|#ISGECMOD020.sn
+			cess.rate = 0	|#ISGECMOD020.en
+					|#ISGEC019007.sn
+			sgst.rate.t	=	0			
+			sgst.amnt.t	=	0			
+			utgs.rate.t	=	0			
+			utgs.amnt.t	=	0			
+					|#ISGEC019007.en		
+			|#ISGEC0104.sn
+			rate = 0		|#ISG10102.n
+			
+			Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+			|#ISGEC0104.en
+			|#ISGEC0104.so
+				| borf = str$(tdpur401.pono)&"/"&str$(tdpur401.sqnb)
+				| select tclct200.* from tclct200
+				| where tclct200._index1 = {2}
+				| and	tclct200.bobj = :tdpur400.orno
+				| and	tclct200.borf = :borf
+				| order by tclct200._index1
+				| as set with 2 rows
+				| selectdo
+				| 	if not highest.vrsn then
+				| 		select tcmsl200.* from tcmsl200
+				| 		where tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
+				| 		as set with 1 rows
+				| 		selectdo
+				| 			tdmsl.dll0500.move.tcmsl200.to.tclct200()
+				| 		endselect
+				| 	endif
+				| 	if oth.chg1 = 0 then
+				| 		oth.chg1 = tclct200.lcam
+				| 	else
+				| 		oth.chg2 = tclct200.lcam
+				| 	endif
+				| endselect
+			|#ISGEC0104.eo
+			populate.tax.amounts()
+									|#ISGEC001071.so
+	| 		tot.exc = tot.exc + exc.amnt 
+	| 		tot.stx = tot.stx + stx.amnt 
+									|#ISGEC001071.eo
+									|#ISGEC001071.sn
+			tot.exc = tot.exc + exc.amnt + oth.exc
+			tot.stx = tot.stx + stx.amnt + oth.stx
+			tot.sgst = tot.sgst + sgst.amnt	|#ISGEC017006.n
+			tot.cgst = tot.cgst + cgst.amnt	|#ISGEC017006.n
+			tot.sgst = tot.sgst + igst.amnt	|#ISGEC017006.n
+									|#ISGEC001071.en
+			tot.oth1 = tot.oth1 + oth.chg1
+			tot.oth2 = tot.oth2 + oth.chg2
+			cess = cess + cess.amnt				|#ISGECMOD020.n
+	| 		tot.bas = tot.bas + tdpur401.oamt			|#ISGEC016032.sn (Shilpa)
 
-		if not highest.vrsn then	
-| 			get.total.from.history()		|#ISGEC017006.o
-| 			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + add.qty)	|#ISGEC017006.n
-			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	|#ISGEC017006.n
-		else
-			tot.bas = tot.bas + tdpur401.oamt
+			if not highest.vrsn then	
+	| 			get.total.from.history()		|#ISGEC017006.o
+	| 			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + add.qty)	|#ISGEC017006.n
+				tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	|#ISGEC017006.n
+			else
+				tot.bas = tot.bas + tdpur401.oamt
+			endif
+										|#ISGEC016032.en (Shilpa)
+	| 		tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 				|#ISGEC001071.n
+			tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 	|#ISGEC001071.o
+					 + sgst.amnt + cgst.amnt + igst.amnt + cess.amnt		|#ISGEC017.n
 		endif
-									|#ISGEC016032.en (Shilpa)
-| 		tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 				|#ISGEC001071.n
- 		tot.amnt = tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 	|#ISGEC001071.o
-				 + sgst.amnt + cgst.amnt + igst.amnt + cess.amnt		|#ISGEC017.n
 	selectempty								|#ISGEC016032.sn (Shilpa)
+		
 		if	last.vrsn	<>	tdmsl501.vrsn	then
 			exc.amnt = 0
 			stx.amnt = 0
@@ -1728,91 +1786,96 @@ function get.po.totals()
 	 	where 	tdpur401._index1 	= 		{:i.orno}				
 		and	tdpur401.oltp 		in 		(1,4)
 		selectdo
-			if	tdpur401.pono	=	v.pono	then
-				continue
-			endif
-			v.pono	=	tdpur401.pono
-			select 	tdmsl501.pono
-			from 	tdmsl501
-			where 	tdmsl501._index1 	= 		{:tdpur401.orno,:i.vrsn,:tdpur401.pono}
-			as	set with 1 rows
-			selectdo
-			selectempty						
-				select 	tdpur402.rqno,
-					tdpur402.rqpo,
-					tdpur201.*
-				from 	tdpur402,tdpur201
-				where 	tdpur402._index1 	= 		{:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
-				and 	tdpur402.cmbe 		refers to 	tdpur201
-				as 	set with 1 rows
+			delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+			if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+				if	tdpur401.pono	=	v.pono	then
+					continue
+				endif
+				v.pono	=	tdpur401.pono
+				select 	tdmsl501.pono
+				from 	tdmsl501
+				where 	tdmsl501._index1 	= 		{:tdpur401.orno,:i.vrsn,:tdpur401.pono}
+				as	set with 1 rows
 				selectdo
-					ind.exc 	= 	0
-					ind.stx 	= 	0
-					ind.oth1 	= 	0
-					ind.oth2 	= 	0
-					ind.bas 	= 	ind.bas + tdpur201.oamt			
+				selectempty						
+					select 	tdpur402.rqno,
+						tdpur402.rqpo,
+						tdpur201.*
+					from 	tdpur402,tdpur201
+					where 	tdpur402._index1 	= 		{:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
+					and 	tdpur402.cmbe 		refers to 	tdpur201
+					as 	set with 1 rows
+					selectdo
+						ind.exc 	= 	0
+						ind.stx 	= 	0
+						ind.oth1 	= 	0
+						ind.oth2 	= 	0
+						ind.bas 	= 	ind.bas + tdpur201.oamt			
+					endselect
+					add.qty 	= 	0.0
+					if 	highest.vrsn 	then
+						add.qty 	= 	get.additional.qty.from.401()
+					else
+						add.qty 	= 	get.additional.qty.from.501()
+					endif
+					
+					tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+					tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+					tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+					tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+	| 				tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+					tdpur401.qoor = add.qty			|#ISGEC017006.n
+					iamt.m 			=	0
+					exc.amnt 		= 	0
+					sgst.amnt 		= 	0	|#ISGEC017006.sn
+					cgst.amnt 		= 	0	
+					igst.amnt 		= 	0	|#ISGEC017006.en
+					exc.rate 		= 	0
+					stx.rate 		= 	0
+					sgst.rate 		= 	0	|#ISGEC017006.sn
+					cgst.rate 		= 	0	
+					igst.rate 		= 	0	|#ISGEC017006.en
+					stx.amnt 		= 	0
+					tot.amnt 		=	0
+					oth.chg1 		= 	0
+					oth.chg2 		= 	0
+					rate 			= 	0
+					cess.amnt		= 	0	|#ISGECMOD020.sn
+					cess.rate		=	0	|#ISGECMOD020.en	
+										|#ISGEC019007.sn
+					sgst.rate.t	=	0			
+					sgst.amnt.t	=	0			
+					utgs.rate.t	=	0			
+					utgs.amnt.t	=	0			
+										|#ISGEC019007.en				
+					Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+					populate.tax.amounts()
+											
+					tot.exc 	= 	tot.exc + exc.amnt + oth.exc
+					tot.stx 	= 	tot.stx + stx.amnt + oth.stx
+					tot.sgst = tot.sgst + sgst.amnt	|#ISGEC017006.sn
+					tot.cgst = tot.cgst + cgst.amnt	
+					tot.sgst = tot.sgst + igst.amnt	|#ISGEC017006.en
+											
+					tot.oth1 	= 	tot.oth1 + oth.chg1
+					tot.oth2 	= 	tot.oth2 + oth.chg2
+					
+					cess		=	cess + cess.amnt	|#ISGECMOD020.n
+
+					if 	not highest.vrsn 	then	
+	| 					get.total.from.history()		|#ISGEC017006.o
+	| 					tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + add.qty)	|#ISGEC017006.n
+						tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	|#ISGEC017006.n
+					else
+						tot.bas 	= 	tot.bas + tdpur401.oamt
+					endif
+
+					tot.amnt 	= 	tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 
+								sgst.amnt + cgst.amnt + igst.amnt  + cess.amnt	|#ISGEC017006.n
+	
 				endselect
-				add.qty 	= 	0.0
-				if 	highest.vrsn 	then
-					add.qty 	= 	get.additional.qty.from.401()
-				else
-					add.qty 	= 	get.additional.qty.from.501()
-				endif
-				
-				tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-				tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-| 				tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-				tdpur401.qoor = add.qty			|#ISGEC017006.n
-				iamt.m 			=	0
-				exc.amnt 		= 	0
-				sgst.amnt 		= 	0	|#ISGEC017006.sn
-				cgst.amnt 		= 	0	
-				igst.amnt 		= 	0	|#ISGEC017006.en
-				exc.rate 		= 	0
-				stx.rate 		= 	0
-				sgst.rate 		= 	0	|#ISGEC017006.sn
-				cgst.rate 		= 	0	
-				igst.rate 		= 	0	|#ISGEC017006.en
-				stx.amnt 		= 	0
-				tot.amnt 		=	0
-				oth.chg1 		= 	0
-				oth.chg2 		= 	0
-				rate 			= 	0
-				cess.amnt		= 	0	|#ISGECMOD020.sn
-				cess.rate		=	0	|#ISGECMOD020.en	
-									|#ISGEC019007.sn
-				sgst.rate.t	=	0			
-				sgst.amnt.t	=	0			
-				utgs.rate.t	=	0			
-				utgs.amnt.t	=	0			
-									|#ISGEC019007.en				
-				Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-				populate.tax.amounts()
-										
-				tot.exc 	= 	tot.exc + exc.amnt + oth.exc
-				tot.stx 	= 	tot.stx + stx.amnt + oth.stx
-				tot.sgst = tot.sgst + sgst.amnt	|#ISGEC017006.sn
-				tot.cgst = tot.cgst + cgst.amnt	
-				tot.sgst = tot.sgst + igst.amnt	|#ISGEC017006.en
-										
-				tot.oth1 	= 	tot.oth1 + oth.chg1
-				tot.oth2 	= 	tot.oth2 + oth.chg2
-				
-				cess		=	cess + cess.amnt	|#ISGECMOD020.n
-
-				if 	not highest.vrsn 	then	
-| 					get.total.from.history()		|#ISGEC017006.o
-| 					tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + add.qty)	|#ISGEC017006.n
-					tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	|#ISGEC017006.n
-				else
-					tot.bas 	= 	tot.bas + tdpur401.oamt
-				endif
-
-				tot.amnt 	= 	tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 
-							sgst.amnt + cgst.amnt + igst.amnt  + cess.amnt	|#ISGEC017006.n
-			endselect	
+			endif
 		endselect	
 	endif	
 }
@@ -1823,48 +1886,54 @@ function Get_Landed_Cost(domain tcorno		im.orno,
 {
 	domain	tcpono	tmp.sqnb
 	string	tmp.borf(5), prv.borf(5)
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
 	
 	oth.chg1 = 0
 	oth.chg2 = 0
 	oth.stx = 0					|#ISGEC001071.sn
 	oth.exc = 0					|#ISGEC001071.en
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
 	select	a_tdpur401.sqnb:tmp.sqnb 
 	from	tdpur401 a_tdpur401
 	where	a_tdpur401._index1 = {:im.orno, :im.pono}
 	and	a_tdpur401.oltp in (2,3,4)
 	selectdo
-		tmp.borf = str$(im.pono)&"/"&str$(tmp.sqnb)
-		select	tclct200.* from tclct200
-		where	tclct200._index1 = {2}
-		and	tclct200.bobj = :im.orno
-		and	tclct200.borf = :tmp.borf
-		order by tclct200._index1
-		as set with 2 rows
-		selectdo
-			if not highest.vrsn then
-				select	tcmsl200.*
-				from	tcmsl200
-				where	tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
-				as set with 1 rows
-				selectdo
-					tdmsl.dll0500.move.tcmsl200.to.tclct200()
-				endselect
-			endif
-			if	tmp.borf <> prv.borf	then
-				prv.borf = tmp.borf
-				oth.chg1 = oth.chg1 + tclct200.lcam
-			else
-				oth.chg2 = oth.chg2 + tclct200.lcam
-			endif	
-			calculate.oth.tax.amounts()			|#ISGEC001071.n
+		delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
 			
-			| if oth.chg1 = 0 then
-			| 	oth.chg1 = tclct200.lcam
-			| else
-			| 	oth.chg2 = tclct200.lcam
-			| endif
-			
-		endselect
+		if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+			tmp.borf = str$(im.pono)&"/"&str$(tmp.sqnb)
+			select	tclct200.* from tclct200
+			where	tclct200._index1 = {2}
+			and	tclct200.bobj = :im.orno
+			and	tclct200.borf = :tmp.borf
+			order by tclct200._index1
+			as set with 2 rows
+			selectdo
+				if not highest.vrsn then
+					select	tcmsl200.*
+					from	tcmsl200
+					where	tcmsl200._index1 ={:tclct200.boty,:tclct200.boor,:tclct200.bobj,:tclct200.borf,:tdmsl400.vrsn,:tclct200.lcln}
+					as set with 1 rows
+					selectdo
+						tdmsl.dll0500.move.tcmsl200.to.tclct200()
+					endselect
+				endif
+				if	tmp.borf <> prv.borf	then
+					prv.borf = tmp.borf
+					oth.chg1 = oth.chg1 + tclct200.lcam
+				else
+					oth.chg2 = oth.chg2 + tclct200.lcam
+				endif	
+				calculate.oth.tax.amounts()			|#ISGEC001071.n
+				
+				| if oth.chg1 = 0 then
+				| 	oth.chg1 = tclct200.lcam
+				| else
+				| 	oth.chg2 = tclct200.lcam
+				| endif
+				
+			endselect
+		endif
 	endselect	
 }
 |#ISGEC0104.en
@@ -2154,6 +2223,9 @@ function	process.data.revision.wise()
 
 function	print.data.without.history()
 {
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
+	
 	select	tdpur401.*,
 		tcibd001.*,
 		tcmcs052.dsca 
@@ -2163,104 +2235,144 @@ function	print.data.without.history()
 	and	tdpur401.item 		refers to 	tcibd001
 	and	tdpur401.cprj 		refers to 	tcmcs052 unref clear
 	selectdo
-		if 	not highest.vrsn 	then
-			if 	not select.line.from.history() 	then
-				continue
+		delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+		if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+			if 	not highest.vrsn 	then
+				if 	not select.line.from.history() 	then
+					continue
+				endif
 			endif
-		endif		
-		process.data.revision.wise()
+			process.data.revision.wise()
+		endif			
 	endselect	
 }
 
 function	print.total.data.without.history()
 {
-	select	tdpur401.* 
+	long		delete.flag		|RAvi.a.11102019.GH163CR000
+	delete.flag = 0				|RAvi.a.11102019.GH163CR000
+	
+	select	tdpur401.* 		
 	from	tdpur401
 	where	tdpur401._index1	=	{:i.orno}
 	and	tdpur401.oltp		in	(1,4)
 	selectdo
-		if	not	highest.vrsn 	then
-			if 	not	select.line.from.history() 	then
-				continue
+		delete.flag = delete.flag.enable(tdpur401.orno, tdpur401.pono, tdpur401.sqnb)			|RAvi.a.11102019.GH163CR000
+			
+		if delete.flag = 0 then										|RAvi.a.11102019.GH163CR000
+			if	not	highest.vrsn 	then
+				if 	not	select.line.from.history() 	then
+					continue
+				endif
+			endif		
+			
+			select 	tdpur402.rqno,
+				tdpur402.rqpo,
+				tdpur201.*
+			from 	tdpur402,tdpur201
+			where 	tdpur402._index1 	= 		{:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
+			and 	tdpur402.cmbe 		refers to 	tdpur201
+			as 	set with 1 rows
+			selectdo
+										|#GH187CR503.sn
+				select	tdisg461.reqn,
+					tdisg461.orno,
+					tdisg461.pono,
+					tdisg461.sqnb,
+					tdisg461.indn,
+					tdisg461.indl
+				from	tdisg461
+				where	tdisg461._index3 = {:tdpur402.rqno,:tdpur402.rqpo}
+				selectdo
+					select	tdisg460.reqn
+					from	tdisg460
+					where	tdisg460._index1 = {:tdisg461.reqn,:tdisg461.orno}
+					and	tdisg460.stat = 2
+					selectdo
+						select	a_tdisg461.amti:amnt.amti
+						from	tdisg461 a_tdisg461
+						where	a_tdisg461._index1 = {	:tdisg461.reqn,
+										:tdisg461.orno,
+										:tdisg461.pono,
+										:tdisg461.sqnb,
+										:tdisg461.indn,
+										:tdisg461.indl	}
+						selectdo
+							ind.bas = ind.bas + amnt.amti
+						endselect
+					endselect
+				endselect
+										|#GH187CR503.en
+				ind.exc 	= 	0
+				ind.stx 	= 	0
+				ind.oth1 	= 	0
+				ind.oth2 	= 	0
+				ind.bas 	= 	ind.bas + tdpur201.oamt			
+			endselect
+			add.qty 	= 	0.0
+			
+			if 	highest.vrsn 	then
+				add.qty 	= 	get.additional.qty.from.401()
+			else
+				add.qty 	= 	get.additional.qty.from.501()
 			endif
-		endif		
-		select 	tdpur402.rqno,
-			tdpur402.rqpo,
-			tdpur201.*
-		from 	tdpur402,tdpur201
-		where 	tdpur402._index1 	= 		{:tdpur401.orno,:tdpur401.pono,:tdpur401.sqnb}
-		and 	tdpur402.cmbe 		refers to 	tdpur201
-		as 	set with 1 rows
-		selectdo
-			ind.exc 	= 	0
-			ind.stx 	= 	0
-			ind.oth1 	= 	0
-			ind.oth2 	= 	0
-			ind.bas 	= 	ind.bas + tdpur201.oamt			
-		endselect
-		add.qty 	= 	0.0
-		
-		if 	highest.vrsn 	then
-			add.qty 	= 	get.additional.qty.from.401()
-		else
-			add.qty 	= 	get.additional.qty.from.501()
-		endif
-		
-		tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-		tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-		tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-		tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-		tdpur401.qoor = add.qty			|#ISGEC017006.n
-		iamt.m 			=	0
-		exc.amnt 		= 	0
-		sgst.amnt 		= 	0	|#ISGEC017006.sn
-		cgst.amnt 		= 	0	
-		igst.amnt 		= 	0	|#ISGEC017006.en
-		exc.rate 		= 	0
-		stx.rate 		= 	0
-		sgst.rate 		= 	0	|#ISGEC017006.sn
-		cgst.rate 		= 	0	
-		igst.rate 		= 	0	|#ISGEC017006.en
-		stx.amnt 		= 	0
-		tot.amnt 		=	0
-		oth.chg1 		= 	0
-		oth.chg2 		= 	0
-		rate 			= 	0
-		cess.rate		=	0	|#ISGECMOD020.sn
-		cess.amnt		=	0	|#ISGECMOD020.en
-							|#ISGEC019007.sn
-		sgst.rate.t	=	0			
-		sgst.amnt.t	=	0			
-		utgs.rate.t	=	0			
-		utgs.amnt.t	=	0			
-							|#ISGEC019007.en		
-		Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-		populate.tax.amounts()
-								
-		tot.exc 	= 	tot.exc + exc.amnt + oth.exc
- 		tot.stx 	= 	tot.stx + stx.amnt + oth.stx
-		tot.sgst 	= 	tot.sgst + sgst.amnt	|#ISGEC017006.sn
-		tot.cgst 	= 	tot.cgst + cgst.amnt	
-		tot.sgst 	= 	tot.sgst + igst.amnt	|#ISGEC017006.en
-								
-		tot.oth1 	= 	tot.oth1 + oth.chg1
-		tot.oth2 	= 	tot.oth2 + oth.chg2
-		cess		=	cess + cess.amnt	|#ISGECMOD020.n
-									|#ISGEC016048.sn
-		get.line.text()
-									|#ISGEC016048.en
-		if 	not highest.vrsn 	then	
-| 			get.total.from.history()		|#ISGEC017006.o
-| 			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + + add.qty)	|#ISGEC017006.n
-			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	
-		else
-			tot.bas 	= 	tot.bas + tdpur401.oamt
-		endif
+			
+			tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+			tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+			tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+			tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+	| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+			tdpur401.qoor = add.qty			|#ISGEC017006.n
+			iamt.m 			=	0
+			exc.amnt 		= 	0
+			sgst.amnt 		= 	0	|#ISGEC017006.sn
+			cgst.amnt 		= 	0	
+			igst.amnt 		= 	0	|#ISGEC017006.en
+			exc.rate 		= 	0
+			stx.rate 		= 	0
+			sgst.rate 		= 	0	|#ISGEC017006.sn
+			cgst.rate 		= 	0	
+			igst.rate 		= 	0	|#ISGEC017006.en
+			stx.amnt 		= 	0
+			tot.amnt 		=	0
+			oth.chg1 		= 	0
+			oth.chg2 		= 	0
+			rate 			= 	0
+			cess.rate		=	0	|#ISGECMOD020.sn
+			cess.amnt		=	0	|#ISGECMOD020.en
+								|#ISGEC019007.sn
+			sgst.rate.t	=	0			
+			sgst.amnt.t	=	0			
+			utgs.rate.t	=	0			
+			utgs.amnt.t	=	0			
+								|#ISGEC019007.en		
+			Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+			populate.tax.amounts()
+									
+			tot.exc 	= 	tot.exc + exc.amnt + oth.exc
+			tot.stx 	= 	tot.stx + stx.amnt + oth.stx
+			tot.sgst 	= 	tot.sgst + sgst.amnt	|#ISGEC017006.sn
+			tot.cgst 	= 	tot.cgst + cgst.amnt	
+			tot.sgst 	= 	tot.sgst + igst.amnt	|#ISGEC017006.en
+									
+			tot.oth1 	= 	tot.oth1 + oth.chg1
+			tot.oth2 	= 	tot.oth2 + oth.chg2
+			cess		=	cess + cess.amnt	|#ISGECMOD020.n
+										|#ISGEC016048.sn
+			get.line.text()
+										|#ISGEC016048.en
+			if 	not highest.vrsn 	then	
+	| 			get.total.from.history()		|#ISGEC017006.o
+	| 			tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (tdmsl501.qoor + + add.qty)	|#ISGEC017006.n
+				tot.bas = tot.bas + (tdmsl501.oamt / tdmsl501.qoor ) * (add.qty)	
+			else
+				tot.bas 	= 	tot.bas + tdpur401.oamt
+			endif
 
- 		tot.amnt 	= 	tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 
-					sgst.amnt + cgst.amnt + igst.amnt + cess.amnt	 |#ISGEC017006.n
-		
+			tot.amnt 	= 	tdpur401.oamt + exc.amnt + stx.amnt + oth.chg1 + oth.chg2 + oth.exc + oth.stx + 
+						sgst.amnt + cgst.amnt + igst.amnt + cess.amnt	 |#ISGEC017006.n
+		endif
 	selectempty							
 		if	last.vrsn	<>	tdmsl501.vrsn	then
 			exc.amnt 	= 	0
@@ -2790,4 +2902,34 @@ function	update.tdisg214()
 		commit.transaction()
 	endselect
 }
-									|#ISGEC019007.en									
+									|#ISGEC019007.en	
+
+function long delete.flag.enable(domain	tcorno orno.f,					|RAvi.a.s.11102019.GH163CR000
+				domain	tcpono	pono.f,
+				domain	tcpono	sqnb.f)
+{
+	long delete.po.flag
+	
+	delete.po.flag = 0
+	
+	select	apur401_o.orno,
+		apur401_o.pono,
+		apur401_o.sqnb
+	from	tdpur401 apur401_o
+	where	apur401_o._index1 = {:orno.f, :pono.f, :sqnb.f}
+	as set with 1 rows
+	selectdo
+		select	tdpur401.orno
+		from	tdpur401
+		where	tdpur401._index1 = {:orno.f, :pono.f, 1}
+		as set with 1 rows
+		selectdo
+			delete.po.flag = 0
+		selectempty
+			delete.po.flag = 1
+		endselect
+	endselect
+	
+	return(delete.po.flag)
+}
+											|RAvi.a.e.11102019.GH163CR000
