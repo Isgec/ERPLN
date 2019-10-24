@@ -92,6 +92,9 @@
 |*
 |* ID: ISGEC019009, Manish Manchanda, 2019-07-24
 |* Modifications - new text field added
+|*
+|* #GH185CR501, Adarsh Pal, VRC B61U a7 isg, 22-10-2019
+|* Modification in report layout print for Format 001
 |******************************************************************************
 
 	table	ttctax940
@@ -195,6 +198,7 @@ extern 	domain	tcnama		o.tfacp100.nama
 extern domain tcdsca          ncmp.name					|PATCH001008.sn
 extern domain tcncmp          ncmp.code					|PATCH001008.en
 extern domain tcsrnb		o.srno	|#ISGEC017006.n
+extern domain tcmcs.str100	r.str	|#GH185CR501.n
 	domain tccom.cadr	own.cadr	|#ISGEC017006.n
 | extern	domain	tfgld.amnt	o.cisli206.txah
 	domain	tcmcs.cste	temp.cste	|#ISGEC017006.sn
@@ -651,7 +655,7 @@ function get.value.from.tfisg003()						|#ISGEC016023.sn
 | 			endif						
 			found = found + 1
 | 		endselect
-		print.gr = 0					
+| 		print.gr = 0					|RAvi.com.23102019
 	selectempty
 		get.value.from.tfisg002()
 		print.gr = 0
@@ -794,6 +798,17 @@ function extern iciisg2405.print.report
 			as set with 1 rows
 			selectdo
 			endselect
+									|#GH185CR501.sn
+			select	tpisg045.icyn
+			from	tpisg045
+			where	tpisg045._index1 = {:cisli235.cprj}
+			and	tpisg045.icyn = 1
+			selectdo
+				r.str = "If Payment is not made by due date,Interest will be charged @24% p.a."
+			selectempty
+				r.str = ""
+			endselect
+									|#GH185CR501.en
 			
 			iciisg2405.get.LST.CST.details(cisli235.slcp,cisli205.ofbp,cisli205.txct,
 						lst.tctax400.fovn,cst.tctax400.fovn,ser.tctax400.fovn,tan.tctax400.fovn)
