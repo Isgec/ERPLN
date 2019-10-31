@@ -46,6 +46,7 @@
 	table	ttpmsl000
 	table	ttpisg014			|# PATCH001043.n
 	table	ttpisg019			|ISGEC001231.n
+	table	ttdisg461			|# CR-485
 	
 #include <bic_dam>
 |**************
@@ -406,7 +407,7 @@ function domain tfgld.amnt SoftAllocationAmount
 	endselect
 	
 	total.amnt = none.amnt + rfq.amnt + pur.amnt 
-	
+	total.amnt = total.amnt + get_amnt(i.cprj,i.cspa)	|#by Sanjeev CR-485
 	return(total.amnt)
 }
 
@@ -1277,3 +1278,30 @@ function extern long tpisgdll0012.check_sanction_available_amount
 	
 	return(0)
 }
+|***********sanjeev** for update the extra approved amount to santion amount*****start******
+function domain tfgld.amnt get_amnt(domain tccprj i.cprj,domain	tppdm.cspa i.cspa)
+{
+	domain	tfgld.amnt	req.amnt
+	domain	tcorno		o.orno
+	domain	tcpono		o.pono
+	req.amnt = 0
+	select 	tdpur401.orno:o.orno,
+		tdpur401.pono:o.pono
+	from	tdpur401,tdpur400
+	where	tdpur401._index2 = {:i.cprj}
+	and	tdpur401.cspa = :i.cspa
+	and	tdpur401.orno refers to tdpur400
+	and	tdpur400.hdst in (tdpur.hdst.created)
+	selectdo
+		select	tdisg461.amti,tdisg461.reqn
+		from	tdisg461,tdisg460
+		where	tdisg461._index2 = {:o.orno,:o.pono}
+		and	tdisg460.stat = 2
+		and	tdisg461.reqn refers to tdisg460
+		selectdo
+			req.amnt = req.amnt + tdisg461.amti
+		endselect
+	endselect
+	return(req.amnt)
+}
+|***********sanjeev** for update the extra approved amount to santion amount*****end****** CR-485
