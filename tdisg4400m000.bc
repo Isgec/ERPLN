@@ -138,6 +138,9 @@
 |*
 |* GH163CR000, RAvi Kumar, 11-10-2019, VRC B61U a7 isg
 |* Deleted line printing in PO
+|*
+|* #GH187CR503, Adarsh Pal, 24-10-2019, VRC B61U a7 isg
+|* Modification in Basic Value as per Indent in Report Layout
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -185,6 +188,7 @@ declaration:
 	table	ttttxt010
 	table	ttdisg214			|#Atul.24.11.2018.sn
 	table	ttdisg215			|#Atul.24.11.2018.n
+	table	ttdisg461			|#GH187CR503.n
 	
 	extern	domain	tcorno	i.orno
 	extern	domain	tcsern	i.vrsn,last.vrsn
@@ -199,6 +203,7 @@ declaration:
 	extern	domain	tcamnt	igst.amnt, tot.sgst, ind.igst, igst.rate	|#ISGEC017006.n
 	extern	domain	tcamnt	ind.exc,ind.stx,ind.oth1,ind.oth2,ind.bas
 	extern	domain	tcamnt	tot.oth.stx,oth.stx,oth.exc			|#ISGEC001071.n
+	extern	domain	tcamnt	amnt.amti					|#GH187CR503.n
 	extern	domain	tcwght	iwgt.m
 	extern	domain	tcaitm	ialt.m
 	extern	domain	tcdsca	oDs1.m,oDs2.m
@@ -1561,6 +1566,8 @@ function get.po.totals()
 	ind.oth1 = 0
 	ind.oth2 = 0
 	ind.bas = 0
+	amnt.amti = 0	|#GH187CR503.n
+	
 	print.data.not.in.history	=	false
 	delete.flag = 0				|RAvi.a.11102019.GH163CR000
 	select 	tdmsl501.*,								|#ISGEC016032.sn (Shilpa)
@@ -1602,6 +1609,35 @@ function get.po.totals()
 			and tdpur402.cmbe refers to tdpur201
 			as set with 1 rows
 			selectdo
+											|#GH187CR503.sn
+				select	tdisg461.reqn,
+					tdisg461.orno,
+					tdisg461.pono,
+					tdisg461.sqnb,
+					tdisg461.indn,
+					tdisg461.indl
+				from	tdisg461
+				where	tdisg461._index3 = {:tdpur402.rqno,:tdpur402.rqpo}
+				selectdo
+					select	tdisg460.reqn
+					from	tdisg460
+					where	tdisg460._index1 = {:tdisg461.reqn,:tdisg461.orno}
+					and	tdisg460.stat = 2
+					selectdo
+						select	a_tdisg461.amti:amnt.amti
+						from	tdisg461 a_tdisg461
+						where	a_tdisg461._index1 = {	:tdisg461.reqn,
+										:tdisg461.orno,
+										:tdisg461.pono,
+										:tdisg461.sqnb,
+										:tdisg461.indn,
+										:tdisg461.indl	}
+						selectdo
+							ind.bas = ind.bas + amnt.amti
+						endselect
+					endselect
+				endselect
+										|#GH187CR503.en
 				ind.exc = 0
 				ind.stx = 0
 				ind.oth1 = 0
@@ -2239,6 +2275,35 @@ function	print.total.data.without.history()
 			and 	tdpur402.cmbe 		refers to 	tdpur201
 			as 	set with 1 rows
 			selectdo
+										|#GH187CR503.sn
+				select	tdisg461.reqn,
+					tdisg461.orno,
+					tdisg461.pono,
+					tdisg461.sqnb,
+					tdisg461.indn,
+					tdisg461.indl
+				from	tdisg461
+				where	tdisg461._index3 = {:tdpur402.rqno,:tdpur402.rqpo}
+				selectdo
+					select	tdisg460.reqn
+					from	tdisg460
+					where	tdisg460._index1 = {:tdisg461.reqn,:tdisg461.orno}
+					and	tdisg460.stat = 2
+					selectdo
+						select	a_tdisg461.amti:amnt.amti
+						from	tdisg461 a_tdisg461
+						where	a_tdisg461._index1 = {	:tdisg461.reqn,
+										:tdisg461.orno,
+										:tdisg461.pono,
+										:tdisg461.sqnb,
+										:tdisg461.indn,
+										:tdisg461.indl	}
+						selectdo
+							ind.bas = ind.bas + amnt.amti
+						endselect
+					endselect
+				endselect
+										|#GH187CR503.en
 				ind.exc 	= 	0
 				ind.stx 	= 	0
 				ind.oth1 	= 	0
