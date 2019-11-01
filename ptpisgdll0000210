@@ -36,7 +36,7 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 		tdpur401.cspa = ""
 	endselect
 	
-	select 	tpppc210.amoc,
+	select 	tpppc210.amoc,tpppc210.orno,tpppc210.pono,
 		tpppc210.rtcc(1):o.rtcc,
 		tpppc210.teta,
 		tpppc210.koor,tpppc210.ifbp, tpppc210.otbp, tpppc210.ltdt,	
@@ -60,7 +60,7 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 		endif
 	
 		if tpppc210.teta = tpppc.teta.deliver.tp.rev then		
-			o.eamt = o.eamt +(tpppc210.amoc * o.rtcc)
+| 			o.eamt = o.eamt +(tpppc210.amoc * o.rtcc)
 			continue
 		endif	
 		o.eamt = o.eamt +(tpppc210.amoc * o.rtcc)		
@@ -80,9 +80,19 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 			o.rtcc = 1
 		endif
 		
-		if tpppc211.orno = "" then
+		if isspace(tpppc211.orno) then
 			if doc.po.is.present(tpppc211.ftty,tpppc211.fdoc,i.orno,i.pono) then
 				o.eamt = o.eamt +(tpppc211.amoc * o.rtcc)
+			else
+				select 	a_tpppc211.orno
+				from	tpppc211 a_tpppc211
+				where	a_tpppc211.ftty = :tpppc211.ftty
+				and	a_tpppc211.fdoc = :tpppc211.fdoc
+				and	a_tpppc211.orno = :i.orno 
+				and 	a_tpppc211.pono = :i.pono
+				selectdo
+					o.eamt = o.eamt +(tpppc211.amoc * o.rtcc)
+				endselect
 			endif
 		else
 			if tpppc211.tetb = tpppc.tetb.stock or tpppc211.tetb = tpppc.tetb.invoice or 
@@ -93,7 +103,7 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 		endif
 	endselect
 		
-	select 	tpppc215.amoc,tpppc215.orno,
+	select 	tpppc215.amoc,tpppc215.orno,tpppc215.pono,
 		tpppc215.rtcc(1):o.rtcc,
 		tpppc215.tetd,
 		tpppc215.koor,tpppc215.ifbp, tpppc215.otbp, tpppc215.ltdt,	
@@ -107,9 +117,19 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 			o.rtcc = 1
 		endif
 		
-		if tpppc215.orno = "" then
+		if isspace(tpppc215.orno) then
 			if doc.po.is.present(tpppc215.ftty,tpppc215.fdoc,i.orno,i.pono) then
 				o.eamt = o.eamt +(tpppc215.amoc * o.rtcc)
+			else
+				select 	a_tpppc215.orno
+				from	tpppc215 a_tpppc215
+				where	a_tpppc215.ftty = :tpppc215.ftty
+				and	a_tpppc215.fdoc = :tpppc215.fdoc
+				and	a_tpppc215.orno = :i.orno 
+				and 	a_tpppc215.pono = :i.pono
+				selectdo
+					o.eamt = o.eamt +(tpppc215.amoc * o.rtcc)
+				endselect
 			endif
 		else
 			if tpppc215.tetd = tpppc.tetd.stock then				
@@ -166,9 +186,19 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 			o.rtcc = 1
 		endif
 		
-		if tpppc271.orno = "" then
+		if isspace(tpppc271.orno) then
 			if doc.po.is.present(tpppc271.ftty,tpppc271.fdoc,i.orno,i.pono) then
 				o.eamt = o.eamt +(tpppc271.amoc * o.rtcc)
+			else
+				select 	a_tpppc271.orno
+				from	tpppc271 a_tpppc271
+				where	a_tpppc271.ftty = :tpppc271.ftty
+				and	a_tpppc271.fdoc = :tpppc271.fdoc
+				and	a_tpppc271.orno = :i.orno 
+				and 	a_tpppc271.pono = :i.pono
+				selectdo
+					o.eamt = o.eamt +(tpppc271.amoc * o.rtcc)
+				endselect
 			endif
 		else
 			o.eamt = o.eamt +(tpppc271.amoc * o.rtcc)
@@ -189,9 +219,19 @@ function extern tpisgdll000021.get.exhausted.amount.of.po.and.line(		domain	tcor
 			o.rtcc = 1
 		endif
 		
-		if tpppc275.orno = "" then
+		if isspace(tpppc275.orno) then
 			if doc.po.is.present(tpppc275.ftty,tpppc275.fdoc,i.orno,i.pono) then
 				o.eamt = o.eamt +(tpppc275.amoc * o.rtcc)
+			else
+				select 	a_tpppc275.orno
+				from	tpppc275 a_tpppc275
+				where	a_tpppc275.ftty = :tpppc275.ftty
+				and	a_tpppc275.fdoc = :tpppc275.fdoc
+				and	a_tpppc275.orno = :i.orno 
+				and 	a_tpppc275.pono = :i.pono
+				selectdo
+					o.eamt = o.eamt +(tpppc275.amoc * o.rtcc)
+				endselect
 			endif
 		else
 			o.eamt = o.eamt +(tpppc275.amoc * o.rtcc)

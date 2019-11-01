@@ -79,7 +79,7 @@
 					cbac.amth.waty.tot,cbac.amth.waty
 		domain	tcamnt		amth.mat.prov,amth.mat.prov.net,amth.waty,amth.waty.net,amth.iamt,
 					iamt.net,amth.namt,namt.net,amth.pamt,amth.pamt.net,amth.elem.dr.iamt,amth.elem.cr.iamt,
-					amth.elem.iamt.net
+					amth.elem.iamt.net,eamt,famt
 		domain	tcamnt		cssh.positive,ctsh.positive,wtsh.positive
 		domain	tppdm.cspa	curr.elem,hold.elem
 		domain	tppdm.cspa	curr.elem.tran
@@ -93,6 +93,8 @@
 		domain	tcqrd1		add.qty	
 		domain	tcdate		max.stdt	
 			long		ret,min.sern
+			
+	#pragma used dll otpisgdll000021
 |******************************************************************************
 
 function extern tpisgdll000015.Update_Cost_Sheet(
@@ -497,14 +499,16 @@ function extern tpisgdll000015.capture.tpppc.data.in.tpisg059(domain tccprj i.cp
 
 function extern tpisgdll000015.capture.elementwise.consumption.detail(domain tccprj i.cprj)
 {
+	eamt = 0.0
+	
 	db.retry.point()
 	select	tpisg062.*
 	from	tpisg062 for update
 	where	tpisg062._index1 = {:i.cprj}
 	selectdo
 		db.delete(ttpisg062,DB.RETRY)
+		commit.transaction()
 	endselect
-	commit.transaction()
 	
 	select	tpisg056.cprj,tpisg056.elem
 	from	tpisg056
@@ -641,6 +645,7 @@ function extern tpisgdll000015.capture.elementwise.consumption.detail(domain tcc
 					endselect
 				endselect
 				
+				tpisgdll000021.get.exhausted.amount.of.po.and.line(tdmsl501.orno,tdmsl501.pono,eamt)
 				insert.tpisg062(tpisg056.cprj,
 						tpisg056.elem,
 						tdmsl501.orno,
@@ -649,7 +654,8 @@ function extern tpisgdll000015.capture.elementwise.consumption.detail(domain tcc
 						tdmsl400.apdt,
 						tdmsl501.otbp,
 						tdmsl501.item,
-						orno.oamt1)
+						orno.oamt1,
+						eamt)
 			endselect
 		endselect
 		update.tpisg062.cbac(tpisg056.cprj,tpisg056.elem,tppdm600.ncmp)	
@@ -665,8 +671,8 @@ function insert.tpisg062(
 				domain	tcdate		i.apdt,
 				domain	tccom.bpid	i.otbp,
 				domain	tcitem		i.item,
-				domain	tcamnt		i.amnt
-								)
+				domain	tcamnt		i.amnt,
+				domain	tcamnt		i.eamt	)
 {
 	db.retry.point()
 	select	tpisg062.*
@@ -685,9 +691,11 @@ function insert.tpisg062(
 		tpisg062.oamt = i.amnt
 		tpisg062.chco = ""
 		tpisg062.cbac = 0.0
+		tpisg062.eamt = i.eamt
 		db.insert(ttpisg062,DB.RETRY)
+		commit.transaction()
 	endselect
-	commit.transaction()
+	
 }			
 
 | function update.tpisg062.cbac(	
