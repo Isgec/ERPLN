@@ -32,6 +32,9 @@
 |*
 |* ID: ISGEC002040, Monika, 15-07-2019
 |* Modifications on Form Command "Forwarded To A/C payment by logistics."
+|* 
+|* ID: GH198CR000, RAvi Kumar, 01-11-2019
+|* IR Document not forwarding to A/C
 |****************************** declaration section ***************************
 declaration:
   table   ttfisg182 | Document Tracking
@@ -163,7 +166,7 @@ before.choice:
 	endselect
 	
 	if ptyp = tdisg.type.domestic then
-		if (lsta =  tfisg.doc.stat.free) or (lsta = tfisg.doc.stat.racb) then
+		if (lsta =  tfisg.doc.stat.free) or (lsta = tfisg.doc.stat.racb)  or (lsta = tfisg.doc.stat.lpay) then		|RAvi.a.GH198CR000
 		else
 			mess("tcgenstring",1,"Document should be either free or returned from logistics")
 			update_selection.1()				|#ISGEC016020.n
