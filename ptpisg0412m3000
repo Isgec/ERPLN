@@ -16,13 +16,16 @@ declaration:
 	table   tdmisg005
 	table   ttdisg002
 	table   ttdpur201
-
+	table   ttdpur200
+	
 	extern  domain  tccprj		cprj.f			fixed
 	extern  domain  tccprj          cprj.t			fixed
 	extern	domain	tcamnt		bal.amnt,var.amnt
 	extern	domain	tcmcs.str30	engs.stat
 	extern	domain	tcmcs.str3	po.closed.flag
-	extern	domain	tcpono		item.count,po.count,item.count.tot,po.count.tot
+	extern	domain	tcpono		po.crea,po.acti,po.canc,
+					po.crea.tot,po.acti.tot,po.canc.tot,
+					item.count,item.count.tot
 	extern	domain	tcamnt		rq.amnt,rq.amnt.tot
 	
 		domain	tccprj		cprj
@@ -53,15 +56,14 @@ on.choice:
 		else
 			choice.again()
 		endif
-	else
-		if reportno = 2 then
-			if rprt_open() then
-				read.main.table.2()
-				rprt_close()
-			else
-				choice.again()
-			endif
+	else if reportno = 2 then
+		if rprt_open() then
+			read.main.table.2()
+			rprt_close()
+		else
+			choice.again()
 		endif
+	endif
 	endif
 
 |****************************** field section *********************************
@@ -101,7 +103,9 @@ function read.main.table()
 	engs.stat = ""
 	bal.amnt = 0
 	var.amnt = 0
-	po.count = 0
+	po.crea = 0
+	po.acti = 0
+	po.canc = 0
 	rq.amnt = 0.0
 	
 	select	tpisg012.cprj,
@@ -137,17 +141,29 @@ function read.main.table()
 			tpisg063.engs = empty
 		endselect
 		
-		select	tdpur201.rqno,tdpur201.pono,tdpur201.oamt
-		from	tdpur201
+		select	tdpur201.rqno,tdpur201.pono,tdpur201.oamt,tdpur200.rqst
+		from	tdpur201,tdpur200
 		where	tdpur201._index2 = {:tpisg012.cprj}
 		and	tdpur201.cspa = :tpisg012.elem
+		and	tdpur201.rqno refers to tdpur200
 		selectdo
 			select	tdpur202.prno,tdpur202.ppon
 			from	tdpur202
 			where	tdpur202._index1 = {:tdpur201.rqno,:tdpur201.pono}
 			selectdo
 			selectempty
-				po.count = po.count + 1
+				if (tdpur200.rqst = tdpur.rqst.created or tdpur200.rqst = tdpur.rqst.submitted) then
+					po.crea = po.crea + 1
+				else if (tdpur200.rqst = tdpur.rqst.approved or tdpur200.rqst = tdpur.rqst.modified or 
+					tdpur200.rqst = tdpur.rqst.converted) then
+						po.acti = po.acti + 1
+				else if (tdpur200.rqst = tdpur.rqst.rejected or tdpur200.rqst = tdpur.rqst.canceled or 
+					tdpur200.rqst = tdpur.rqst.closed) then
+						po.canc = po.canc + 1
+				endif
+				endif
+				endif
+				
 				rq.amnt = rq.amnt + tdpur201.oamt
 			endselect
 		endselect
@@ -166,7 +182,9 @@ function read.main.table()
 		
 		rprt_send()
 		
-		po.count = 0
+		po.crea = 0
+		po.acti = 0
+		po.canc = 0
 		rq.amnt = 0.0
 	endselect
 }
@@ -244,10 +262,14 @@ function read.main.table.2()
 	bal.amnt = 0
 	var.amnt = 0
 	
-	po.count = 0
+	po.crea = 0
+	po.acti = 0
+	po.canc = 0
+	po.crea.tot = 0
+	po.acti.tot = 0
+	po.canc.tot = 0
 	rq.amnt = 0.0
 	item.count.tot = 0
-	po.count.tot = 0
 	rq.amnt.tot = 0.0
 	
 	select	tpisg012.cprj,
@@ -282,22 +304,36 @@ function read.main.table.2()
 		and	a_tpisg012.elem(1;4) = :tpisg012.elem(1;4)
 		and	a_tpisg012.levl in (3,4)
 		selectdo
-			select	tdpur201.rqno,tdpur201.pono,tdpur201.oamt
-			from	tdpur201
+			select	tdpur201.rqno,tdpur201.pono,tdpur201.oamt,tdpur200.rqst
+			from	tdpur201,tdpur200
 			where	tdpur201._index2 = {:cprj}
 			and	tdpur201.cspa = :elem
+			and	tdpur201.rqno refers to tdpur200
 			selectdo
 				select	tdpur202.prno,tdpur202.ppon
 				from	tdpur202
 				where	tdpur202._index1 = {:tdpur201.rqno,:tdpur201.pono}
 				selectdo
 				selectempty
-					po.count = po.count + 1
+					if (tdpur200.rqst = tdpur.rqst.created or tdpur200.rqst = tdpur.rqst.submitted) then
+						po.crea = po.crea + 1
+					else if (tdpur200.rqst = tdpur.rqst.approved or tdpur200.rqst = tdpur.rqst.modified or 
+						tdpur200.rqst = tdpur.rqst.converted) then
+							po.acti = po.acti + 1
+					else if (tdpur200.rqst = tdpur.rqst.rejected or tdpur200.rqst = tdpur.rqst.canceled or 
+						tdpur200.rqst = tdpur.rqst.closed) then
+							po.canc = po.canc + 1
+					endif
+					endif
+					endif
+					
 					rq.amnt = rq.amnt + tdpur201.oamt
 				endselect
 			endselect
 			
-			po.count.tot = po.count.tot + po.count
+			po.crea.tot = po.crea.tot + po.crea
+			po.acti.tot = po.acti.tot + po.acti
+			po.canc.tot = po.canc.tot + po.canc
 			rq.amnt.tot = rq.amnt.tot + rq.amnt
 			
 			select	tpisg063.engs
@@ -329,7 +365,9 @@ function read.main.table.2()
 				po.is.not.closed = true
 			endif
 			
-			po.count = 0
+			po.crea = 0
+			po.acti = 0
+			po.canc = 0
 			rq.amnt = 0.0
 		endselect
 		
@@ -366,8 +404,10 @@ function read.main.table.2()
 		partial = false
 		free = false
 		
+		po.crea.tot = 0
+		po.acti.tot = 0
+		po.canc.tot = 0
 		item.count.tot = 0
-		po.count.tot = 0
 		rq.amnt.tot = 0.0
 	endselect
 }
