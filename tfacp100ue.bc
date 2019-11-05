@@ -373,7 +373,11 @@ function boolean Check.Order.Validity()
 	if g.comp = 700 then
 		logistic.company = 700
 	else
-		logistic.company = 200
+		if g.comp = 651 then							|RAvi.a.651.logic.GH202CR000
+			logistic.company = 651
+		else
+			logistic.company = 200
+		endif
 	endif
 			|#TEMP.en
 			
