@@ -22,6 +22,9 @@
 |*	
 |* Adarsh Pal, 13-05-19, VRC B61U a7 isg	
 |* Additional logic for Drawaings attached and released
+|* 
+|* #GH207, Adarsh Pal, 13-11-19, VRC B61U a7 isg
+|* Change in logic of Overall Planned Percentage Form Field
 |****************************** declaration section ***************************
 declaration:
 
@@ -331,6 +334,17 @@ before.display:
 	from	tpisg216
 	where	tpisg216._index1 = {:tpisg220.cprj, :curr.date1}
 	selectdo
+		if ovr.pln = 0.0 then						|#GH207.sn
+			select	tpisg216.prop:ovr.pln,tpisg216.curr		
+			from	tpisg216
+			where	tpisg216._index1 = {:tpisg220.cprj}
+			and	tpisg216.curr <  :curr.date1
+			and	tpisg216.prop <> 0.0
+			order by	tpisg216.curr desc
+			as set with 1 rows
+			selectdo
+			endselect
+		endif								|#GH207.en
 	endselect
 	
 field.ovr.act:
