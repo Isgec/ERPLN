@@ -22,6 +22,12 @@
 |* Added a new form command 'Addition/Reduction due to Client' and a new field also
 |* Added a new form command 'Addition/Reduction due to Internal Reasons' and a new field also
 |* Added a new form command 'Transfer to CTOH from Contingency, Contingency-s, Warranty' and a new field also
+|*
+|* ID: ISGEC01193, Prasanna Bhuyan, 18/07/2019, VRC B61U a7 isg
+|* Modifications
+|*
+|* ISGEC019008, Manish Manchanda, 2019-07-22
+|* Modifications - new fields added in table tpisg011, tpis008
 |******************************************************************************
 	table	ttpisg011
 	table	ttpisg012
@@ -36,7 +42,10 @@
 	table	ttpisg112		|#ISGEC01183.n
 	table	ttpisg317		
 	table	ttpisg312		
-	table	ttpisg318		
+	table	ttpisg318
+	table	ttpisg100		|#ISGEC019008.n
+	table	ttpisg099		|#ISGEC019008.n
+	table	ttccom001		|#ISGEC019008.n	
 	
 #include <bic_dam>	
 |****************************** Print Transfer To CTOH Report Variable *************************
@@ -572,7 +581,11 @@ function extern tpisgdll0011.Revise_Sanction_Control
 		tpisg012.tfch = 0.00						
 		tpisg012.ttch = 0.00						
 		tpisg012.remk = ""						|ISGEC002025.sn
-					
+										|#ISGEC019008.sn
+		tpisg012.tffa	=	0
+		tpisg012.tfpf	=	0
+		tpisg012.ttpc	=	0
+										|#ISGEC019008.en					
 		db.update(ttpisg012,db.retry,e)
 										|#ISGEC01152.sn
 		select	o_tpisg019.elem:o.elem,
@@ -684,6 +697,11 @@ function extern tpisgdll0011.Sanction_History
 			tpisg008.ritb = tpisg012.ritb			|#ISGEC002025.n
 			tpisg008.ttch = tpisg012.ttch			|#ISGEC002025.n
 			tpisg008.remk = tpisg012.remk			|#ISGEC002025.n
+									|#ISGEC019008.sn
+			tpisg008.tffa	=	tpisg012.tffa						
+			tpisg008.tfpf	=	tpisg012.tfpf						
+			tpisg008.ttpc	=	tpisg012.ttpc						
+									|#ISGEC019008.en			
 			db.insert(ttpisg008,db.skip.dupl,e)
 		endselect
 	endselect
@@ -1529,7 +1547,14 @@ function extern tpisgdll0011.CSRevise
 	domain	tcamnt		i.totl, i.avai, i.amnt, i.sbta, sum.sbta
 	domain	tcdate		curr.date		
 	domain	tfgld.sess	i.sess		
-	domain	tppdm.cspa	i.elem		
+	domain	tppdm.cspa	i.elem	
+
+	i.totl = 0					|#ISGEC01193.sn
+	i.avai = 0
+	i.amnt = 0
+	i.sbta = 0
+	sum.sbta = 0
+	i.elem = ""					|#ISGEC01193.en
 	
 	curr.date = utc.num()
 	import("prog.name$",i.sess)
@@ -1633,6 +1658,14 @@ function extern tpisgdll0011.isgec_dream_for_distribution_amount
 	domain	tcamnt		o.totl
 	
 	domain	tcpono		old.levl, k
+								|#ISGEC019008.sn
+	domain	tpisg.sanction	o.acti
+	
+	o.acti = tpisgdll0011.Sanction_Header_Revision_Type(i.cprj,i.vers)
+		
+	if	o.acti	<>	tpisg.sanction.trans.to.supp	then
+							
+								|#ISGEC019008.en
 	
 	tcmcs.dll0095.read.parm("tpmsl000")
 	param.levl = tpmsl000.levl + 1
@@ -1684,6 +1717,7 @@ function extern tpisgdll0011.isgec_dream_for_distribution_amount
 		
 	endselect
 	
+	endif							|#ISGEC019008.n
 }
 
 
@@ -1925,3 +1959,299 @@ function get.max.version.from.history(
 		array(i) = 0.00
 	endfor
 }
+
+									|#ISGEC019008.sn
+function	extern	tpisgdll0011.transfer.to.supp(
+							domain	tccprj	i.cprj,
+							domain	tcorno	i.vers
+							)	
+{
+	string	record.buff(1) MB BASED
+	long	row.len,ret,no_keys,no_columns,int_length,real_length
+	domain	tclogn	i.logn
+	domain	tppdm.cspa	i.elet,	i.cspa
+	domain	tcamnt	i.tffa,	i.tfpf,	i.ttpc
+
+	i.logn	=	logname$
+	
+	select	tccom001.emno
+	from	tccom001
+	where	tccom001._index4	=	{:i.logn}
+	as	set with 1 rows
+	selectdo
+	selectempty
+		tccom001.emno	=	""
+	endselect
+	
+	select	tpisg012.elem:i.elet,
+		tpisg012.cspa:i.cspa,
+		tpisg012.tffa:i.tffa,
+		tpisg012.tfpf:i.tfpf,
+		tpisg012.ttpc:i.ttpc
+	from	tpisg012	
+	where	tpisg012._index1	=	{:i.cprj, :i.vers}
+	and	tpisg012.elem		not in	("99050500","99040100","99080800")
+	selectdo
+		if	i.tffa		>	0	then
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99050500",
+							-1*i.tffa,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99050000",
+							-1*i.tffa,
+							i.elet
+							)	
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99000000",
+							-1*i.tffa,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							-1*i.tffa,
+							i.elet
+							)				
+| 			update.tpisg012.transfer.to.supp(
+| 							i.cprj,
+| 							i.vers,
+| 							i.elet,
+| 							-1*i.tffa,
+| 							i.elet
+| 							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.elet,
+							i.tffa,
+							i.elet
+							)				
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.cspa,
+							i.tffa,
+							i.elet
+							)				
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							i.tffa,
+							i.elet
+							)								
+			insert.tpisg099(
+					tpisg012.cprj,
+					tpisg012.vers,
+					"99050500",
+					i.elet,
+					i.tffa
+					)				
+		endif
+		if	i.tfpf		>	0	then		
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99040100",
+							-1*i.tfpf,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99040000",
+							-1*i.tfpf,
+							i.elet
+							)	
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99000000",
+							-1*i.tfpf,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							-1*i.tfpf,
+							i.elet
+							)								
+| 			update.tpisg012.transfer.to.supp(
+| 							i.cprj,
+| 							i.vers,
+| 							i.elet,
+| 							-1*i.tfpf,
+| 							i.elet
+| 							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.elet,
+							i.tfpf,
+							i.elet
+							)				
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.cspa,
+							i.tfpf,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							i.tfpf,
+							i.elet
+							)				
+			insert.tpisg099(
+					tpisg012.cprj,
+					tpisg012.vers,
+					"99040100",
+					i.elet,
+					i.tfpf
+					)				
+		endif
+		if	i.ttpc		>	0	then		
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99080800",
+							-1*i.ttpc,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99080000",
+							-1*i.ttpc,
+							i.elet
+							)	
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"99000000",
+							-1*i.ttpc,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							-1*i.ttpc,
+							i.elet
+							)								
+| 			update.tpisg012.transfer.to.supp(
+| 							i.cprj,
+| 							i.vers,
+| 							i.elet,
+| 							-1*i.ttpc,
+| 							i.elet
+| 							)				
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.elet,
+							i.ttpc,
+							i.elet
+							)
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							i.cspa,
+							i.ttpc,
+							i.elet
+							)								
+			update.tpisg012.transfer.to.supp(
+							i.cprj,
+							i.vers,
+							"1",
+							i.ttpc,
+							i.elet
+							)					
+			insert.tpisg099(
+					tpisg012.cprj,
+					tpisg012.vers,
+					"99080800",
+					i.elet,
+					i.ttpc
+					)
+		endif
+	endselect
+	
+	ret	=	rdi.table( "tpisg012", no_keys,no_columns, int_length, real_length )
+	alloc.mem(record.buff,int_length)
+	
+	select 	tpisg012.*
+	from	tpisg012
+	where	tpisg012._index1 	= 	{:i.cprj,:i.vers}
+	selectdo
+		copy.mem(record.buff,rcd.ttpisg012 )
+		rcd.ttpisg100	=	record.buff
+		db.insert(ttpisg100,db.retry,e)
+		commit.transaction()				
+	endselect
+	free.mem(record.buff)
+}	
+
+function	update.tpisg012.transfer.to.supp(
+							domain	tccprj		i.cprj,
+							domain	tcorno		i.vers,
+							domain	tppdm.cspa	i.elem,
+							domain	tcamnt		i.amnt,
+							domain	tppdm.cspa	i.elet
+							)
+{
+	select	tpisg012.totl,
+		tpisg012.avai,
+		tpisg012.amnt
+	from	tpisg012	for	update
+	where	tpisg012._index1	=	{:i.cprj, :i.vers, :i.elem}
+	selectdo
+		tpisg012.totl	=	tpisg012.totl	+	i.amnt
+		tpisg012.avai	=	tpisg012.avai	+	i.amnt
+		if	i.elem	<>	"99050500"	and
+			i.elem	<>	"99040100"	and
+			i.elem	<>	"99080800"	and
+			i.elem	<>	i.elet		then
+			tpisg012.aamt	=	tpisg012.aamt	+	i.amnt
+		endif
+		if	i.amnt	>	0	and
+			i.elem	=	i.elet	then
+			tpisg012.amnt	=	tpisg012.amnt	+	i.amnt
+		endif
+		db.update(ttpisg012, db.retry, e)
+		commit.transaction()				
+	endselect
+}
+
+function	insert.tpisg099(
+				domain	tccprj		i.cprj,
+				domain	tcorno		i.vers,
+				domain	tppdm.cspa	i.elem,
+				domain	tppdm.cspa	i.elet,
+				domain	tcamnt		i.amnt
+				)
+{
+	tpisg099.cprj	=	i.cprj
+	tpisg099.vers	=	i.vers
+	tpisg099.elem	=	i.elem
+	tpisg099.elet	=	i.elet
+	tpisg099.apdt	=	utc.num()
+	tpisg099.amnt	=	i.amnt
+	tpisg099.apby	=	tccom001.emno
+	db.insert(ttpisg099, db.skip.dupl, e)
+	commit.transaction()
+}
+
+									|#ISGEC019008.en

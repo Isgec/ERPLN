@@ -19,6 +19,9 @@
 |*
 |* ID: ISGEC002025, Arun Chauhan , Date- 25-04-2019,
 |* Modification In Reason Desctiption
+|*
+|* ID: ISGEC019008, Manish Manchanda, 2019-07-23
+|* Modification - zoom on tpisg012.rfpr
 |****************************** declaration section ***************************
 declaration:
 
@@ -73,11 +76,31 @@ before.zoom:
 field.tpisg012.rfpr:									|#ISGEC01183.sn
 before.zoom:
 	tpisg003.acti = tpisg.sanction.partial				
-	
+											|#ISGEC019008.sn
+	select	tpisg011.acti
+	from	tpisg011
+	where	tpisg011._index1	=	{:tpisg012.cprj,:tpisg012.vers}
+	and	tpisg011.acti		=	tpisg.sanction.trans.to.supp
+	as	set with 1 rows
+	selectdo
+		tpisg003.acti	=	tpisg.sanction.trans.to.supp
+	endselect
+											|#ISGEC019008.en
 field.rpds:
 before.display:
 	tpisgdll0011.get_description(tpisg.sanction.partial,tpisg012.rfpr,rpds)		|#ISGEC01183.en
-	
+											|#ISGEC019008.sn
+	if	isspace(rpds)	then
+		tpisgdll0011.get_description(tpisg.sanction.trans.to.supp,tpisg012.rfpr,rpds)
+	endif
+	if	isspace(rpds)	then
+		tpisgdll0011.get_description(tpisg.sanction.add.red.client,tpisg012.rfpr,rpds)
+	endif
+	if	isspace(rpds)	then
+		tpisgdll0011.get_description(tpisg.sanction.add.red.inter,tpisg012.rfpr,rpds)
+	endif
+											|#ISGEC019008.en
+											|#ISGEC019008.en	
 | 	on case o.acti
 | 		case 	tpisg.sanction.partial:		
 | 			attr.zoomcode = Z.SESSION
@@ -190,43 +213,64 @@ before.zoom:
 							|ISGEC002025.sn
 field.tot.ardc:
 before.display:
-	if tpisg012.levl = 0 then
-		select sum(zz_tpisg008.ardc):tot.ardc.tpisg008
-		from	tpisg008 zz_tpisg008
-		where	zz_tpisg008._index1 ={:tpisg012.cprj}
-		selectdo
-		endselect
-		tot.ardc = tot.ardc.tpisg008 + tpisg012.ardc
+	select	tpisg011.act1
+	from	tpisg011
+	where	tpisg011._index1 = {:tpisg012.cprj,:tpisg012.vers}
+	selectdo
+	selectempty
+		tpisg011.act1 = empty
+	endselect
+	if tpisg011.act1 = tpisg.sanction.approved then
+		if tpisg012.levl = 0 then
+			select sum(zz_tpisg008.ardc):tot.ardc.tpisg008
+			from	tpisg008 zz_tpisg008
+			where	zz_tpisg008._index1 ={:tpisg012.cprj}
+			selectdo
+			endselect
+			tot.ardc = tot.ardc.tpisg008 + tpisg012.ardc
+		else
+			select sum(zz_tpisg008.ardc):tot.ardc.tpisg008
+			from	tpisg008 zz_tpisg008
+			where	zz_tpisg008._index1 ={:tpisg012.cprj}
+			and 	zz_tpisg008.elem = :tpisg012.elem
+			selectdo
+			endselect
+			tot.ardc = tot.ardc.tpisg008 + tpisg012.ardc	
+		endif
 	else
-		select sum(zz_tpisg008.ardc):tot.ardc.tpisg008
-		from	tpisg008 zz_tpisg008
-		where	zz_tpisg008._index1 ={:tpisg012.cprj}
-		and 	zz_tpisg008.elem = :tpisg012.elem
-		selectdo
-		endselect
-		tot.ardc = tot.ardc.tpisg008 + tpisg012.ardc	
-	endif
-		
+		tot.ardc = 0
+	endif	
 	
 	
 field.tot.ardi:
 before.display:
-	if tpisg012.levl = 0 then
-		select sum(zz_tpisg008.ardi):tot.ardi.tpisg008
-		from	tpisg008 zz_tpisg008
-		where	zz_tpisg008._index1 ={:tpisg012.cprj}
-		selectdo
-		endselect
-		tot.ardi = tot.ardi.tpisg008 +  tpisg012.ardi
+	select	tpisg011.act1
+	from	tpisg011
+	where	tpisg011._index1 = {:tpisg012.cprj,:tpisg012.vers}
+	selectdo
+	selectempty
+		tpisg011.act1 = empty
+	endselect
+	if tpisg011.act1 = tpisg.sanction.approved then
+		if tpisg012.levl = 0 then
+			select sum(zz_tpisg008.ardi):tot.ardi.tpisg008
+			from	tpisg008 zz_tpisg008
+			where	zz_tpisg008._index1 ={:tpisg012.cprj}
+			selectdo
+			endselect
+			tot.ardi = tot.ardi.tpisg008 +  tpisg012.ardi
+		else
+			select sum(zz_tpisg008.ardi):tot.ardi.tpisg008
+			from	tpisg008 zz_tpisg008
+			where	zz_tpisg008._index1 ={:tpisg012.cprj}
+			and	zz_tpisg008.elem = :tpisg012.elem
+			selectdo
+			endselect
+			tot.ardi = tot.ardi.tpisg008 +  tpisg012.ardi
+		endif
 	else
-		select sum(zz_tpisg008.ardi):tot.ardi.tpisg008
-		from	tpisg008 zz_tpisg008
-		where	zz_tpisg008._index1 ={:tpisg012.cprj}
-		and	zz_tpisg008.elem = :tpisg012.elem
-		selectdo
-		endselect
-		tot.ardi = tot.ardi.tpisg008 +  tpisg012.ardi
-	endif
+		tot.ardi = 0
+	endif	
 							|ISGEC002025.en
 |************************ function section **********************************
 	

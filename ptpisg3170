@@ -468,9 +468,9 @@ function boolean Addition_Reduction_Due_To_Internal_Reasons(
 		v.ardi = 0.00
 		select	g_tpisg012.ardi:v.ardi,
 			g_tpisg012.avai,
-			g_tpisg012.totl,
-			g_tpisg012.amnt,
-			g_tpisg012.ritb,
+| 			g_tpisg012.totl,
+| 			g_tpisg012.amnt,
+| 			g_tpisg012.ritb,
 			g_tpisg012.rfpr,
 			g_tpisg012.remk
 		from	tpisg012 g_tpisg012 for update
@@ -481,18 +481,18 @@ function boolean Addition_Reduction_Due_To_Internal_Reasons(
 							|******New Line Update On Level 2	
 			if etol(tpisg318.ctyp) = 2 then
 				tpisg012.avai = tpisg012.avai + tpisg318.valu
-				tpisg012.totl = tpisg012.totl + tpisg318.valu
-				tpisg012.amnt = tpisg012.amnt + tpisg318.valu
+| 				tpisg012.totl = tpisg012.totl + tpisg318.valu
+| 				tpisg012.amnt = tpisg012.amnt + tpisg318.valu
 				tpisg012.ardi = tpisg012.ardi + tpisg318.valu
-				tpisg012.ritb = tpisg012.ritb + tpisg318.valu
+| 				tpisg012.ritb = tpisg012.ritb + tpisg318.valu
 				tpisg012.rfpr = tpisg318.rcod
 				tpisg012.remk = tpisg318.remk
 				else if etol(tpisg318.ctyp) = 3 then
 					tpisg012.avai = tpisg012.avai - tpisg318.valu
-					tpisg012.totl = tpisg012.totl - tpisg318.valu
-					tpisg012.amnt = tpisg012.amnt - tpisg318.valu
+| 					tpisg012.totl = tpisg012.totl - tpisg318.valu
+| 					tpisg012.amnt = tpisg012.amnt - tpisg318.valu
 					tpisg012.ardi = tpisg012.ardi - tpisg318.valu
-					tpisg012.ritb = tpisg012.ritb - tpisg318.valu
+| 					tpisg012.ritb = tpisg012.ritb - tpisg318.valu
 					tpisg012.rfpr = tpisg318.rcod
 					tpisg012.remk = tpisg318.remk
 				endif
@@ -543,9 +543,9 @@ function boolean addition.reduction.old.line.update.on.level2(
 	
 	
 	select	a_tpisg008.avai,
-		a_tpisg008.totl,
-		a_tpisg008.amnt,
-		a_tpisg008.ritb,
+| 		a_tpisg008.totl,
+| 		a_tpisg008.amnt,
+| 		a_tpisg008.ritb,
 		a_tpisg008.cprj
 	from	tpisg008	 a_tpisg008 
 	where	a_tpisg008._index1 = {:i.cprj,:i.max.vers,:i.elem}
@@ -553,9 +553,9 @@ function boolean addition.reduction.old.line.update.on.level2(
 	selectdo
 		select	l_tpisg012.ardi:v.ardi,
 			l_tpisg012.avai,
-			l_tpisg012.totl,
-			l_tpisg012.amnt,
-			l_tpisg012.ritb,
+| 			l_tpisg012.totl,
+| 			l_tpisg012.amnt,
+| 			l_tpisg012.ritb,
 			l_tpisg012.rfpr,
 			l_tpisg012.remk
 		from	tpisg012 l_tpisg012 for update
@@ -565,25 +565,25 @@ function boolean addition.reduction.old.line.update.on.level2(
 		selectdo
 			if etol(tpisg318.ctyp) = 1 then
 					tpisg012.avai = tpisg008.avai 
-					tpisg012.totl = tpisg008.totl 
-					tpisg012.amnt = tpisg008.amnt
-					tpisg012.ritb = tpisg008.ritb
+| 					tpisg012.totl = tpisg008.totl 
+| 					tpisg012.amnt = tpisg008.amnt
+| 					tpisg012.ritb = tpisg008.ritb
 					tpisg012.ardi = 0.00
 					tpisg012.rfpr = ""
 					tpisg012.remk = "" 
 				else if etol(tpisg318.ctyp) = 2 then
 					tpisg012.avai = tpisg008.avai + tpisg318.valu
-					tpisg012.totl = tpisg008.totl + tpisg318.valu
-					tpisg012.amnt = tpisg008.amnt + tpisg318.valu
-					tpisg012.ritb = tpisg008.ritb + tpisg318.valu
+| 					tpisg012.totl = tpisg008.totl + tpisg318.valu
+| 					tpisg012.amnt = tpisg008.amnt + tpisg318.valu
+| 					tpisg012.ritb = tpisg008.ritb + tpisg318.valu
 					tpisg012.ardi = tpisg318.valu
 					tpisg012.rfpr = tpisg318.rcod
 					tpisg012.remk = tpisg318.remk
 					else if etol(tpisg318.ctyp) = 3 then
 						tpisg012.avai = tpisg008.avai - tpisg318.valu
-						tpisg012.totl = tpisg008.totl - tpisg318.valu
-						tpisg012.amnt = tpisg008.amnt - tpisg318.valu
-						tpisg012.ritb = tpisg008.ritb - tpisg318.valu
+| 						tpisg012.totl = tpisg008.totl - tpisg318.valu
+| 						tpisg012.amnt = tpisg008.amnt - tpisg318.valu
+| 						tpisg012.ritb = tpisg008.ritb - tpisg318.valu
 						tpisg012.ardi = tpisg318.valu*-1
 						tpisg012.rfpr = tpisg318.rcod
 						tpisg012.remk = tpisg318.remk
@@ -646,9 +646,9 @@ function boolean addition.reduction.on.level1(
 		
 		select	b_tpisg008.cspa,
 			b_tpisg008.avai,
-			b_tpisg008.totl,
-			b_tpisg008.aamt,
-			b_tpisg008.ritb,
+| 			b_tpisg008.totl,
+| 			b_tpisg008.aamt,
+| 			b_tpisg008.ritb,
 			b_tpisg008.vers,
 			b_tpisg008.cprj
 		from	tpisg008	 b_tpisg008 
@@ -657,19 +657,19 @@ function boolean addition.reduction.on.level1(
 		as set with 1 rows
 		selectdo
 			select	m_tpisg012.cspa,
-				m_tpisg012.avai,
-				m_tpisg012.totl,
-				m_tpisg012.aamt,
-				m_tpisg012.ritb
+				m_tpisg012.avai
+| 				m_tpisg012.totl,
+| 				m_tpisg012.aamt,
+| 				m_tpisg012.ritb
 			from	tpisg012 m_tpisg012 for update
 			where	m_tpisg012._index1 = {:i.cprj,:i.vers,:par.cspa}
 			and	m_tpisg012.levl = 1
 			as set with 1 rows
 			selectdo
 				tpisg012.avai = tpisg008.avai +	child.tot.valu
-				tpisg012.totl = tpisg008.totl + child.tot.valu
-				tpisg012.aamt = tpisg008.aamt + child.tot.valu
-				tpisg012.ritb = tpisg008.ritb + child.tot.valu
+| 				tpisg012.totl = tpisg008.totl + child.tot.valu
+| 				tpisg012.aamt = tpisg008.aamt + child.tot.valu
+| 				tpisg012.ritb = tpisg008.ritb + child.tot.valu
 
 				c_ret = db.update(ttpisg012, db.retry)
 				
@@ -691,28 +691,28 @@ function boolean addition.reduction.on.level0(
 					domain	tcorno		i.max.vers	|History Max Version
 					)
 {
-	select	c_tpisg008.avai,
-		c_tpisg008.totl,
-		c_tpisg008.aamt,
-		c_tpisg008.ritb
+	select	c_tpisg008.avai
+| 		c_tpisg008.totl,
+| 		c_tpisg008.aamt,
+| 		c_tpisg008.ritb
 	from	tpisg008 c_tpisg008 
 	where	c_tpisg008._index1 = {:i.cprj,:i.max.vers}
 	and	c_tpisg008.levl = 0
 	as set with 1 rows	
 	selectdo
-		select	k_tpisg012.avai,
-			k_tpisg012.totl,
-			k_tpisg012.aamt,
-			k_tpisg012.ritb
+		select	k_tpisg012.avai
+| 			k_tpisg012.totl,
+| 			k_tpisg012.aamt,
+| 			k_tpisg012.ritb
 		from	tpisg012 k_tpisg012 for update
 		where	k_tpisg012._index1 = {:i.cprj,:i.vers}
 		and	k_tpisg012.levl = 0
 		as set with 1 rows
 		selectdo
 			tpisg012.avai = tpisg008.avai + tpisg317.netc
-			tpisg012.totl = tpisg008.totl + tpisg317.netc
-			tpisg012.aamt = tpisg008.aamt + tpisg317.netc
-			tpisg012.ritb = tpisg008.ritb + tpisg317.netc
+| 			tpisg012.totl = tpisg008.totl + tpisg317.netc
+| 			tpisg012.aamt = tpisg008.aamt + tpisg317.netc
+| 			tpisg012.ritb = tpisg008.ritb + tpisg317.netc
 			c_ret = db.update(ttpisg012, db.retry)
 			if not c_ret then
 				commit.transaction()
