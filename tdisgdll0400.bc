@@ -1235,7 +1235,7 @@ function create.to.list(domain	tcorno	i.orno.mail.cc)
 	select 	tdpur401.cprj
 	from	tdpur401
 	where	tdpur401._index1 = {:i.orno.mail.cc}
-	group by tdpur401.cprj, tdpur401.cspa
+	group by tdpur401.cprj
 	selectdo
 		select	tppdm649.emno
 		from	tppdm649
