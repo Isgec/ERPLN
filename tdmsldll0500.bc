@@ -34,6 +34,9 @@
 |*
 |* ID ISGEC01069, Priya Jindal, 1/6/2018
 |* Removal of line description of tdmsl501
+|*
+|* ID GH211CR000, RAvi Kumar, 19/11/2019
+|* IR-133019-Wrong Tax print on PO P10139321 
 |******************************************************************************
 	table	ttdpur400
 	table	ttdpur401
@@ -796,7 +799,7 @@ function extern tdmsl.dll0500.move.tdmsl501.to.tdpur401()
 | 	tdpur401.gsta.l = tdmsl501.gsta.l	|ISGEC01069.sn   |* Commented By Ms. Veena 
 | 	tdpur401.asog.l = tdmsl501.asog.l			 |* Functional: Mamta Upadhyay	
 | 	tdpur401.asvg.l = tdmsl501.asvg.l			 |* Technical: Priya Jindal
-| 	tdpur401.tasg.l = tdmsl501.tasg.l	|ISGEC01069.en   |*
+	tdpur401.tasg.l = tdmsl501.tasg.l	|ISGEC01069.en   |*	RAvi.uncom.GH211CR000
 	put.var(pid, "tdmsl501.ldat.c","tdpur401.cdf_ldat")
 	
 	tdmsl503.code = tdmsl504.code
