@@ -56,6 +56,9 @@
 |*
 |* ISGEC019008, Manish Manchanda, 2019-07-22
 |* Modifications - new form command added in specific
+|* 
+|* GH214CR000, RAvi Kumar, 22-11-2019
+|*  IR-133320- "Transfer to Supply Element from Freight", role matrix not working
 |****************************** declaration section ***************************
 declaration:
 
@@ -81,6 +84,10 @@ table	ttpptc100
 table	ttpptc101						|#ISGEC016025.n
 								|ISEGC01142.EN
 table	ttpisg317
+table	ttpisg318
+table	ttpisg311
+table	ttpisg312
+
 string record.buff(1) MB BASED
 
 extern	 domain tcpric old.ver,version
@@ -550,7 +557,7 @@ on.choice:
 	tpisgdll0011.parant.element.update(tpisg011.cprj,tpisg011.vers)						|ISGEC002025.n
 	approve_form_command()
 	change_incentive_status(tpisg.sanction.approved)		|# ISGEC001018.n
-						
+	update.tpisg012.totl.amnt.ritb(tpisg011.cprj,tpisg011.vers)					
 	
 	
 | choice.revise:												|#ISGEC01183.so
@@ -827,6 +834,10 @@ on.choice:
 	
 choice.cont.cancel:
 before.choice:
+	if tpisg011.acti = tpisg.sanction.trans.to.supp then						|RAvi.a.GH214CR000
+		approve_form_command()
+	endif
+	
 	start.session(MODAL,"tpisg0211m100","","")
 
 	select 	tcmcs005.cdis
@@ -1005,6 +1016,7 @@ function approve_form_command()
 				choice.again()	
 			endif
 			break	
+															|25.05.19.Adarsh.en
 														|#ISGEC019008.sn
 		case	tpisg.sanction.trans.to.supp:
 			if	not	tpisgdll0012.Employee_Approval_By_Project(tpisg011.cprj,tpisg.sanction.trans.to.supp)	then
@@ -1012,7 +1024,7 @@ function approve_form_command()
 				choice.again()	
 			endif	
 			break				
-														|#ISGEC019008.en													|25.05.19.Adarsh.en
+														|#ISGEC019008.en
 	endcase
 	
 	
@@ -1868,6 +1880,420 @@ function	extern	transfer.to.supply()
 	endif
 }
 										|#ISGEC019008.en										
+
+function update.tpisg012.totl.amnt.ritb(	domain	tccprj		i.cprj,		
+						domain	tcorno		i.vers	)
+{
+	domain	tcorno	v.max.vers
+		double	max.vers
+	
+	if tpisg011.acti = tpisg.sanction.add.red.client and tpisg011.act1 = tpisg.sanction.approved then
+		max.vers = 0.00
+		v.max.vers = ""	
+		get.max.version.from.history(tpisg011.cprj,max.vers)
+		v.max.vers = str$(max.vers)
+		
+		select	tpisg312.*
+		from	tpisg312
+		where	tpisg312._index1 = {:tpisg011.cprj,:i.vers}
+		selectdo
+			select	g_tpisg012.totl,
+	 			g_tpisg012.amnt,
+	 			g_tpisg012.ritb
+			from	tpisg012 g_tpisg012 for update
+			where	g_tpisg012._index1 = {:tpisg312.cprj,:tpisg312.vers,:tpisg312.elem}
+			and	g_tpisg012.levl = 2
+			and	g_tpisg012.ardc = 0.00 
+			selectdo
+				if etol(tpisg312.ctyp) = 2 then
+	 				tpisg012.totl = tpisg012.totl + tpisg312.valu
+	 				tpisg012.amnt = tpisg012.amnt + tpisg312.valu
+					tpisg012.ritb = tpisg012.ritb + tpisg312.valu
+				else if etol(tpisg312.ctyp) = 3 then
+					tpisg012.totl = tpisg012.totl - tpisg312.valu
+					tpisg012.amnt = tpisg012.amnt - tpisg312.valu
+					tpisg012.ritb = tpisg012.ritb - tpisg312.valu
+				endif
+				endif
+			
+				db.update(ttpisg012,DB.RETRY)
+				commit.transaction()
+			selectempty
+				addition.reduction.old.line.update.on.level2(	tpisg312.cprj,
+										tpisg312.vers,
+										tpisg312.elem,
+										v.max.vers	) 
+			endselect
+		endselect
+		
+		addition.reduction.on.level1(tpisg312.cprj,tpisg312.vers,v.max.vers) 
+		addition.reduction.on.level0(tpisg312.cprj,tpisg312.vers,v.max.vers)
+		
+	else if tpisg011.acti = tpisg.sanction.add.red.inter and tpisg011.act1 = tpisg.sanction.approved then
+		max.vers = 0.00
+		v.max.vers = ""	
+		get.max.version.from.history(tpisg011.cprj,max.vers)
+		v.max.vers = str$(max.vers)
+		
+		select	tpisg318.*
+		from	tpisg318
+		where	tpisg318._index1 = {:tpisg011.cprj,:i.vers}
+		selectdo
+			select	g_tpisg012.totl,
+	 			g_tpisg012.amnt,
+	 			g_tpisg012.ritb
+			from	tpisg012 g_tpisg012 for update
+			where	g_tpisg012._index1 = {:tpisg318.cprj,:tpisg318.vers,:tpisg318.elem}
+			and	g_tpisg012.levl = 2
+			and	g_tpisg012.ardc = 0.00 
+			selectdo
+				if etol(tpisg318.ctyp) = 2 then
+	 				tpisg012.totl = tpisg012.totl + tpisg318.valu
+	 				tpisg012.amnt = tpisg012.amnt + tpisg318.valu
+					tpisg012.ritb = tpisg012.ritb + tpisg318.valu
+				else if etol(tpisg318.ctyp) = 3 then
+					tpisg012.totl = tpisg012.totl - tpisg318.valu
+					tpisg012.amnt = tpisg012.amnt - tpisg318.valu
+					tpisg012.ritb = tpisg012.ritb - tpisg318.valu
+				endif
+				endif
+			
+				db.update(ttpisg012,DB.RETRY)
+				commit.transaction()
+			selectempty
+				addition.reduction.old.line.update.on.level2.it(tpisg318.cprj,
+										tpisg318.vers,
+										tpisg318.elem,
+										v.max.vers) 
+			endselect
+		endselect
+		
+		addition.reduction.on.level1.it(tpisg318.cprj,tpisg318.vers,v.max.vers) 
+		addition.reduction.on.level0.it(tpisg318.cprj,tpisg318.vers,v.max.vers)
+	endif	
+	endif
+}												
+
+
+function addition.reduction.old.line.update.on.level2(	domain	tccprj		i.cprj,		
+							domain	tcorno		i.vers,		
+							domain	tppdm.cspa	i.elem,		
+							domain	tcorno		i.max.vers	)
+{
+	select	a_tpisg008.totl,
+		a_tpisg008.amnt,
+ 		a_tpisg008.ritb
+	from	tpisg008 a_tpisg008 
+	where	a_tpisg008._index1 = {:i.cprj,:i.max.vers,:i.elem}
+	and	a_tpisg008.levl = 2
+	selectdo
+		select	l_tpisg012.totl,
+			l_tpisg012.amnt,
+			l_tpisg012.ritb
+		from	tpisg012 l_tpisg012 for update
+		where	l_tpisg012._index1 = {:i.cprj,:i.vers,:i.elem}
+		and	l_tpisg012.levl = 2
+		and	l_tpisg012.ardc <> 0.00 
+		selectdo
+			if etol(tpisg312.ctyp) = 1 then
+				tpisg012.totl = tpisg008.totl 
+				tpisg012.amnt = tpisg008.amnt
+				tpisg012.ritb = tpisg008.ritb
+			else if etol(tpisg312.ctyp) = 2 then
+				tpisg012.totl = tpisg008.totl + tpisg312.valu
+				tpisg012.amnt = tpisg008.amnt + tpisg312.valu
+				tpisg012.ritb = tpisg008.ritb + tpisg312.valu
+			else if etol(tpisg312.ctyp) = 3 then
+				tpisg012.totl = tpisg008.totl - tpisg312.valu
+				tpisg012.amnt = tpisg008.amnt - tpisg312.valu
+				tpisg012.ritb = tpisg008.ritb - tpisg312.valu
+			endif
+			endif
+			endif
+		
+			db.update(ttpisg012, db.retry)
+			commit.transaction()
+		endselect
+	endselect
+}
+
+function addition.reduction.on.level1(	domain	tccprj		i.cprj,
+					domain	tcorno		i.vers,		
+					domain	tcorno		i.max.vers	)
+{
+	domain	tcamnt		child.tot.valu
+	domain	tcamnt		child.inc.valu
+	domain	tcamnt		child.dec.valu
+	domain	tppdm.cspa	par.cspa
+	
+	par.cspa = ""
+	
+	select	e_tpisg312.cspa:par.cspa
+	from	tpisg312 e_tpisg312
+	where	e_tpisg312._index1 = {:i.cprj,:i.vers}
+	group by e_tpisg312.cspa
+	selectdo
+		child.tot.valu = 0.00
+		child.inc.valu = 0.00
+		child.dec.valu = 0.00
+		
+		select	f_tpisg312.valu,
+			f_tpisg312.ctyp
+		from	tpisg312 f_tpisg312
+		where	f_tpisg312._index1 = {:i.cprj,:i.vers}
+		and 	f_tpisg312.cspa = :par.cspa
+		selectdo
+			if etol(tpisg312.ctyp) = 2 then
+				child.inc.valu = child.inc.valu + tpisg312.valu 
+			else if etol(tpisg312.ctyp) = 3 then
+				child.dec.valu = child.dec.valu + tpisg312.valu  
+			endif
+			endif
+		endselect
+		
+		child.tot.valu = child.inc.valu - child.dec.valu
+		
+		select	b_tpisg008.cspa,
+			b_tpisg008.avai,
+			b_tpisg008.totl,
+			b_tpisg008.aamt,
+			b_tpisg008.ritb,
+			b_tpisg008.vers,
+			b_tpisg008.cprj
+		from	tpisg008	 b_tpisg008 
+		where	b_tpisg008._index1 = {:i.cprj,:i.max.vers,:par.cspa}
+		and	b_tpisg008.levl = 1
+		as set with 1 rows
+		selectdo
+			select	m_tpisg012.totl,
+				m_tpisg012.aamt,
+				m_tpisg012.ritb
+			from	tpisg012 m_tpisg012 for update
+			where	m_tpisg012._index1 = {:i.cprj,:i.vers,:par.cspa}
+			and	m_tpisg012.levl = 1
+			as set with 1 rows
+			selectdo
+				tpisg012.totl = tpisg008.totl + child.tot.valu
+				tpisg012.aamt = tpisg008.aamt + child.tot.valu
+				tpisg012.ritb = tpisg008.ritb + child.tot.valu
+				
+				db.update(ttpisg012, db.retry)
+				commit.transaction()
+			endselect
+		endselect
+	endselect
+}
+
+
+function addition.reduction.on.level0(	domain	tccprj		i.cprj,		
+					domain	tcorno		i.vers,		
+					domain	tcorno		i.max.vers	)
+{
+	select	c_tpisg008.totl,
+		c_tpisg008.aamt,
+		c_tpisg008.ritb
+	from	tpisg008 c_tpisg008 
+	where	c_tpisg008._index1 = {:i.cprj,:i.max.vers}
+	and	c_tpisg008.levl = 0
+	as set with 1 rows	
+	selectdo
+		select	k_tpisg012.totl,
+			k_tpisg012.aamt,
+			k_tpisg012.ritb
+		from	tpisg012 k_tpisg012 for update
+		where	k_tpisg012._index1 = {:i.cprj,:i.vers}
+		and	k_tpisg012.levl = 0
+		as set with 1 rows
+		selectdo
+			select	tpisg311.netc
+			from	tpisg311
+			where	tpisg311._index1 = {:i.cprj,:i.vers}
+			selectdo
+				tpisg012.totl = tpisg008.totl + tpisg311.netc
+				tpisg012.aamt = tpisg008.aamt + tpisg311.netc
+				tpisg012.ritb = tpisg008.ritb + tpisg311.netc
+				db.update(ttpisg012, db.retry)
+				commit.transaction()
+			endselect
+		endselect
+	endselect
+}
+
+function addition.reduction.old.line.update.on.level2.it(	domain	tccprj		i.cprj,		
+								domain	tcorno		i.vers,		
+								domain	tppdm.cspa	i.elem,		
+								domain	tcorno		i.max.vers	)
+{
+	select	a_tpisg008.totl,
+		a_tpisg008.amnt,
+ 		a_tpisg008.ritb
+	from	tpisg008 a_tpisg008 
+	where	a_tpisg008._index1 = {:i.cprj,:i.max.vers,:i.elem}
+	and	a_tpisg008.levl = 2
+	selectdo
+		select	l_tpisg012.totl,
+			l_tpisg012.amnt,
+			l_tpisg012.ritb
+		from	tpisg012 l_tpisg012 for update
+		where	l_tpisg012._index1 = {:i.cprj,:i.vers,:i.elem}
+		and	l_tpisg012.levl = 2
+		and	l_tpisg012.ardc <> 0.00 
+		selectdo
+			if etol(tpisg318.ctyp) = 1 then
+				tpisg012.totl = tpisg008.totl 
+				tpisg012.amnt = tpisg008.amnt
+				tpisg012.ritb = tpisg008.ritb
+			else if etol(tpisg318.ctyp) = 2 then
+				tpisg012.totl = tpisg008.totl + tpisg318.valu
+				tpisg012.amnt = tpisg008.amnt + tpisg318.valu
+				tpisg012.ritb = tpisg008.ritb + tpisg318.valu
+			else if etol(tpisg318.ctyp) = 3 then
+				tpisg012.totl = tpisg008.totl - tpisg318.valu
+				tpisg012.amnt = tpisg008.amnt - tpisg318.valu
+				tpisg012.ritb = tpisg008.ritb - tpisg318.valu
+			endif
+			endif
+			endif
+		
+			db.update(ttpisg012, db.retry)
+			commit.transaction()
+		endselect
+	endselect
+}
+
+function addition.reduction.on.level1.it(	domain	tccprj		i.cprj,
+						domain	tcorno		i.vers,		
+						domain	tcorno		i.max.vers	)
+{
+	domain	tcamnt		child.tot.valu
+	domain	tcamnt		child.inc.valu
+	domain	tcamnt		child.dec.valu
+	domain	tppdm.cspa	par.cspa
+	
+	par.cspa = ""
+	
+	select	e_tpisg318.cspa:par.cspa
+	from	tpisg318 e_tpisg318
+	where	e_tpisg318._index1 = {:i.cprj,:i.vers}
+	group by e_tpisg318.cspa
+	selectdo
+		child.tot.valu = 0.00
+		child.inc.valu = 0.00
+		child.dec.valu = 0.00
+		
+		select	f_tpisg318.valu,
+			f_tpisg318.ctyp
+		from	tpisg318 f_tpisg318
+		where	f_tpisg318._index1 = {:i.cprj,:i.vers}
+		and 	f_tpisg318.cspa = :par.cspa
+		selectdo
+			if etol(tpisg318.ctyp) = 2 then
+				child.inc.valu = child.inc.valu + tpisg318.valu 
+			else if etol(tpisg318.ctyp) = 3 then
+				child.dec.valu = child.dec.valu + tpisg318.valu  
+			endif
+			endif
+		endselect
+		
+		child.tot.valu = child.inc.valu - child.dec.valu
+		
+		select	b_tpisg008.cspa,
+			b_tpisg008.avai,
+			b_tpisg008.totl,
+			b_tpisg008.aamt,
+			b_tpisg008.ritb,
+			b_tpisg008.vers,
+			b_tpisg008.cprj
+		from	tpisg008	 b_tpisg008 
+		where	b_tpisg008._index1 = {:i.cprj,:i.max.vers,:par.cspa}
+		and	b_tpisg008.levl = 1
+		as set with 1 rows
+		selectdo
+			select	m_tpisg012.totl,
+				m_tpisg012.aamt,
+				m_tpisg012.ritb
+			from	tpisg012 m_tpisg012 for update
+			where	m_tpisg012._index1 = {:i.cprj,:i.vers,:par.cspa}
+			and	m_tpisg012.levl = 1
+			as set with 1 rows
+			selectdo
+				tpisg012.totl = tpisg008.totl + child.tot.valu
+				tpisg012.aamt = tpisg008.aamt + child.tot.valu
+				tpisg012.ritb = tpisg008.ritb + child.tot.valu
+				
+				db.update(ttpisg012, db.retry)
+				commit.transaction()
+			endselect
+		endselect
+	endselect
+}
+
+
+function addition.reduction.on.level0.it(	domain	tccprj		i.cprj,		
+						domain	tcorno		i.vers,		
+						domain	tcorno		i.max.vers	)
+{
+	select	c_tpisg008.totl,
+		c_tpisg008.aamt,
+		c_tpisg008.ritb
+	from	tpisg008 c_tpisg008 
+	where	c_tpisg008._index1 = {:i.cprj,:i.max.vers}
+	and	c_tpisg008.levl = 0
+	as set with 1 rows	
+	selectdo
+		select	k_tpisg012.totl,
+			k_tpisg012.aamt,
+			k_tpisg012.ritb
+		from	tpisg012 k_tpisg012 for update
+		where	k_tpisg012._index1 = {:i.cprj,:i.vers}
+		and	k_tpisg012.levl = 0
+		as set with 1 rows
+		selectdo
+			select	tpisg317.netc
+			from	tpisg317
+			where	tpisg317._index1 = {:i.cprj,:i.vers}
+			selectdo
+				tpisg012.totl = tpisg008.totl + tpisg317.netc
+				tpisg012.aamt = tpisg008.aamt + tpisg317.netc
+				tpisg012.ritb = tpisg008.ritb + tpisg317.netc
+				db.update(ttpisg012, db.retry)
+				commit.transaction()
+			endselect
+		endselect
+	endselect
+}
+
+function get.max.version.from.history(		domain	tccprj	i.cprj,
+					ref	domain	tcamnt	max.vrs	)
+{	
+	long	j,i
+	double	array(10000)
+	i = 0
+	j = 0
+	
+	select	tpisg007.vers
+	from	tpisg007
+	where	tpisg007._index1 = {:i.cprj}
+	group by tpisg007.vers
+	selectdo
+		i = i + 1
+		array(i) = val(tpisg007.vers)
+	endselect
+
+	max.vrs = array(1)
+
+	for j = 2 to i
+		if array(j) > max.vrs then
+			max.vrs = array(j)
+		endif
+	endfor
+	
+	for j = 1 to i
+		array(j) = 0.00
+		array(i) = 0.00
+	endfor
+}
+
 
 
 |*************************************** End of Code ***********************************************
