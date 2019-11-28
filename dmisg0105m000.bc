@@ -753,13 +753,24 @@ function domain tcdate Get_Drawing_Release_Date
 							
 function boolean check.release_item()						|RAvi.a.s.GH194CR508
 {
-	select	dmisg001.stat
-	from	dmisg001
-	where	dmisg001._index1 = {:dmisg005.docn, :dmisg005.revn}
-	and	dmisg001.stat = dmstat.expire
-	as set with 1 rows
+	domain	tcitem		m.loti	fixed
+	long	ret
+	
+	set.fmin(m.loti)
+	select 	dmisg005.*
+	from	dmisg005
+	where	dmisg005._index1 = {:dmisg005.cprj, :dmisg005.cspa}
+	and	dmisg005.stat  = dmstat.process
+	and	dmisg005.loti <> {:m.loti}
 	selectdo
-		return(false)
+		select	dmisg001.stat
+		from	dmisg001
+		where	dmisg001._index1 = {:dmisg005.docn, :dmisg005.revn}
+		and	dmisg001.stat = dmstat.expire
+		as set with 1 rows
+		selectdo
+			return(false)
+		endselect
 	endselect
 	
 	return(true)
