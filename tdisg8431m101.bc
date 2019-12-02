@@ -643,7 +643,12 @@ function print.detail.sum()
 
 	domain	tcamnt	percent
 	
-	percent = (billing.value.total / basic.amount.total) * 100
+	if billing.value.total = 0 then
+		percent = (basic.amount.total / 1)
+	else
+		percent = (basic.amount.total / billing.value.total)
+	endif
+	
 	line =	concat$("	",
 		sprintf$("%s", project.code.old),				|1
 		sprintf$("%s", project.desc.old),				|2			
