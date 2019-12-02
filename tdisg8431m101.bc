@@ -121,11 +121,11 @@ on.choice:
 	
 choice.generate.sum:							|RAvi.a.GH208CR498
 on.choice:
-	if trim$(logname$) = "10344" or trim$(logname$) = "0330" or trim$(logname$) = "9583" then
+| 	if trim$(logname$) = "10344" or trim$(logname$) = "0330" or trim$(logname$) = "9583" then		|RAvi.com.28112019
 		generate.file.sum()
-	else
-		message("Under testing.")
-	endif
+| 	else
+| 		message("Under testing.")
+| 	endif
 
 |****************************** field section *********************************
 
