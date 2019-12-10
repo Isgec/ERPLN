@@ -1,0 +1,25 @@
+|******************************************************************************
+|* tfisg012  0  VRC B61U a7 isg 
+|* DAL for tfisg012
+|* 10344
+|* 19-11-27 [17:51]
+|******************************************************************************
+|* Script Type: DAL
+|******************************************************************************
+      
+table	ttfisg012      
+
+#include <bic_dal2>
+
+
+function extern long before.open.object.set()
+{
+	return(0)
+}
+
+function extern long before.save.object(long type)
+{
+	tfisg012.udby = logname$
+	tfisg012.udat = utc.num()
+	return(0)
+}

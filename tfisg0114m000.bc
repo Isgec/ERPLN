@@ -1,0 +1,49 @@
+|******************************************************************************
+|* tfisg0114m000  0  VRC B61U a7 isg 
+|* Monthly Cashflow Data
+|* Ravi Kumar                    
+|* 2019-11-27
+|******************************************************************************
+|* Main table tfisg014 Monthly Cashflow Data, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttfisg014 | Monthly Cashflow Data
+
+	extern	domain	tcnama	udby.nama
+|****************************** program section ********************************
+
+
+|****************************** group section **********************************
+
+field.udby.nama:
+before.display:
+	select	tccom001.nama:udby.nama
+	from	tccom001
+	where	tccom001._index4 = {:tfisg014.udby}
+	as set with 1 rows
+	selectdo
+	selectempty
+		udby.nama = ""
+	endselect
+
+functions:
+function extern freeze()
+{
+	select	tfisg014.frez
+	from	tfisg014 for update
+	where	tfisg014._index1 = {:tfisg014.year, :tfisg014.mnth}
+	and	tfisg014.frez = tcyesno.no
+	selectdo
+		tfisg014.frez = tcyesno.yes
+		db.update(ttfisg014, db.retry)
+		commit.transaction()
+	selectempty
+		message("No Data to Freeze")
+		choice.again()
+	endselect
+	
+	message("Freezed")
+}
