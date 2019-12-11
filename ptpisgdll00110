@@ -743,8 +743,8 @@ function extern tpisgdll0011.Transfer_Credit							|#ISGEC01183.sn
 
 		deduct_transfer_amount(i.cprj,i.vers,"99110000",o.tpisg012.tfwy)
 		
-		update.parent.total.budget.amount.for.transferred.from(i.cprj,i.vers,o.tpisg012.elem,
-						o.tpisg012.tfcy,o.tpisg012.tfcs,o.tpisg012.tfwy,o.tpisg012.tfch,0.0,0.0,2)
+| 		update.parent.total.budget.amount.for.transferred.from(i.cprj,i.vers,o.tpisg012.elem,
+| 						o.tpisg012.tfcy,o.tpisg012.tfcs,o.tpisg012.tfwy,o.tpisg012.tfch,0.0,0.0,2)		|Ravi
 						
  		credit_transfer_amount_element.for.transferred.from(i.cprj,i.vers,o.tpisg012.elem,
 							o.tpisg012.tfcy,o.tpisg012.tfcs,o.tpisg012.tfwy,o.tpisg012.tfch)

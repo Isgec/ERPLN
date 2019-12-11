@@ -56,6 +56,9 @@
 |*
 |* ISGEC019008, Manish Manchanda, 2019-07-22
 |* Modifications - new form command added in specific
+|* 
+|* GH214CR000, RAvi Kumar, 22-11-2019
+|*  IR-133320- "Transfer to Supply Element from Freight", role matrix not working
 |****************************** declaration section ***************************
 declaration:
 
@@ -831,6 +834,10 @@ on.choice:
 	
 choice.cont.cancel:
 before.choice:
+	if tpisg011.acti = tpisg.sanction.trans.to.supp then						|RAvi.a.GH214CR000
+		approve_form_command()
+	endif
+	
 	start.session(MODAL,"tpisg0211m100","","")
 
 	select 	tcmcs005.cdis
