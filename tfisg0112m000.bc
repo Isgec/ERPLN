@@ -25,7 +25,6 @@ declaration:
 	
 |****************************** program section ********************************
 
-
 |****************************** group section **********************************
 field.eunt.dsca:
 before.display:
@@ -125,4 +124,23 @@ before.display:
 	else
 		iaps = 0
 	endif
+
+functions:
+function extern freeze()
+{
+	select	tfisg012.frez
+	from	tfisg012 for update
+	where	tfisg012._index1 = {:tfisg012.year, :tfisg012.mnth, :tfisg012.eunt, tfisg012.hcod}
+	and	tfisg012.frez = tcyesno.no
+	selectdo
+		tfisg012.frez = tcyesno.yes
+		db.update(ttfisg012, db.retry)
+		commit.transaction()
+	selectempty
+		message("No Data to Freeze")
+		choice.again()
+	endselect
+	
+	message("Freezed")
+}
 
