@@ -70,61 +70,48 @@ before.display:
 		udby.nama = ""
 	endselect
 	
-field.iaps:
-before.display:
-	if tfisg012.hcod = "H0000001" then
-		monthly.inflow = 0
-		opening.inflow = 0
-		select	tfisg011.hcod:iaps.hcod
-		from	tfisg011
-		where	tfisg011.htyp = tfisg.htype.inflow
-		selectdo
-			select	isg012.amnt:iaps.amnt
-			from	tfisg012	isg012
-			where	isg012._index1 = {:tfisg012.year, :tfisg012.mnth, :tfisg012.eunt, :iaps.hcod}
-			as set with 1 rows
-			selectdo
-				monthly.inflow = monthly.inflow + iaps.amnt
-			endselect
-		endselect
-		
-		select	tcemm030.fcmp
-		from	tcemm030
-		where	tcemm030._index1 = {:tfisg012.eunt}
-		as set with 1 rows
-		selectdo
-| 			select	tppdm600.cprj
-| 			from	tppdm600
-| 			where	tppdm600._index7 = {:tcemm030.fcmp}
+| field.iaps:
+| before.display:
+| 	if tfisg012.hcod = "H0000001" then
+| 		monthly.inflow = 0
+| 		opening.inflow = 0
+| 		select	tfisg011.hcod:iaps.hcod
+| 		from	tfisg011
+| 		where	tfisg011.htyp = tfisg.htype.inflow
+| 		selectdo
+| 			select	isg012.amnt:iaps.amnt
+| 			from	tfisg012	isg012
+| 			where	isg012._index1 = {:tfisg012.year, :tfisg012.mnth, :tfisg012.eunt, :iaps.hcod}
+| 			as set with 1 rows
 | 			selectdo
-| 				select	tfisg015.iamt
-| 				from	tfisg015
-| 				where	tfisg015._index1 = {:tppdm600.cprj}
-| 				as set with 1 rows
-| 				selectdo
-| 					opening.inflow = opening.inflow + tfisg015.iamt
-| 				endselect
+| 				monthly.inflow = monthly.inflow + iaps.amnt
 | 			endselect
-
-| 			select	tppdm600.cprj
-| 			from	tppdm600, tcemm030
+| 		endselect
+| 		
+| 		select	tcemm030.fcmp
+| 		from	tcemm030
+| 		where	tcemm030._index1 = {:tfisg012.eunt}
+| 		as set with 1 rows
+| 		selectdo
+| 			select	tfisg015.iamt,
+| 				tppdm600.cprj
+| 			from	tfisg015, tppdm600
 | 			where	tppdm600._index7 = {:tcemm030.fcmp}
+| 			and	tfisg015.cprj refers to tppdm600
 | 			selectdo
-				select	tfisg015.iamt,
-					tppdm600.cprj
-				from	tfisg015, tppdm600
-				where	tppdm600._index7 = {:tcemm030.fcmp}
-				and	tfisg015.cprj refers to tppdm600
-				selectdo
-					opening.inflow = opening.inflow + tfisg015.iamt
-				endselect
+| 				opening.inflow = opening.inflow + tfisg015.iamt
 | 			endselect
-		endselect
-		iaps = monthly.inflow + opening.inflow
-	else
-		iaps = 0
-	endif
+| 		endselect
+| 		iaps = monthly.inflow + opening.inflow
+| 	else
+| 		iaps = 0
+| 	endif
 
+choice.refresh:
+on.choice:
+	tfisgdll0112.refresh.actual.inflow.outflow(tfisg012.year, tfisg012.mnth, tfisg012.eunt)
+	tfisgdll0112.refresh.budgeted.inflow.outflow(tfisg012.year, tfisg012.mnth, tfisg012.eunt)
+	
 functions:
 function extern freeze()
 {
