@@ -16,6 +16,7 @@ declaration:
   table   ttpisg089
   table   ttfisg014
   table	ttfisg015
+  table	ttfisg013
 
 	extern	domain	tcmcs.str100	ccod.dsca
 		string	error.message(500)
@@ -373,27 +374,45 @@ function update.actual.cashflow()
 		tpisg089.year,
 		tpisg089.mnth,
 		tpisg089.cmti,
-		tpisg089.cmto
+		tpisg089.cmto,
+		tpisg089.cnmt
 	from	tpisg089 for update
 	where	tpisg089._index1 = {:tpisg189.ccod, :tpisg189.rvsn}
 	selectdo
-		select	tpisg088.cprj
-		from	tpisg088
-		where	tpisg088._index1 = {:tpisg089.ccod}
-		selectdo
-			select	tfisg014.iamt,
-				tfisg014.oamt
+| 		select	tpisg088.cprj
+| 		from	tpisg088
+| 		where	tpisg088._index1 = {:tpisg089.ccod}
+| 		selectdo
+| 			select	tfisg014.iamt,
+| 				tfisg014.oamt
+| 			from	tfisg014
+| 			where	tfisg014._index1 = {:tpisg089.year, :tpisg089.mnth, :tpisg088.cprj}
+| 			as set with 1 rows
+| 			selectdo
+| 				act.inflow = act.inflow + tfisg014.iamt
+| 				act.outflow = act.outflow + tfisg014.oamt
+| 			endselect
+| 		endselect
+		
+| 		select	tfisg013.capc
+| 		from	tfisg013
+| 		where	tfisg013.ccod = :tpisg089.ccod
+| 		selectdo
+			select	sum(tfisg014.iamt):act.inflow,
+				sum(tfisg014.oamt):act.outflow
 			from	tfisg014
-			where	tfisg014._index1 = {:tpisg089.year, :tpisg089.mnth, :tpisg088.cprj}
-			as set with 1 rows
+			where	tfisg014._index1 = {:tpisg089.year, :tpisg089.mnth, :tpisg089.ccod}
+| 			as set with 1 rows
 			selectdo
-				act.inflow = act.inflow + tfisg014.iamt
-				act.outflow = act.outflow + tfisg014.oamt
+| 				act.inflow = act.inflow + tfisg014.iamt
+| 				act.outflow = act.outflow + tfisg014.oamt
 			endselect
-		endselect
+| 		endselect
+		
 		tpisg089.cmti = act.inflow
 		tpisg089.cmto = act.outflow
-		db.update(ttpisg089,DB.RETRY)
+		tpisg089.cnmt = tpisg089.cmti - tpisg089.cmto
+		db.update(ttpisg089, DB.RETRY)
 		commit.transaction()
 		act.inflow = 0
 		act.outflow = 0
@@ -405,18 +424,18 @@ function domain	tcamnt calculate.in.opening()
 	domain	tcamnt opening.inflow
 	opening.inflow = 0
 
-	select	tpisg088.cprj
-	from	tpisg088
-	where	tpisg088._index1 = {:tpisg189.ccod}
-	selectdo
+| 	select	tpisg088.cprj
+| 	from	tpisg088
+| 	where	tpisg088._index1 = {:tpisg189.ccod}
+| 	selectdo
 		select	tfisg015.iamt
 		from	tfisg015
-		where	tfisg015._index1 = {:tpisg088.cprj}
-		as set with 1 rows
+		where	tfisg015._index1 = {:tpisg189.ccod}
+| 		as set with 1 rows
 		selectdo
 			opening.inflow = opening.inflow + tfisg015.iamt
 		endselect
-	endselect
+| 	endselect
 	return(opening.inflow)
 }
 
@@ -425,17 +444,17 @@ function domain	tcamnt calculate.out.opening()
 	domain	tcamnt opening.outflow
 	opening.outflow = 0
 
-	select	tpisg088.cprj
-	from	tpisg088
-	where	tpisg088._index1 = {:tpisg189.ccod}
-	selectdo
+| 	select	tpisg088.cprj
+| 	from	tpisg088
+| 	where	tpisg088._index1 = {:tpisg189.ccod}
+| 	selectdo
 		select	tfisg015.oamt
 		from	tfisg015
-		where	tfisg015._index1 = {:tpisg088.cprj}
-		as set with 1 rows
+		where	tfisg015._index1 = {:tpisg189.ccod}
+| 		as set with 1 rows
 		selectdo
 			opening.outflow = opening.outflow + tfisg015.oamt
 		endselect
-	endselect
+| 	endselect
 	return(opening.outflow)
 }

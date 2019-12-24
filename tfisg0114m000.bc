@@ -13,8 +13,25 @@ declaration:
   table   ttfisg014 | Monthly Cashflow Data
 
 	extern	domain	tcnama	udby.nama
+	extern	domain	tcpric	tot.iamt, tot.oamt
+	
 |****************************** program section ********************************
-
+before.program:
+	fattr.total.line = true
+	
+on.display.total.line:
+	select	sum(tfisg014.iamt):tot.iamt,
+		sum(tfisg014.oamt):tot.oamt
+	from	tfisg014
+	where	tfisg014._index1 = {:tfisg014.year, :tfisg014.mnth}
+	selectdo
+	selectempty
+		tot.iamt = 0
+		tot.oamt = 0
+	endselect
+	
+    display.total.fields( "tfisg014.iamt", tot.iamt, 
+                          "tfisg014.oamt", tot.oamt)
 
 |****************************** group section **********************************
 
