@@ -17,6 +17,10 @@
 |*
 |* Adarsh Pal, 28-05-19, VRC B61U a7 isg
 |* Refresh Tables tpisg066 and tpisg067
+|*
+|* #Adarsh.17.12.19, 17-12-2019, VRC B61U a7 isg
+|* Logic addition for not considering Provisons GL in Non-Integrated Cost
+|* against Cost Heads
 |****************************** declaration section ***************************
 
 	table	ttpisg054 | Cost Sheet Project Master
@@ -79,7 +83,7 @@
 					cbac.amth.waty.tot,cbac.amth.waty
 		domain	tcamnt		amth.mat.prov,amth.mat.prov.net,amth.waty,amth.waty.net,amth.iamt,
 					iamt.net,amth.namt,namt.net,amth.pamt,amth.pamt.net,amth.elem.dr.iamt,amth.elem.cr.iamt,
-					amth.elem.iamt.net,eamt,famt
+					amth.elem.iamt.net,eamt,famt,pamt
 		domain	tcamnt		cssh.positive,ctsh.positive,wtsh.positive
 		domain	tppdm.cspa	curr.elem,hold.elem
 		domain	tppdm.cspa	curr.elem.tran
@@ -1888,6 +1892,7 @@ function update.niba.amnt(
 		select	tpisg315.leac
 		from	tpisg315
 		where	tpisg315._index1 = {:tpisg314.chco}
+		and 	tpisg315.prgl = 2						|#Adarsh.17.12.19.n
 		selectdo
 			select	tpisg069.*
 			from	tpisg069
@@ -2308,6 +2313,7 @@ function refresh.tpisg066(domain tccprj i.cprj)
 	iamt.net = 0.0
 	amth.namt = 0.0
 	namt.net = 0.0
+	pamt = 0.0										|#Adarsh.17.12.19.n
 	
 	select	tpisg069.*
 	from	tpisg069
@@ -2372,6 +2378,8 @@ function refresh.tpisg066(domain tccprj i.cprj)
 				endif
 			endif
 		endselect
+		
+		get.provisions.against.bills(i.cprj,tpisg314.chco,pamt)					|#Adarsh.17.12.19.n
 	
 		if tpisg314.chco = "C011" then
 			namt.net = namt.net + amth.mat.prov.net + amth.waty.net
@@ -2382,6 +2390,7 @@ function refresh.tpisg066(domain tccprj i.cprj)
 		iamt.net = 0.0
 		amth.namt = 0.0
 		namt.net = 0.0
+		pamt = 0.0										|#Adarsh.17.12.19.n
 	endselect
 }
 
@@ -2394,6 +2403,7 @@ function insert.and.update.tpisg066(domain tccprj i.cprj)
 	selectdo
 		tpisg066.iamt = iamt.net
 		tpisg066.namt = namt.net
+		tpisg066.pamt = pamt									|#Adarsh.17.12.19.n
 		tpisg066.pseq = tpisg314.pseq
 		db.update(ttpisg066,DB.RETRY)
 	selectempty
@@ -2402,6 +2412,7 @@ function insert.and.update.tpisg066(domain tccprj i.cprj)
 		tpisg066.chco = tpisg314.chco
 		tpisg066.iamt = iamt.net
 		tpisg066.namt = namt.net
+		tpisg066.pamt = pamt									|#Adarsh.17.12.19.n
 		tpisg066.pseq = tpisg314.pseq
 		db.insert(ttpisg066,DB.RETRY)
 	endselect
@@ -3535,3 +3546,44 @@ function update.tpisg069.logictic.element(domain tccprj i.cprj)
 	
 	
 }
+												|#Adarsh.17.12.19.sn
+function get.provisions.against.bills(		domain	tccprj		i.cprj,
+						domain	tcmcs.str4	i.chco,
+					ref	domain	tcamnt		o.pamt	)
+{
+	niba.amnt.credit = 0.0
+	niba.amnt.debit = 0.0
+	o.pamt = 0.0
+
+	select	tpisg314.chco
+	from	tpisg314
+	where	tpisg314._index1 = {:i.chco}
+	selectdo
+		select	tpisg315.leac
+		from	tpisg315
+		where	tpisg315._index1 = {:tpisg314.chco}
+		and 	tpisg315.prgl = 1						
+		selectdo
+			select	tpisg069.*
+			from	tpisg069
+			where	tpisg069._index2 = {:i.cprj}
+			and	tpisg069.leac = :tpisg315.leac
+			and	tpisg069.refr(1;8) <> "tpppc010" 
+			and	tpisg069.iprj <> 2
+			and	tpisg069.chco = :tpisg314.chco
+			selectdo
+				if tpisg069.dbcr = tfgld.dbcr.debit then
+					niba.amnt.debit = niba.amnt.debit + tpisg069.amth
+				else
+					if tpisg069.dbcr = tfgld.dbcr.credit then
+						niba.amnt.credit = niba.amnt.credit + tpisg069.amth
+					endif
+				endif		
+			endselect
+		endselect
+		
+		niba.amnt.credit = niba.amnt.credit * (-1)
+		o.pamt = niba.amnt.debit + niba.amnt.credit
+	endselect
+}
+												|#Adarsh.17.12.19.en
