@@ -13,6 +13,8 @@
 |*
 |* ID ISGEC01037, Gokul Chaurasia, 20-02-2017
 |*
+|* "GH238CR530_000", Modification in Accounts Cashflow.
+|* Paras Kukreti, 2019-12-16
 |******************************************************************************
         table	ttfcmg101	| Payment Batch
 	table	ttfcmg401	| Direct Debit Batch
@@ -43,6 +45,7 @@
 	domain	tfgld.amnt	temp.amth, temp.whti, io.amnt
 	domain	tfgld.leac v.debit.leac, v.credit.leac
 | 	domain	tfgld.dimx	dimn1
+	
 #include <bic_dal2>
 
 
@@ -1303,6 +1306,7 @@ function extern boolean InsertIntotfisg041.1
 	|******Inserting Data in tfisg041***********
 	
 	domain	tcncmp		current.comp
+	domain	tfgld.dbcr	dbt.crdt					|#GH238CR530_000.n
 | 	current.comp = get.compnr()
 	
 | 	select	tfgld018.user:i.user					|#ISGEC016022.sn
@@ -1388,6 +1392,30 @@ function extern boolean InsertIntotfisg041.1
 		else
 			tfisg041.cprj = i.cprj
 		endif
+		
+		if trim$(i.leac) = "2510121" then				|#GH238CR530_000.sn
+			select	c_tfgld106.dbcr:dbt.crdt
+			from	tfgld106 c_tfgld106
+			where	c_tfgld106._index1 = {:i.ptyp, :i.pdoc, :i.line}
+			and	c_tfgld106.obat = :tfisg041.btno
+			and	c_tfgld106.leac = "2510121"
+			and	c_tfgld106._compnr = :i.fin.comp
+			selectdo
+				if dbt.crdt = tfgld.dbcr.credit then
+					tfisg041.ctyp = tfcash.flow.out
+					i.amth = i.amth * (-1)
+					tfisg041.amtf = i.amnt * (-1)
+				endif
+			endselect
+		endif
+		
+		if i.ttyp = "SDN" then
+			if i.cflo = tfcash.flow.out then
+				tfisg041.ctyp = tfcash.flow.in
+				i.amth = i.amth * (-1)
+				tfisg041.amtf = i.amnt * (-1)
+			endif
+		endif								|#GH238CR530_000.en
  
 
 | 		tfisg041.amnt = round(((i.amnt * i.rate)),2,1)		|#ISGEC016022.o

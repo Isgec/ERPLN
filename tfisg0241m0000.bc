@@ -24,6 +24,9 @@
 |* Check for 700 company
 |* 
 |* "bharti",chnages against the name.
+|* 
+|* "GH238CR530_000", Modification in Accounts Cashflow.
+|* Paras Kukreti, 2019-12-16
 |****************************** declaration section ***************************
 declaration:
 
@@ -2595,7 +2598,7 @@ function	check.parent.accounting.ledger()			|#ISGEC016022.sn
 									|#ISGEC017002.sn
 function	redo.update.cash.flow()
 {
-	domain	tcbool		r.cash, r.bank, r.inte
+	domain	tcbool		r.cash, r.bank, r.inte 	
 	domain	tfgld.btno	r.obat
 	domain	tfgld.docn	r.odoc
 	
@@ -2690,8 +2693,8 @@ function	redo.update.cash.flow()
 		endif
 		r.obat	=	tfgld106.obat
 		r.odoc	=	tfgld106.odoc
-	endselect
-	update.existing.reason.code()
+	endselect					
+	update.existing.reason.code()						
 }
 
 function	check.bank.intercompany.cash(
@@ -3000,19 +3003,21 @@ function	insert.tfisg041()
 		from	tfgld011
 		where	tfgld011._index1 = {:tfgld106.otyp}
 		selectdo
-			if tfgld011.catg = tfgld.catg.purchase.cred then	
-				select	tfgld112.cono:r.comt			
-				from	tfgld112
-				where	tfgld112._index1 	= 	{:ncmp.f,:tfgld011.ttyp,:tfgld106.odoc}
-				selectdo
-				endselect
-			else							|bharti.en
-				select	tfgld112.comt:r.comt			
-				from	tfgld112
-				where	tfgld112._index1 	= 	{:ncmp.f,:tfgld106.otyp,:tfgld106.odoc}
-				selectdo
-				endselect
-			endif						|bharti.n
+			if tfgld011.ttyp 	<>	"AUR" then		|#GH238CR530_000.n
+				if tfgld011.catg = tfgld.catg.purchase.cred then	
+					select	tfgld112.cono:r.comt			
+					from	tfgld112
+					where	tfgld112._index1 	= 	{:ncmp.f,:tfgld011.ttyp,:tfgld106.odoc}
+					selectdo
+					endselect
+				else							|bharti.en
+					select	tfgld112.comt:r.comt			
+					from	tfgld112
+					where	tfgld112._index1 	= 	{:ncmp.f,:tfgld106.otyp,:tfgld106.odoc}
+					selectdo
+					endselect
+				endif						|bharti.n
+			endif							|#GH238CR530_000.n
 		endselect
 		
 		select	tfcmg110.tdoc,
@@ -3239,6 +3244,7 @@ function	get.new.project(
 | 			o.cprj	=	"ACCTS"
 		endif
 	endif
+	
 	if	isspace(o.cprj)	then
 		select	tfacp251.orno, 
 			tfacp251.pono, 
@@ -3308,8 +3314,13 @@ function	get.new.project(
 	endif
 
 	if	isspace(o.cprj)	then
-		if	r.docn	=	0	then
-			
+| 		if	r.docn	=	0	then				|#GH238CR530_000.o
+		if	r.docn	=	0 or					|#GH238CR530_000.sn
+			tfgld011.ttyp 	=	"AUR" or
+			tfgld011.catg = tfgld.catg.purchase.cred or	
+			tfgld011.catg = tfgld.catg.sales.inv or	
+			tfgld011.catg = tfgld.catg.purchase.inv or	
+			tfgld011.catg = tfgld.catg.sales.cred then		|#GH238CR530_000.en
 			select	tfgld106.dim1:o.cprj
 			from	tfgld106
 			where	tfgld106._index1	=	{:tfgld106.otyp,:tfgld106.odoc,:o.tfgld106.olin}	
@@ -3333,9 +3344,13 @@ function	get.new.project(
 		else
 			if  r.ttyp= tfgld106.otyp and r.docn = tfgld106.odoc then		|bharti.sn
 			else
-				r.ttyp= tfgld106.otyp
+				r.ttyp= tfgld106.otyp	
 				r.docn = tfgld106.odoc
 			endif									|bharti.en
+			
+			if r.ttyp = "AUR" then					|#GH238CR530_000.sn
+				r.ncmp = ncmp.f
+			endif							|#GH238CR530_000.en
 			
 			select	tfgld106.dim1:o.cprj
 			from	tfgld106
@@ -3346,35 +3361,36 @@ function	get.new.project(
 			as	set with 1 rows
 			selectdo
 			selectempty
-				select	tfgld106.dim1:o.cprj
-				from	tfgld106
-				where	tfgld106._index1	=	{:r.ttyp,:r.docn,:o.tfgld106.olin}	
-				and	tfgld106.dim1		<>	""
-				and	tfgld106._compnr	=	:r.ncmp
-				as	set with 1 rows
-				selectdo
-				selectempty
-					select	tfgld106.dim1:o.cprj
-					from	tfgld106
-					where	tfgld106._index1	=	{:r.ttyp,:r.docn}	
-					and	tfgld106.leac		=	:tfgld106.leac
-					and	tfgld106.dim1		<>	""
-					and	tfgld106._compnr	=	:r.ncmp
-					as	set with 1 rows
-					selectdo
-					selectempty
-						select	tfgld106.dim1:o.cprj
-						from	tfgld106
-						where	tfgld106._index1	=	{:r.ttyp,:r.docn}	
-						and	tfgld106.dim1		<>	""
-						and	tfgld106._compnr	=	:r.ncmp
-						as	set with 1 rows
-						selectdo
-						selectempty
-							o.cprj		=	"ACCTS"	
-						endselect
-					endselect
-				endselect
+				o.cprj		=	"ACCTS"			|#GH238CR530_000.n
+| 				select	tfgld106.dim1:o.cprj			|#GH238CR530_000.so
+| 				from	tfgld106
+| 				where	tfgld106._index1	=	{:r.ttyp,:r.docn,:o.tfgld106.olin}	
+| 				and	tfgld106.dim1		<>	""
+| 				and	tfgld106._compnr	=	:r.ncmp
+| 				as	set with 1 rows
+| 				selectdo
+| 				selectempty
+| 					select	tfgld106.dim1:o.cprj		
+| 					from	tfgld106
+| 					where	tfgld106._index1	=	{:r.ttyp,:r.docn}	
+| 					and	tfgld106.leac		=	:tfgld106.leac
+| 					and	tfgld106.dim1		<>	""
+| 					and	tfgld106._compnr	=	:r.ncmp
+| 					as	set with 1 rows
+| 					selectdo
+| 					selectempty
+| 						select	tfgld106.dim1:o.cprj
+| 						from	tfgld106
+| 						where	tfgld106._index1	=	{:r.ttyp,:r.docn}	
+| 						and	tfgld106.dim1		<>	""
+| 						and	tfgld106._compnr	=	:r.ncmp
+| 						as	set with 1 rows
+| 						selectdo
+| 						selectempty
+| 							o.cprj		=	"ACCTS"	
+| 						endselect
+| 					endselect
+| 				endselect					|#GH238CR530_000.en
 			endselect
 		endif
 	endif
@@ -3554,7 +3570,7 @@ function	get.new.project.1(						|bharti.sn
 	endif
 
 	if	isspace(o.cprj)	then
-		if	r.docn	=	0	then
+		if	r.docn	=	0	then			
 			select	tfgld106.dim1:o.cprj
 			from	tfgld106
 			where	tfgld106._index1	=	{:tfgld106.otyp,:tfgld106.odoc,:o.tfgld106.olin}	
