@@ -23,6 +23,9 @@
 |*
 |* ID ISGEC01058, Priya Jindal, 7/6/2018, B61U a7 isg
 |* Changes For Foreign Supplier
+|*
+|* ID CR-534-GH-241, Paras Kukreti(TV), 7/6/2018, B61U a7 isg
+|* Changes For Foreign Supplier
 |****************************** declaration section ***************************
 declaration:
 
@@ -349,7 +352,7 @@ function read.main.table.foreign()
 }
 
 function get.inrange.transaction()
-{	
+{
     	select 	tfacp200.*
     	from 	tfacp200
     	where  	tfacp200._index1 inrange {:ttyp.f, :docn.f}
@@ -391,7 +394,10 @@ function get.inrange.transaction()
 			break
 		case tfacp.tpay.normal:			|Normal Payment(2)
 			if print.bank.anti = tcyesno.yes or print.all = tcyesno.yes then	
-				normal.transaction()
+| 				normal.transaction()						|#CR-534-GH-241.o
+				document.no = tfacp200.tdoc & " " & str$(tfacp200.docn)		|#CR-534-GH-241.sn
+				credit.debit.balance.amount()
+				send.report.for.printing()					|#CR-534-GH-241.en
 			endif
 			break
 		case tfacp.tpay.credit:			|Credit Note(4)
@@ -402,11 +408,16 @@ function get.inrange.transaction()
 		case tfacp.tpay.correction:		|Correction(5)
 			correction.transaction()
 			break
-		case tfacp.tpay.anticipated:		|anticipated Payment(8)		
+		case tfacp.tpay.anticipated:		|anticipated Payment(8)
 			anticipated.transaction()
-			break							
+			break
 		case tfacp.tpay.advance:		|Advance payment(9)
-			advance.transaction()
+| 			advance.transaction()					|#CR-534-GH-241.o
+			if tfacp200.whti = tcyesno.yes then			|#CR-534-GH-241.sn
+				invoice.transaction.with.tds()
+			else
+				invoice.transaction.without.tds()
+			endif							|#CR-534-GH-241.en
 			break
 		case tfacp.tpay.unallocated:		|Unallocated Payment(10)
 			get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
@@ -455,7 +466,10 @@ function get.opening.transaction()
 			break
 		case tfacp.tpay.normal:
 			if print.bank.anti = tcyesno.yes or print.all = tcyesno.yes then
-				normal.transaction()
+| 				normal.transaction()						|#CR-534-GH-241.o
+				document.no = tfacp200.tdoc & " " & str$(tfacp200.docn)		|#CR-534-GH-241.sn
+				credit.debit.balance.amount()
+				send.report.for.printing()					|#CR-534-GH-241.en
 			endif
 			break
 		case tfacp.tpay.credit:
@@ -468,7 +482,12 @@ function get.opening.transaction()
 			anticipated.transaction()
 			break	
 		case tfacp.tpay.advance:
-			advance.transaction()
+| 			advance.transaction()					|#CR-534-GH-241.o
+			if tfacp200.whti = tcyesno.yes then			|#CR-534-GH-241.sn
+				invoice.transaction.with.tds()
+			else
+				invoice.transaction.without.tds()
+			endif							|#CR-534-GH-241.en
 			break
 		case tfacp.tpay.unallocated:
 			unallocated.payment.transaction()
@@ -503,7 +522,8 @@ function invoice.transaction.with.tds()
 	document.no = tfacp200.ttyp & " " & str$(tfacp200.ninv)
 	document.type = enum.descr$("tfacp.tpay", tfacp200.tpay)
 	if  tfacp200.tpay = tfacp.tpay.advance then				|#ISGEC017015.sn
-		total.amount = tfacp200.amth(1) - tfacp203.amount
+| 		total.amount = tfacp200.amth(1) - tfacp203.amount		|#CR-534-GH-241.o
+		total.amount = tfacp200.amth(1)					|#CR-534-GH-241.n
 	else									|#ISGEC017015.en
 		total.amount = tfacp200.amth(1) + tfacp203.amount
 	endif
@@ -536,7 +556,7 @@ function invoice.transaction.without.tds()
 function normal.transaction()
 {
 	domain tcncmp	var.ncmp
-
+	
 	var.ncmp = get.compnr()
 	select 	tfcmg007.paym
 	from	tfcmg007
@@ -707,7 +727,8 @@ function advance.anticipated.transaction()
 					if tfacp200.amth(1) < 0 then
 						document.no = tfacp200.ttyp & " " & str$(tfacp200.ninv)
 						document.type = enum.descr$("tfacp.tpay", tfacp200.tpay)
-						total.amount = tfacp200.amth(1) + tfacp200.wtph(1)
+| 						total.amount = tfacp200.amth(1) + tfacp200.wtph(1)	|#CR-534-GH-241.o
+						total.amount = tfacp200.amth(1)				|#CR-534-GH-241.n
 						if total.amount < 0 then
 							debit.amount = total.amount
 							credit.amount = 0
