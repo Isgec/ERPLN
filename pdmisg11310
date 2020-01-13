@@ -13,13 +13,17 @@
 |* ID: ISGEC01176,Bharti Garg, 18-03-2019,B61U a7 isg
 |* Added a duplicate icon in header to duplicate the records.
 |* 
+|* GH240CR443, Adarsh Pal, 03-01-2020, VRC B61U a7 isg
+|* Additional logic for Creator's Name and Discipline
+|*
 |****************************** declaration section ***************************
 declaration:
-#include               <bic_cmf>
-#include <bic_dam> 
-	table	tdmisg131 | Transmittal Creation and Submission for Approval
-	table	ttpmsl000
-	table	ttcmcs050
+#include <bic_cmf>
+#include <bic_dam>	
+
+	table  	tdmisg131 			|Transmittal Creation and Submission for Approval
+	table  	ttpmsl000
+	table  	ttcmcs050
 	table	ttcmcs052	
 	table  	tdmisg132
 	table	ttccom001
@@ -28,30 +32,41 @@ declaration:
 	table	tdmisg129
 	table	tbpmdm001
 	table	tdmisg031			|ISGEC01176.n
+	table	tdmisg015
+	table	tdmisg016
 
-
-		domain	tcmcs.str2	transmittal.type
-	extern	domain	tcdsca	project.main, project.sub	
-	extern	domain tcdsca	sending
-	extern	domain tcdsca	submission
-	extern	domain	tcdsca	sent
-	extern	domain 	tcpono	tran.print, serial
-	extern	domain	tcnama	transmittal, contact.name, created.by, issued.by, approver.by
-	extern	domain	tclogn	login.user		|#ISGEC004020.sn
-	extern	domain tcemm.grid user.division
-	extern	domain	tcpono	length			|#ISGEC004020.en
+	domain	tcmcs.str2	transmittal.type
+	
+	extern	domain	tcdsca		project.main, project.sub	
+	extern	domain  tcdsca		sending
+	extern	domain  tcdsca		submission
+	extern	domain	tcdsca		sent
+	extern	domain 	tcpono		tran.print, serial
+	extern	domain	tcnama		transmittal, contact.name, created.by, issued.by, approver.by
+	extern	domain	tclogn		login.user				|#ISGEC004020.sn
+	extern	domain  tcemm.grid 	user.division
+	extern	domain	tcpono		length					|#ISGEC004020.en
 	extern	domain	tcmcs.str100	subject.1, subject.2
 	extern	domain	tcmcs.str100	note.1, note.2, note.3, mail.cc
-	extern	domain	tcdsca	user.dept, appr.dept, cin.no, address.1, address.2, address.3, address.4
+	extern	domain	tcdsca		user.dept, appr.dept, cin.no, address.1, address.2, address.3, address.4
+	extern	domain	tcorno		tran,transmittal_id,imported_trans_id	|#ISGEC01176.n
 	extern	domain	tcmcs.str20	po.dsca
-	
-
+	extern	domain	tcmcs.str256m 	tfld.desc
+	extern	domain	tcnama	 	nama					|#GH240CR443.n
+	extern	domain	tcccty	 	dept					|#GH240CR443.n
+			long 		ret
+			long		ret_val					|#ISGEC01176.n
+			string		tran.seri(3)
 		
-
+		
 |****************************** program section ********************************
 before.program:
 	read.parameters()
 
+|****************************** group section *****************************
+group.2:									|#ISGEC01176.sn
+init.group:
+	ret = create.extra.toolbar("copy.record", "tcgen:copy")			|#ISGEC01176.en
 |****************************** choice section **********************************
 choice.process:
 before.choice:
@@ -59,7 +74,6 @@ before.choice:
 	
 on.choice:
 	submit.transmittal()
-	
 						|#ISGEC004020.sn
 choice.print.data:
 on.choice:
@@ -69,6 +83,48 @@ on.choice:
 	else
 		choice.again()
 	endif					|#ISGEC004020.en
+	
+choice.copy.record:				|#ISGEC01176.sn
+before.choice:
+	start.session(MODAL, "dmisg1231m000", "", "")
+| 	import("trans", imported_trans_id )
+| 	import("transmittal_id", imported_trans_id )
+| 	
+| 	select	a_dmisg131.tran:tran
+| 	from	dmisg131	a_dmisg131
+| 	where	a_dmisg131._index1 = {:dmisg131.tran}
+| 	selectdo
+| 	selectempty
+| 		tran = ""
+| 		if isspace(imported_trans_id) then
+| 			message("Enter Series.")
+| 			choice.again()
+| 		endif
+| 	endselect
+	
+after.choice:
+	import("transmittal_id",dmisg131.tran)
+	dmisg131.tran = transmittal_id
+	execute(find.data)
+| 	select	dmisg131.* 
+| 	from 	dmisg131
+| 	where	dmisg131._index1 = {:tran}
+| 	selectdo
+| 		dal.copy.object("dmisg131")
+| 		dal.set.field("dmisg131.tran",imported_trans_id)
+| 		dal.set.field("dmisg131.stat",dmisg.doc.rec.free)
+| 		ret_val = dal.save.object("dmisg131",e)
+| 		if not ret_val	then
+| 			commit.transaction()
+| 		else
+| 			show.dal.messages(MSG.ALL)
+| 			abort.transaction()
+| 		endif
+| 		
+| 		insert.into.dmisg132(tran)
+| 	endselect				|#ISGEC01176.en
+	
+
 |****************************** field section **********************************
 field.dmisg131.tran:
 before.zoom:
@@ -117,7 +173,49 @@ before.display:
 	selectempty
 		tccom001.nama = ""
 	endselect
+
+field.dmisg131.tfld:
+before.zoom:
+	query.extend.where.in.zoom("dmisg015._index1 = {" & str$(etol(dmisg131.type)) & "," & quoted.string(dmisg131.dprj) & "}")
 	
+field.dmisg131.dprj:
+before.zoom:
+	tran.seri = dmisg131.tran(1;3)
+	select	dmisg016.eunt
+	from	dmisg016
+	where	dmisg016.seri = {:tran.seri}
+	selectdo
+		select	tcemm030.fcmp
+		from	tcemm030
+		where	tcemm030._index1 = {:dmisg016.eunt}
+		selectdo
+		selectempty
+		endselect
+	selectempty
+	endselect
+		
+	query.extend.where.in.zoom("tppdm600._index7 = {" & str$(tcemm030.fcmp) & "}")	
+											|#GH240CR443.sn
+field.nama:
+before.display:
+	select	tccom001.nama:nama
+	from	tccom001
+	where	tccom001._index4 = {:dmisg131.user}
+	selectdo
+	selectempty
+		nama = ""
+	endselect
+	
+field.dept:
+before.display:
+	select	dmisg130.dept:dept
+	from	dmisg130
+	where	dmisg130._index1 = {:dmisg131.user}
+	selectdo
+	selectempty
+		dept = ""
+	endselect
+											|#GH240CR443.en
 |****************************** function section **********************************	
 functions:
 
@@ -200,7 +298,6 @@ function check_all_inputs()
 		message("Can not submit without Document.")	|#ISGEC004020.sn
 		choice.again()	
 	endselect	
-	
 }
 
 
@@ -234,7 +331,6 @@ function domain tcemm.grid get.user.division()
 		endif
 	endselect
 	return(division)
-
 }
 
 function send.email.alert()
@@ -242,12 +338,12 @@ function send.email.alert()
 	string tmp.file(200),line(500)
 	long fp
 	
-	long    message.ID
-        long    to.ID
+	long   	message.ID
+        long   	to.ID
 	long	cc.ID				|ISGEC01176.n
-        long    attachment.ID
+        long   	attachment.ID
         long    ret
-	long stat 
+	long	stat 
 	
 	tmp.file = creat.tmp.file$(bse.tmp.dir$())
 	fp = seq.open(tmp.file,"w+")
@@ -328,7 +424,7 @@ function send.email.alert()
 	selectempty
 		dmisg031.emno = ""
 	endselect							|ISGEC01176.en
-	
+		
 	|********* Mail Body
 	attachment.ID = cmf.createAttachment(message.ID)
 	ret = cmf.setAttachmentBody(attachment.ID,ttyeno.yes)
@@ -355,6 +451,31 @@ function send.email.alert()
         endif	
 }
 
-
-
 								|#ISGEC004020.en
+								
+| function insert.into.dmisg132(					|ISGEC01176.sn
+| 				domain tcorno i.tran)	
+| {
+| 	long ret_val1	
+| 	
+| 	select	a_dmisg132.*
+| 	from	dmisg132 a_dmisg132 
+| 	where	a_dmisg132._index1 = {:i.tran}
+| 	selectdo
+| 		dal.copy.object("dmisg132")
+| 		dal.set.field("dmisg132.tran",dmisg131.tran)
+| 		ret_val1 = dal.save.object("dmisg132",e)
+| 		if not ret_val1	then
+| 			commit.transaction()
+| 		else
+| 			show.dal.messages(MSG.ALL)
+| 			abort.transaction()
+| 		endif
+| 	endselect	
+| 	
+| 	execute(find.data)
+| 	
+| }								|ISGEC01176.en
+
+
+|****************************** End Of Code *********************************************
