@@ -1393,7 +1393,7 @@ function extern boolean InsertIntotfisg041.1
 			tfisg041.cprj = i.cprj
 		endif
 		
-		if trim$(i.leac) = "2510121" then				|#GH238CR530_000.sn
+		if trim$(i.leac) = "2510121" then					|#GH238CR530_000.sn
 			select	c_tfgld106.dbcr:dbt.crdt
 			from	tfgld106 c_tfgld106
 			where	c_tfgld106._index1 = {:i.ptyp, :i.pdoc, :i.line}
