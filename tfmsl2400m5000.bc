@@ -24,8 +24,14 @@
 |* ID ISGEC01058, Priya Jindal, 7/6/2018, B61U a7 isg
 |* Changes For Foreign Supplier
 |*
-|* ID CR-534-GH-241, Paras Kukreti(TV), 7/6/2018, B61U a7 isg
+|* ID CR-534-GH-241, Paras Kukreti(TV), 08/01/2020, B61U a7 isg
 |* Changes For Foreign Supplier
+|*
+|* ID CR-543-GH-247, Paras Kukreti(TV), 18/01/2020, B61U a7 isg
+|* In supplier ledger - tfmsl2400m000, advance payment shows net off with TDS 
+|* and after assigning the advance amount with invoice, the amount of TDS is 
+|* again credited.
+|*
 |****************************** declaration section ***************************
 declaration:
 
@@ -363,81 +369,85 @@ function get.inrange.transaction()
 | 	order by tfacp200._index1
 	order by tfacp200.tdoc, tfacp200.docn
    	selectdo
-		initialize.variables()
-		on case tfacp200.tpay
-		case tfacp.tpay.invoice:		|Purchase Invoice(1)
-			select	tfacp251.orno						|ISGEC001212.sn
-			from	tfacp251
-			where	tfacp251._index1 = {:tcemm170.comp,:tfacp200.ttyp,:tfacp200.ninv}
-			and	tfacp251._compnr = :tcemm170.comp
-			as set with 1 rows
-			selectdo
-				orderno = tfacp251.orno
-				select	tdpur401.cprj:project
-				from	tdpur401
-				where	tdpur401._index1 = {:tfacp251.orno}
-				and	tdpur401._compnr = :tcemm170.comp
+		if trim$(tfacp200.tdoc) = "AAP" 				|#CR-543-GH-247.n
+			and tfacp200.whti = tcyesno.no then			|#CR-543-GH-247.n
+		else								|#CR-543-GH-247.n
+			initialize.variables()
+			on case tfacp200.tpay
+			case tfacp.tpay.invoice:		|Purchase Invoice(1)
+				select	tfacp251.orno						|ISGEC001212.sn
+				from	tfacp251
+				where	tfacp251._index1 = {:tcemm170.comp,:tfacp200.ttyp,:tfacp200.ninv}
+				and	tfacp251._compnr = :tcemm170.comp
 				as set with 1 rows
 				selectdo
-				endselect
-			endselect							
-			if isspace(orderno) and isspace(project) then
-				get.var(pid,"tfacp200.cdf_prno",orderno)						
-				get.var(pid,"tfacp200.cdf_cprj",project)
-			endif								|ISGEC001212.en
-			
-			if tfacp200.whti = tcyesno.yes then
-				invoice.transaction.with.tds()
-			else
-				invoice.transaction.without.tds()
-			endif
-			break
-		case tfacp.tpay.normal:			|Normal Payment(2)
-			if print.bank.anti = tcyesno.yes or print.all = tcyesno.yes then	
-| 				normal.transaction()						|#CR-534-GH-241.o
-				document.no = tfacp200.tdoc & " " & str$(tfacp200.docn)		|#CR-534-GH-241.sn
-				credit.debit.balance.amount()
-				send.report.for.printing()					|#CR-534-GH-241.en
-			endif
-			break
-		case tfacp.tpay.credit:			|Credit Note(4)
-			get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
-			get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
-			credit.transaction()
-			break	
-		case tfacp.tpay.correction:		|Correction(5)
-			correction.transaction()
-			break
-		case tfacp.tpay.anticipated:		|anticipated Payment(8)
-			anticipated.transaction()
-			break
-		case tfacp.tpay.advance:		|Advance payment(9)
-| 			advance.transaction()					|#CR-534-GH-241.o
-			if tfacp200.whti = tcyesno.yes then			|#CR-534-GH-241.sn
-				invoice.transaction.with.tds()
-			else
-				invoice.transaction.without.tds()
-			endif							|#CR-534-GH-241.en
-			break
-		case tfacp.tpay.unallocated:		|Unallocated Payment(10)
-			get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
-			get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
-			unallocated.payment.transaction()
-			break
-		case tfacp.tpay.advance.ant:		|Advance Anticipated(11)
-			get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
-			get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
-			advance.anticipated.transaction()
-			break	
-		case tfacp.tpay.unallocated.ant:	|Unallocated anticipated(12)	
-			get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
-			get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
-			unallocated.anticipated.transaction()
-			break
-			
-		case tfacp.tpay.assignment:
-			assignment()				|#ISGEC017015.n
-		endcase
+					orderno = tfacp251.orno
+					select	tdpur401.cprj:project
+					from	tdpur401
+					where	tdpur401._index1 = {:tfacp251.orno}
+					and	tdpur401._compnr = :tcemm170.comp
+					as set with 1 rows
+					selectdo
+					endselect
+				endselect							
+				if isspace(orderno) and isspace(project) then
+					get.var(pid,"tfacp200.cdf_prno",orderno)						
+					get.var(pid,"tfacp200.cdf_cprj",project)
+				endif								|ISGEC001212.en
+				
+				if tfacp200.whti = tcyesno.yes then
+					invoice.transaction.with.tds()
+				else
+					invoice.transaction.without.tds()
+				endif
+				break
+			case tfacp.tpay.normal:			|Normal Payment(2)
+				if print.bank.anti = tcyesno.yes or print.all = tcyesno.yes then	
+	| 				normal.transaction()						|#CR-534-GH-241.o
+					document.no = tfacp200.tdoc & " " & str$(tfacp200.docn)		|#CR-534-GH-241.sn
+					credit.debit.balance.amount()
+					send.report.for.printing()					|#CR-534-GH-241.en
+				endif
+				break
+			case tfacp.tpay.credit:			|Credit Note(4)
+				get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
+				get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
+				credit.transaction()
+				break	
+			case tfacp.tpay.correction:		|Correction(5)
+				correction.transaction()
+				break
+			case tfacp.tpay.anticipated:		|anticipated Payment(8)
+				anticipated.transaction()
+				break
+			case tfacp.tpay.advance:		|Advance payment(9)
+	| 			advance.transaction()					|#CR-534-GH-241.o
+				if tfacp200.whti = tcyesno.yes then			|#CR-534-GH-241.sn
+					invoice.transaction.with.tds()
+				else													
+					invoice.transaction.without.tds()		
+				endif							|#CR-534-GH-241.en
+				break
+			case tfacp.tpay.unallocated:		|Unallocated Payment(10)
+				get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
+				get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
+				unallocated.payment.transaction()
+				break
+			case tfacp.tpay.advance.ant:		|Advance Anticipated(11)
+				get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
+				get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
+				advance.anticipated.transaction()
+				break	
+			case tfacp.tpay.unallocated.ant:	|Unallocated anticipated(12)	
+				get.var(pid,"tfacp200.cdf_prno",orderno)	|ISGEC001212.n						
+				get.var(pid,"tfacp200.cdf_cprj",project)	|ISGEC001212.n
+				unallocated.anticipated.transaction()
+				break
+				
+			case tfacp.tpay.assignment:
+				assignment()				|#ISGEC017015.n
+			endcase
+		endif								|#CR-543-GH-247.n
 	selectempty
    	endselect
 
@@ -485,8 +495,8 @@ function get.opening.transaction()
 | 			advance.transaction()					|#CR-534-GH-241.o
 			if tfacp200.whti = tcyesno.yes then			|#CR-534-GH-241.sn
 				invoice.transaction.with.tds()
-			else
-				invoice.transaction.without.tds()
+			else							
+				invoice.transaction.without.tds()		
 			endif							|#CR-534-GH-241.en
 			break
 		case tfacp.tpay.unallocated:
