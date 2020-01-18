@@ -9,7 +9,12 @@
 |* ID : ISGEC01010, Priya Jindal, 18/8/2017, VRC B61U a7 isg
 |* Modificationin logic
 |*
-
+|* ID : GH246CR542_000, Paras Kukreti, 18/01/2020, VRC B61U a7 isg
+|* Due to changes in logic in cash flow data for SDN and cancelled cheques, the
+|* amount in Cash flow report - tfisg0441m000 is net off with outflow and inflow
+|* respectively. So amount should comes in cash flow report with minus sign in 
+|* outflow and inflow.
+|*
 
 |****************************** declaration section ***************************
 declaration:
@@ -28,7 +33,7 @@ declaration:
 	extern	domain	tfcash.flow	v.ctyp
 	extern	domain	tfgld.btno	btno
 	extern	domain	tcamnt		amnt1,amnt2,in.amnt,out.amnt
-	extern	domain	tcamnt		o.tfisg041.amtf
+	extern	domain	tcamnt		o.tfisg041.amtf		
 	
 	
 |****************************** script variables *******************************	
@@ -368,13 +373,26 @@ function read.main.table()
 					selectdo
 					endselect
 					amnt2=o.tfisg041.amtf
-					if amnt1>amnt2 then		
-						amnt1=amnt1-amnt2
-						in.amnt=amnt1+in.amnt
+					if amnt1>amnt2 then
+						if amnt2 < 0 then		|#GH246CR542_000.sn
+							amnt2=amnt2-amnt1
+							out.amnt=amnt2+out.amnt
+						else
+							amnt1=amnt1-amnt2
+							in.amnt=amnt1+in.amnt
+						endif				|#GH246CR542_000.en
+| 						amnt1=amnt1-amnt2		|#GH246CR542_000.o
+| 						in.amnt=amnt1+in.amnt		|#GH246CR542_000.o
 					else if amnt1<amnt2 then
-						amnt2=amnt2-amnt1
-						out.amnt=amnt2+out.amnt
-						
+						if amnt1 < 0 then		|#GH246CR542_000.sn
+							amnt1=amnt1-amnt2
+							in.amnt=amnt1+in.amnt
+						else
+							amnt2=amnt2-amnt1
+							out.amnt=amnt2+out.amnt
+						endif				|#GH246CR542_000.en
+| 						amnt2=amnt2-amnt1		|#GH246CR542_000.o	
+| 						out.amnt=amnt2+out.amnt		|#GH246CR542_000.o
 					else
 						in.amnt=0.00+in.amnt
 						out.amnt=0.00+out.amnt
