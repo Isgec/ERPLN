@@ -434,7 +434,10 @@ function send.email.alert()
 		line = "This is to inform you that the following Drawing/Document is now available in ERP-LN for your review." & chr$(13)
 	endif	
 	seq.write(line, len(line), fp)
-	
+														|Adarsh.sn
+		line = "Vendor Name: " & trim$(o.dmisg134.nama) & chr$(13)
+		seq.write(line,len(line),fp)
+														|Adarsh.en
 	line = "<P>Please login and complete review at the earliest.</P>" & chr$(13) & chr$(13) 
 	seq.write(line, len(line), fp)
 	
