@@ -27,6 +27,10 @@
 |* 
 |* "GH238CR530_000", Modification in Accounts Cashflow.
 |* Paras Kukreti, 2019-12-16
+|*
+|* "GH251CR545_000", Only Automated record should be delete from table(tfisg041)
+|* Paras Kukreti, 2019-01-22
+|* 
 |****************************** declaration section ***************************
 declaration:
 
@@ -2598,7 +2602,7 @@ function	check.parent.accounting.ledger()			|#ISGEC016022.sn
 									|#ISGEC017002.sn
 function	redo.update.cash.flow()
 {
-	domain	tcbool		r.cash, r.bank, r.inte 	
+	domain	tcbool		r.cash, r.bank, r.inte
 	domain	tfgld.btno	r.obat
 	domain	tfgld.docn	r.odoc
 	
@@ -2693,8 +2697,8 @@ function	redo.update.cash.flow()
 		endif
 		r.obat	=	tfgld106.obat
 		r.odoc	=	tfgld106.odoc
-	endselect					
-	update.existing.reason.code()						
+	endselect
+	update.existing.reason.code()
 }
 
 function	check.bank.intercompany.cash(
@@ -3647,6 +3651,7 @@ function delete.tfisg041()					|bharti.sn.25.09.19
 	select	tfisg041.*
 	from	tfisg041	for update
 	where	tfisg041._index2 inrange {:ncmp.f,:year,:prno.f} and {:ncmp.f,:year,:prno.t}
+	and	tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH251CR545_000.n
 | 	and	tfisg041.btno = 30459	
 	selectdo
 		db.delete(ttfisg041,db.retry,e)
