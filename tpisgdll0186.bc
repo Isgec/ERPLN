@@ -159,8 +159,10 @@ function extern	tpisgdll0186_update_create_actual_tpisg187(	domain	tfgld.year	ye
 {
 	domain	tcamnt	actual.amnt
 		string	error.msg(100)
+		long	curr_comp
 		
 	actual.amnt = 0
+	curr_comp = get.compnr()
 	
 	select	tcemm030.fcmp
 	from	tcemm030
@@ -173,15 +175,22 @@ function extern	tpisgdll0186_update_create_actual_tpisg187(	domain	tfgld.year	ye
 		tppdm600.cprj
 	from	tppdm600
 	where	tppdm600._index7 = {:tcemm030.fcmp}
+	and 	tppdm600.cprj(1;2) <> "DE"
+	and 	tppdm600.cprj(1;1) >= "A"
 	selectdo
 		found = 0
-		if trim$(tppdm600.ccur) = "INR" then
-			actual.amnt = tpisgdll0186_update_actual_domestic(tppdm600.cprj, year.act, mnth.act)
-		else
-			actual.amnt = tpisgdll0186_update_actual_export(tppdm600.cprj, year.act, mnth.act)
-		endif
+	
+| 		if trim$(tppdm600.ccur) = "INR" then
+| 			switch.to.company(tcemm030.fcmp)
+| 			actual.amnt = tpisgdll0186_update_actual_domestic(tppdm600.cprj, year.act, mnth.act)
+| 		else
+| 			actual.amnt = tpisgdll0186_update_actual_export(tppdm600.cprj, year.act, mnth.act, tcemm030.fcmp)
+| 		endif
+| 		
+		actual.amnt = tpisgdll0186_update_actual_trans(tppdm600.cprj, year.act, mnth.act)
 		
 		if found = 0 then
+			switch.to.company(curr_comp)
 			select	tpisg086.budg
 			from	tpisg086
 			where	tpisg086._index2 = {:year.act, :mnth.act, :eunt.act, :tppdm600.cprj}
@@ -193,6 +202,8 @@ function extern	tpisgdll0186_update_create_actual_tpisg187(	domain	tfgld.year	ye
 		endif
 		
 		if found = 1 then
+			switch.to.company(curr_comp)
+			
 			select	tpisg187.actu
 			from	tpisg187 for update
 			where	tpisg187._index1 = {:year.act, :mnth.act, :eunt.act, :tppdm600.cprj}
@@ -300,7 +311,8 @@ function  domain tcamnt	tpisgdll0186_update_actual_domestic(	domain	tccprj		cprj
 
 function domain	tcamnt	tpisgdll0186_update_actual_export(	domain	tccprj		cprj.e,
 								domain	tfgld.year	year.e,
-								domain	tpisg.month	mnth.e)
+								domain	tpisg.month	mnth.e,
+								domain	tcncmp		f.comp)
 {
 	domain	tcamnt	actu.amnt.exp
 	domain 	tctran 	new.var.type, prev.var.type
@@ -308,6 +320,9 @@ function domain	tcamnt	tpisgdll0186_update_actual_export(	domain	tccprj		cprj.e,
 	domain 	tcpono	temp
 	domain	tfgld.date	date.f, date.l
 	long	dd, mm, yy
+	long	curr_comp
+		
+	curr_comp = get.compnr()
 	
 	actu.amnt.exp = 0
 	dd = 01
@@ -357,7 +372,8 @@ function domain	tcamnt	tpisgdll0186_update_actual_export(	domain	tccprj		cprj.e,
 				select	cisli205.ityp,
 					cisli205.idoc
 				from	cisli205
-				where	cisli205._index1 = {:tppdm600.ncmp, :tpisg039.ityp, :tpisg039.idoc}
+				where	cisli205._index1 = {:f.comp, :tpisg039.ityp, :tpisg039.idoc}
+				and	cisli205._compnr = :f.comp
 				order by cisli205.ityp, cisli205.idoc
 				selectdo
 					new.var.type  = shiftl$(strip$(cisli205.ityp))
@@ -378,6 +394,7 @@ function domain	tcamnt	tpisgdll0186_update_actual_export(	domain	tccprj		cprj.e,
 								and    cisli235.cprj = :tdisg831.cprj
 								and    cisli235.ofbp = :tdisg831.ofbp
 								and    cisli235.invt = tcinvt.installment
+								and	cisli235._compnr = :f.comp
 								selectdo
 									found = 1
 									actu.amnt.exp = actu.amnt.exp + cisli235.amth(1)
@@ -396,3 +413,77 @@ function domain	tcamnt	tpisgdll0186_update_actual_export(	domain	tccprj		cprj.e,
 	actu.amnt.exp = actu.amnt.exp/100000
 	return(actu.amnt.exp)
 }
+
+function domain	tcamnt	tpisgdll0186_update_actual_trans(	domain	tccprj		cprj.d,
+								domain	tfgld.year	year.d,
+								domain	tpisg.month	mnth.d)
+{
+	domain	tcamnt		actu.amnt.exp, credit.amnt, debit.amnt
+	domain	tfgld.date	date.f, date.l
+	long	dd, mm, yy
+	
+	actu.amnt.exp = 0
+	dd = 01
+	mm = etol(mnth.d)
+	yy = year.d
+	
+	date.f = date.to.num(yy, mm, dd)
+	
+	if mm = 12 then
+		date.l = date.to.num(yy + 1, 1, dd)
+	else
+		date.l = date.to.num(yy, mm + 1, dd)
+	endif
+	
+	select	tppdm600.ncmp
+	from	tppdm600
+	where	tppdm600._index1 = {:cprj.d}
+	as set with 1 rows
+	selectdo
+		select	sum(tfgld106.amth(1)):debit.amnt
+		from	tfgld106
+| 		where	tfgld106.otyp in ("STR", "SXP", "CDN", "CCN", "JRV",)
+		where	tfgld106.otyp in ("CCN","CDN","JIC","JPR","JRV","JVF","JVN","PGN","RRC","SCN","SDN","SRN","STR","SUP","SXP")
+		and	tfgld106.leac in ("5310110     ", "5410110     ", "5410111     ", "5410120     ", "5510110     ", "5410112     ",
+| 		where	tfgld106.leac in ("5310110     ", "5410110     ", "5410111     ", "5410120     ", "5510110     ", "5410112     ",
+						"5410121     ", "5629111     ", "5630111     ",
+						"5310111     ","5310112     ","5310151     ","5310310     ","5310410     ","5310510     ",
+						"5310520     ","5310530     ","5310540     ","5310550     ","5310560     ","5510120     ",
+						"5410113     ","5410114     ","5310599     ","5410122     " )
+		and	tfgld106.dim1 = :cprj.d
+		and	tfgld106.dbcr = tfgld.dbcr.debit
+		and	(tfgld106.dcdt >= :date.f and tfgld106.dcdt < :date.l)
+		and	tfgld106._compnr = :tppdm600.ncmp
+		selectdo
+			found = 1
+		selectempty
+			debit.amnt = 0
+		endselect
+		
+		select	sum(tfgld106.amth(1)):credit.amnt
+		from	tfgld106
+| 		where	tfgld106.otyp in ("STR", "SXP", "CDN", "CCN", "JRV")
+		where	tfgld106.otyp in ("CCN","CDN","JIC","JPR","JRV","JVF","JVN","PGN","RRC","SCN","SDN","SRN","STR","SUP","SXP")
+		and	tfgld106.leac in ("5310110     ", "5410110     ", "5410111     ", "5410120     ", "5510110     ", "5410112     ",
+| 		where	tfgld106.leac in ("5310110     ", "5410110     ", "5410111     ", "5410120     ", "5510110     ", "5410112     ",
+						"5410121     ", "5629111     ", "5630111     ",
+						"5310111     ","5310112     ","5310151     ","5310310     ","5310410     ","5310510     ",
+						"5310520     ","5310530     ","5310540     ","5310550     ","5310560     ","5510120     ",
+						"5410113     ","5410114     ","5310599     ","5410122     " )
+		and	tfgld106.dim1 = :cprj.d
+		and	tfgld106.dbcr = tfgld.dbcr.credit
+		and	(tfgld106.dcdt >= :date.f and tfgld106.dcdt < :date.l)
+		and	tfgld106._compnr = :tppdm600.ncmp
+		selectdo
+			found = 1
+		selectempty
+			credit.amnt = 0
+		endselect
+	endselect
+	
+| 	actu.amnt.exp = debit.amnt - credit.amnt
+	actu.amnt.exp = credit.amnt - debit.amnt
+	actu.amnt.exp = actu.amnt.exp/100000
+	return(actu.amnt.exp)
+}
+

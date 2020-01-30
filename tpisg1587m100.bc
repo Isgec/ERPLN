@@ -44,7 +44,8 @@ before.display:
 field.vari:
 before.display:
 	budg = budget.amount()
-	vari = budg - tpisg187.actu
+| 	vari = budg - tpisg187.actu
+	vari = tpisg187.actu - budg
 	
 field.cprj.dsca:
 before.display:
@@ -99,7 +100,8 @@ function cal.total()
 		actu.tot = 0
 	endselect
 	
-	vari.tot = budg.tot - actu.tot
+| 	vari.tot = budg.tot - actu.tot
+	vari.tot = actu.tot - budg.tot
 }
 
 function domain	tcamnt	budget.amount()

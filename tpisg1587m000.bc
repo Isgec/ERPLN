@@ -11,10 +11,19 @@
 declaration:
 
   table   ttpisg187 | Contractwise Billing Lines
+  table   ttppdm740
+  table   ttcemm030
+  table   ttcmcs052
 
-	extern	domain	tcamnt	vari, budg.tot, actu.tot, vari.tot, budg
-	extern	domain	tcdsca	cprj.dsca, eunt.dsca
+	extern	domain	tcamnt		vari, budg.tot, actu.tot, vari.tot, budg
+	extern	domain	tcdsca		cprj.dsca, eunt.dsca
 	extern	domain	tcmcs.str215m	reason
+	
+	extern	domain	tcamnt		budg.bill.amnt,bill.out.amnt,vari.amnt,proj.val,act.bill.prev,bal.bill
+	extern	domain	tcmcs.str215m	reason.of.var
+	extern	domain	tcdsca		division.desc,proj.desc
+		
+			long		brp.id
 |****************************** program section ********************************
 before.program:
 	 fattr.total.line = true
@@ -24,8 +33,7 @@ on.display.total.line:
 	display.total.fields( "budg", budg.tot, 
 				"tpisg187.actu", actu.tot,
 				"vari", vari.tot)
-
-
+				
 |****************************** group section **********************************
 field.budg:
 before.display:
@@ -34,7 +42,8 @@ before.display:
 field.vari:
 before.display:
 	budg = budget.amount()
-	vari = budg - tpisg187.actu
+| 	vari = budg - tpisg187.actu
+	vari = tpisg187.actu - budg
 	
 field.cprj.dsca:
 before.display:
@@ -71,8 +80,8 @@ before.display:
 
 choice.refresh:
 on.choice:
-	tpisgdll0186_update_create_actual_tpisg187(tpisg187.year, tpisg187.mnth, tpisg187.eunt)
-	
+	tpisgdll0186_update_create_actual_tpisg187(tpisg187.year,tpisg187.mnth,tpisg187.eunt)
+	message("Data updated successfully...")
 	
 functions:
 function cal.total()
@@ -87,13 +96,14 @@ function cal.total()
 	
 	select	sum(tpisg187.actu):actu.tot
 	from	tpisg187
-	where	tpisg187._index1 = {:tpisg187.year, :tpisg187.mnth, :tpisg187.eunt}
+	where	tpisg187._index1 = {:tpisg187.year,:tpisg187.mnth,:tpisg187.eunt}
 	selectdo
 	selectempty
 		actu.tot = 0
 	endselect
 	
-	vari.tot = budg.tot - actu.tot
+| 	vari.tot = budg.tot - actu.tot
+	vari.tot = actu.tot - budg.tot
 }
 
 function domain	tcamnt	budget.amount()
@@ -110,4 +120,138 @@ function domain	tcamnt	budget.amount()
 	endselect
 	
 	return(budg.amnt)
+}
+
+function extern print.report()
+{
+	brp.id = brp.open("rtpisg158701001","D",1)
+	
+	division.desc = get.division.desc(tpisg187.eunt)
+	
+	select	tpisg187.*
+	from	tpisg187
+	where	tpisg187._index1 = {:tpisg187.year,:tpisg187.mnth,:tpisg187.eunt}
+	selectdo
+		get.budgeted.billing.and.var.reason(	tpisg187.year,
+							tpisg187.mnth,
+							tpisg187.eunt,
+							tpisg187.cprj,
+							budg.bill.amnt,
+							bill.out.amnt,
+							reason.of.var	)
+		vari.amnt = tpisg187.actu - budg.bill.amnt
+		proj.val = get.project.value(tpisg187.cprj)
+		proj.val = proj.val/100000
+		act.bill.prev = get.act.bill.till.prev.mnth(	tpisg187.year,
+								tpisg187.mnth,
+								tpisg187.eunt,
+								tpisg187.cprj	)
+		bal.bill = proj.val - act.bill.prev - tpisg187.actu
+		proj.desc = get.project.desc(tpisg187.cprj)
+	
+		brp.ready(brp.id)
+	endselect
+	
+	brp.close(brp.id)
+}
+
+function get.budgeted.billing.and.var.reason(		domain	tfgld.year	i.year,
+							domain	tpisg.month	i.mnth,
+							domain	tcemm.grid	i.eunt,
+							domain	tccprj		i.cprj,
+						ref	domain	tcamnt		o.budg,
+						ref	domain	tcamnt		o.outl,
+						ref	domain	tcmcs.str215m	o.rmks	)
+{
+	select	tpisg086.budg:o.budg,
+		tpisg086.outl:o.outl,
+		tpisg086.rmks:o.rmks
+	from	tpisg086
+	where	tpisg086._index2 = {:i.year,:i.mnth,:i.eunt,:i.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		o.budg = 0.0
+		o.outl = 0.0
+		o.rmks = ""
+	endselect
+}
+
+function domain tcamnt get.project.value(domain	tccprj i.cprj)
+{
+	select	tppdm740.copr,
+		tppdm740.rate
+	from	tppdm740
+	where	tppdm740._index1 = {:i.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tppdm740.copr = 0.0
+		tppdm740.rate(1) = 0.0
+	endselect
+	
+	return(tppdm740.copr * tppdm740.rate(1))
+}
+
+function domain	tcamnt get.act.bill.till.prev.mnth(	domain	tfgld.year	i.year,
+							domain	tpisg.month	i.mnth,
+							domain	tcemm.grid	i.eunt,
+							domain	tccprj		i.cprj	) 
+{
+	domain	tcamnt	actu.amnt.1
+	domain	tcamnt	actu.amnt.2
+	
+	actu.amnt.1 = 0.0
+	actu.amnt.2 = 0.0
+	
+	select	sum(tpisg187.actu):actu.amnt.1
+	from	tpisg187
+	where	tpisg187._index1 = {:i.year}
+	and	tpisg187.mnth < :i.mnth	
+	and	tpisg187.eunt = :i.eunt	
+	and	tpisg187.cprj = :i.cprj	
+	selectdo
+	selectempty
+		actu.amnt.1 = 0.0
+	endselect
+	
+	select	sum(tpisg187.actu):actu.amnt.2
+	from	tpisg187
+	where	tpisg187._index1 < {:i.year - 1}
+	and	tpisg187.eunt = :i.eunt	
+	and	tpisg187.cprj = :i.cprj	
+	selectdo
+	selectempty
+		actu.amnt.2 = 0.0
+	endselect
+	
+	return(actu.amnt.1 + actu.amnt.2)
+}
+
+function domain tcdsca get.division.desc(domain	tcemm.grid i.eunt)
+{
+	select	tcemm030.dsca
+	from	tcemm030
+	where	tcemm030._index1 = {:i.eunt}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcemm030.dsca = ""
+	endselect
+	
+	return(tcemm030.dsca)
+}
+
+function domain tcdsca get.project.desc(domain tccprj i.cprj)
+{
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:i.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
+	
+	return(tcmcs052.dsca)
 }

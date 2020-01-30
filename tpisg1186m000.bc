@@ -14,12 +14,15 @@ declaration:
   table   ttccom001
   table   ttpisg088
   table   ttpisg089
+  table   ttppdm600
 
 		string	error.message(500)
 	extern	domain	tcmcs.str132	formula.label
 	extern	domain	tcnama		bpid.nama
 	extern	domain	tccom.bpid	bpid
 	extern	domain	tcdsca		cprj.dsca
+	extern	domain	tcamnt		pvfc,pvhc
+	extern	domain	tcratc		rate
 		
 	#include <bic_dam>
 |****************************** program section ********************************
@@ -104,7 +107,25 @@ before.display:
 | 	selectempty
 | 		bpid.nama = ""
 | 	endselect
-	
+
+field.pvfc:
+before.display:
+	select	tppdm600.copr,tppdm600.rate
+	from	tppdm600
+	where	tppdm600._index1 = {:tpisg186.cprj}
+	selectdo
+		pvfc = tppdm600.copr
+	selectempty
+		pvfc = 0
+	endselect
+
+field.rate:
+before.display:
+	rate = tppdm600.rate(1)
+
+field.pvhc:
+before.display:	
+	pvhc = pvfc * rate
 	
 |***************************** FUNCTIONS ***************************************
 
