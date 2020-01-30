@@ -28,13 +28,14 @@ function extern long before.save.object(long type)
 
 function define.field.dependencies()
 {
-	dal.field.depends.on("tfisg013.capc", HOOK_IS_VALID, "tfisg013.type")
+| 	dal.field.depends.on("tfisg013.capc", HOOK_IS_VALID, "tfisg013.type")
 	dal.field.depends.on("tfisg013.dsca", HOOK_IS_DERIVED, "tfisg013.type")
 	dal.field.depends.on("tfisg013.eunt", HOOK_IS_DERIVED, "tfisg013.type")
 	dal.field.depends.on("tfisg013.ccod", HOOK_IS_DERIVED, "tfisg013.type",
 						HOOK_UPDATE, "tfisg013.cprj", "tfisg013.type")
-	dal.field.depends.on("tfisg013.cprj", HOOK_IS_DERIVED, "tfisg013.type")
+	dal.field.depends.on("tfisg013.cprj", HOOK_IS_DERIVED + HOOK_IS_VALID, "tfisg013.type")
 	dal.field.depends.on("tfisg013.area", HOOK_IS_READONLY, "tfisg013.type")
+	dal.field.depends.on("tfisg013.divn", HOOK_IS_READONLY, "tfisg013.type")
 	dal.field.depends.on("tfisg013.type", HOOK_IS_READONLY, "tfisg013.type")
 }
 
@@ -43,21 +44,21 @@ function extern boolean tfisg013.type.cprj.is.applicable()
 	return(false)
 }
 
-function extern boolean tfisg013.dsca.is.derived()
-{
-	if tfisg013.type = tfisg.cf.type.cprj then
-		return(true)
-	endif
-	return(false)
-}
+| function extern boolean tfisg013.dsca.is.derived()
+| {
+| 	if tfisg013.type = tfisg.cf.type.cprj then
+| 		return(true)
+| 	endif
+| 	return(false)
+| }
 
-function extern boolean tfisg013.eunt.is.derived()
-{
-	if tfisg013.type = tfisg.cf.type.cprj then
-		return(true)
-	endif
-	return(false)
-}
+| function extern boolean tfisg013.eunt.is.derived()
+| {
+| 	if tfisg013.type = tfisg.cf.type.cprj then
+| 		return(true)
+| 	endif
+| 	return(false)
+| }
 
 function extern boolean tfisg013.ccod.is.derived()
 {
@@ -85,7 +86,7 @@ function extern	void tfisg013.ccod.is.update()
 
 function extern boolean tfisg013.cprj.is.derived()
 {
-	if tfisg013.type = tfisg.cf.type.cprj then
+	if tfisg013.type = tfisg.cf.type.cprj or tfisg013.type = tfisg.cf.type.cprj.non then
 		return(true)
 	endif
 	return(false)
@@ -107,12 +108,20 @@ function extern boolean tfisg013.type.is.readonly()
 	return(false)
 }
 
-function extern boolean tfisg013.capc.is.valid()
+| function extern boolean tfisg013.divn.is.readonly()
+| {
+| 	if tfisg013.type = tfisg.cf.type.cprj then
+| 		return(true)
+| 	endif
+| 	return(false)
+| }
+
+function extern boolean tfisg013.cprj.is.valid()
 {
 	if tfisg013.type = tfisg.cf.type.cprj.dim then
 		select	tfgld010.dimx
 		from	tfgld010
-		where	tfgld010._index1 = {1, :tfisg013.capc}
+		where	tfgld010._index1 = {1, :tfisg013.cprj}
 		as set with 1 rows
 		selectdo
 			return(true)

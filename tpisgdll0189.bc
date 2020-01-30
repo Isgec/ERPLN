@@ -144,7 +144,10 @@ function extern	tpisgdll0189_Increase_rvsn(	domain	tcorno	ccod,
 	endselect
 	
 	if e = 0 then
-		select	tpisg089.rvsn
+		select	tpisg089.rvsn,
+			tpisg089.oami,
+			tpisg089.oamo,
+			tpisg089.oamn
 		from	tpisg089 for update
 		where	tpisg089._index1 = {:ccod, :rvsn}
 		selectdo
@@ -153,6 +156,9 @@ function extern	tpisgdll0189_Increase_rvsn(	domain	tcorno	ccod,
 		else
 			tpisg089.rvsn = new_rvsn
 		endif
+		tpisg089.oami = 0
+		tpisg089.oamo = 0
+		tpisg089.oamn = 0
 		db.update(ttpisg089, db.retry, e)
 		endselect
 	endif

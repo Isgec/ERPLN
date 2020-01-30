@@ -11,9 +11,14 @@
 declaration:
 
   table   ttfisg014 | Monthly Cashflow Data
+  table	ttfisg013
+  table	ttpisg087
+  table	ttpisg088
 
-	extern	domain	tcnama	udby.nama
+	extern	domain	tcnama	udby.nama, bpid.nama
 	extern	domain	tcpric	tot.iamt, tot.oamt
+	extern	domain	tcmcs.str100	ccod.dsca
+	extern	domain	tccom.bpid	bpid.found, bpid
 	
 |****************************** program section ********************************
 before.program:
@@ -45,6 +50,33 @@ before.display:
 	selectempty
 		udby.nama = ""
 	endselect
+	
+field.ccod.dsca:
+before.display:
+	select	tpisg087.ccno:ccod.dsca
+	from	tpisg087
+	where	tpisg087._index1 = {:tfisg014.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		ccod.dsca = ""
+	endselect
+	
+field.bpid:
+before.display:
+	bpid = display.bpid(tfisg014.cprj)
+	
+field.bpid.nama:
+before.display:
+	bpid.found = display.bpid(tfisg014.cprj)
+	select	tccom100.nama:bpid.nama
+	from	tccom100
+	where	tccom100._index1 = {:bpid}
+	as set with 1 rows
+	selectdo
+	selectempty
+		bpid.nama = ""
+	endselect
 
 functions:
 function extern freeze()
@@ -63,4 +95,35 @@ function extern freeze()
 	endselect
 	
 	message("Freezed")
+}
+
+function domain	tccom.bpid	display.bpid(domain	tcorno	ccod)
+{
+	domain	tccom.bpid	bpid.dis
+	
+	select	tpisg087.cust
+	from	tpisg087
+	where	tpisg087._index1 = {:ccod}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	select	tpisg088.cprj
+	from	tpisg088
+	where	tpisg088._index1 = {:ccod}
+	as set with 1 rows
+	selectdo
+		select	tppdm740.ofbp:bpid.dis
+		from	tppdm740
+		where	tppdm740._index1 = {:tpisg088.cprj, :tpisg087.cust}
+		as set with 1 rows
+		selectdo
+		selectempty
+			bpid.dis = ""
+		endselect
+	selectempty
+		bpid.dis = ""
+	endselect
+	
+	return(bpid.dis)
 }

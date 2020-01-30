@@ -25,6 +25,7 @@ declaration:
 	extern	domain	tccom.bpid	bpid
 	extern	domain	tcnama		bpid.nama
 		extern	string		error.msg
+	extern	domain	tcmcs.str100	ccod.dsca
 	
 	#include<bic_dam>
 
@@ -66,16 +67,16 @@ before.display:
 		udby.nama = ""
 	endselect
 	
-| field.ccod:
-| before.display:
-| 	select	tpisg088.ccod:ccod
-| 	from	tpisg088
-| 	where	tpisg088._index1 = {:tfisg013.cprj}
-| 	as set with 1 rows
-| 	selectdo
-| 	selectempty
-| 		ccod = ""
-| 	endselect
+field.ccod.dsca:
+before.display:
+	select	tpisg087.ccno:ccod.dsca
+	from	tpisg087
+	where	tpisg087._index1 = {:tfisg013.ccod}
+	as set with 1 rows
+	selectdo
+	selectempty
+		ccod.dsca = ""
+	endselect
 	
 | field.eunt:
 | before.display:
@@ -131,10 +132,23 @@ on.choice:
 	select	tpisg088.*
 	from	tpisg088
 	selectdo
+		select	tpisg087.lddn,
+			tpisg087.capc
+		from	tpisg087
+		where	tpisg087._index1 = :tpisg088.ccod
+| 		and	tpisg087.capc = ""
+		as set with 1 rows
+		selectdo
+| 			continue
+		selectempty
+			tpisg087.lddn = ""
+		endselect
+		
 		select	tfisg013.*
 		from	tfisg013 for update
 | 		where	tfisg013.ccod = :tpisg088.ccod
 		where	tfisg013.cprj = :tpisg088.cprj
+| 		where	tfisg013._index1 = {:tpisg087.capc, :tpisg088.cprj}
 		and	tfisg013.type = tfisg.cf.type.cprj
 | 		as set with 1 rows
 		selectdo
@@ -149,15 +163,6 @@ on.choice:
 				endif
 			endif
 		selectempty
-			select	tpisg087.lddn
-			from	tpisg087
-			where	tpisg087._index1 = :tpisg088.ccod
-			as set with 1 rows
-			selectdo
-			selectempty
-				tpisg087.lddn = ""
-			endselect
-			
 			select	tcmcs052.dsca
 			from	tcmcs052
 			where	tcmcs052._index1 = {:tpisg088.cprj}
@@ -207,7 +212,7 @@ on.choice:
 | 					message(error.msg)
 | 				endif
 | 			endif
-			tfisg013.capc = tpisg088.cprj
+			tfisg013.capc = tpisg087.capc
 			tfisg013.dsca = tcmcs052.dsca
 			tfisg013.eunt = tcemm030.eunt
 			tfisg013.ccod = tpisg088.ccod
