@@ -31,6 +31,9 @@
 |* "GH251CR545_000", Only Automated record should be delete from table(tfisg041)
 |* Paras Kukreti, 2019-01-22
 |* 
+|* "GH265CR554_000", Company No. range required in session "Update Cash flow 
+|* data, 2020-02-11
+|* 
 |****************************** declaration section ***************************
 declaration:
 
@@ -66,6 +69,7 @@ declaration:
 	extern  domain  tfacp.base		selection.by
 	extern  domain  tccprj			v.cprj
 	extern  domain  tcncmp			curr.comp, ncmp.f|, ncmp.t
+	extern  domain  tcncmp			ncmp.t, ncmp.f1			|#GH265CR554_000.sn	
 	
 |*********************************** Global Variables *************************************************	
 	extern	domain	tcsess		i.session.code
@@ -222,8 +226,11 @@ check.input:
 field.ncmp.f:
 | when.field.changes:							|#ISGEC01046.o
 | 	ncmp.t = ncmp.f							|#ISGEC01046.o
+when.field.changes:								|#GH265CR554_000.n
+	ncmp.t = ncmp.f1							|#GH265CR554_000.n
 check.input:
-	if ncmp.f = 0 then
+| 	if ncmp.f = 0 then							|#GH265CR554_000.n
+	if ncmp.f1 = 0 then
 		set.input.error("tfisg0241.002",e)
 	endif
 	
@@ -238,7 +245,17 @@ before.choice:
 on.choice:
 	delete.tfisg041()				|bharti.n
 | 	update.cash.flow()						|#ISGEC017002.o
-	redo.update.cash.flow()						|#ISGEC017002.n
+| 	redo.update.cash.flow()						|#ISGEC017002.n		|#GH265CR554_000.o
+	for ncmp.f = ncmp.f1 to ncmp.t						|#GH265CR554_000.sn
+		select	ttaad100.comp
+		from	ttaad100
+		where	ttaad100._index1 = :ncmp.f
+		and	ttaad100._compnr = 0
+		as set with 1 rows
+		selectdo
+			redo.update.cash.flow()	
+		endselect
+	endfor									|#GH265CR554_000.en
 	message("Process Completed Successfully")			|#ISGEC017002.n
 	
 |********************************** function section *********************************
@@ -3650,7 +3667,8 @@ function delete.tfisg041()					|bharti.sn.25.09.19
 {
 	select	tfisg041.*
 	from	tfisg041	for update
-	where	tfisg041._index2 inrange {:ncmp.f,:year,:prno.f} and {:ncmp.f,:year,:prno.t}
+| 	where	tfisg041._index2 inrange {:ncmp.f,:year,:prno.f} and {:ncmp.f,:year,:prno.t}	|#GH265CR554_000.o
+	where	tfisg041._index2 inrange {:ncmp.f1,:year,:prno.f} and {:ncmp.t,:year,:prno.t}	|#GH265CR554_000.n
 	and	tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH251CR545_000.n
 | 	and	tfisg041.btno = 30459	
 	selectdo
