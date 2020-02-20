@@ -6,7 +6,8 @@
 |******************************************************************************
 |* Form Type 4
 |******************************************************************************
-                                                                                
+|* ID GH273CR567_000, 20/2/2020, Paras Kukreti, VRC B61U a7 isg
+|* Additional columns required.  
 |****************************** declaration section ***************************
 declaration:
 
@@ -29,6 +30,11 @@ declaration:
 	table	ttccom001	| Employees - General
 	table	ttfacp245	| Receipts
 	table	ttdmsl400	| Purchase Order ION Tracking 
+	
+	table	ttfisg002	| Maintain IR Wise GR Details			|#anshu.17.07.2019.n
+	table	ttcemm030	| Enterprise Units			|#anshu.17.07.2019.n
+	
+	
 
 |******************************* form variables *******************************
 	extern	domain	tcorno		orno.f,orno.t
@@ -49,6 +55,7 @@ declaration:
 				g.unadjusted.debit.note, v.advance_payment_total, v.unadjusted_total, 
 				v.unallocated_pay, v.unadjusted_pay, v.tfacp203.amti, v.debit.note.assigned,
 				v.unadjusted.debit.note, v.iram, v.tot.iram, tot.vamt, v.tot.vamt,
+				v.temp.assign,								|#anshu.18.07.2019.n
 				v.basic,temp, tot.paid.po, temp.assign, temp.p.tfacp203.amti, old.temp.assign
 	domain	tcncmp		i.ncmp	
 	domain	tccom.bpid	suno.f,suno.t, temp.otbp
@@ -74,6 +81,14 @@ declaration:
 	domain	tcmcs.str100m	destination.file, file.name
 	domain	tcbool		print.record
 	domain	tcorno		old.orno,old.rcno
+	domain	tcqnty		o.tdpur401.qoor
+	
+	domain	tfacp.isup	sup.inv						|#GH273CR567_000.n
+	domain	tfgld.date	inv.date1					|#GH273CR567_000.n
+	domain	tcmcs.str30	inv.date					|#GH273CR567_000.n
+	
+	domain	tfgld.amnt	sum.tfacp203.amti		|#anshu.17.07.2019.n
+	domain	tcorno		temp.old.orno			|#anshu.17.07.2019.n
 	
 	#pragma used dll        ottdllbw
 |****************************** program section *******************************
@@ -97,11 +112,12 @@ when.field.changes:
 field.bpid.f:
 when.field.changes:
 	bpid.t	=	bpid.f
-
-field.divi.f:
-when.field.changes:
-	divi.t	=	divi.f
-
+	
+			|#anshu.18.07.2019.so
+| field.divi.f:
+| when.field.changes:
+| 	divi.t	=	divi.f
+			|#anshu.18.07.2019.eo
 field.proj.f:
 when.field.changes:
 	proj.t	=	proj.f
@@ -129,7 +145,26 @@ function	extern	print.excel.summary()
 | 				i.erro			|Error
 | 				)
 
-	if	isspace(i.erro)	then			
+	if	isspace(i.erro)	then
+						|#anshu.sn
+		tfisgdll0000.create.file.header(
+						file_pointer,		|File Pointer,
+						9,
+						"Supplier PO Analysis Report - Summary",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						""
+						)						
+						
+						
+						
+						
+						
+						|#anshu.en
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
 						9,
@@ -152,7 +187,8 @@ function	extern	print.excel.summary()
 						"",
 						"",
 						"",
-						"Time:"&sprintf$("%U(%02H%x%02m %a)",time.num())
+| 						"Time:"&sprintf$("%U(%02H%x%02m %a)",time.num())	|#anshu.18.07.2019.o
+						""			|#anshu.18.07.2019.n
 						)
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
@@ -168,13 +204,15 @@ function	extern	print.excel.summary()
 						proj.f,
 						proj.t
 						)
-		tfisgdll0000.create.file.header(
-						file_pointer,		|File Pointer,
-						9,
-						"Division (EU)",
-						divi.f,
-						divi.t
-						)
+										|#anshu.18.07.2019.so
+| 		tfisgdll0000.create.file.header(
+| 						file_pointer,		|File Pointer,
+| 						9,
+| 						"Division (EU)",
+| 						divi.f,
+| 						divi.t
+| 						)
+										|#anshu.18.07.2019.eo
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
 						9,
@@ -255,7 +293,26 @@ function	extern	print.excel.detail()
 | 				i.erro			|Error
 | 				)
 
-	if	isspace(i.erro)	then			
+	if	isspace(i.erro)	then	
+								|#anshu.sn
+		tfisgdll0000.create.file.header(
+						file_pointer,		|File Pointer,
+						9,
+						"Supplier PO Analysis Report - Detail",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						""
+						)						
+						
+						
+						
+						
+						
+						|#anshu.en	
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
 						9,
@@ -278,7 +335,8 @@ function	extern	print.excel.detail()
 						"",
 						"",
 						"",
-						"Time:"&sprintf$("%U(%02H%x%02m %a)",time.num())
+| 						"Time:"&sprintf$("%U(%02H%x%02m %a)",time.num())	|#anshu.18.07.2019.o
+						""							|#anshu.18.07.2019.n
 						)
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
@@ -294,13 +352,15 @@ function	extern	print.excel.detail()
 						proj.f,
 						proj.t
 						)
-		tfisgdll0000.create.file.header(
-						file_pointer,		|File Pointer,
-						9,
-						"Division (EU)",
-						divi.f,
-						divi.t
-						)
+											|#anshu.18.07.2019.so
+| 		tfisgdll0000.create.file.header(
+| 						file_pointer,		|File Pointer,
+| 						9,
+| 						"Division (EU)",
+| 						divi.f,
+| 						divi.t
+| 						)
+											|#anshu.18.07.2019.eo
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
 						9,
@@ -309,32 +369,34 @@ function	extern	print.excel.detail()
 		tfisgdll0000.create.file.header(
 						file_pointer,		|File Pointer,
 						9,
-						"Purchase Order",	
-						"BP Code",	
-						"BP Name",	
-						"Project",	
-						"Division (EU)",
-						"IR NO",
-						"IR date",
-						"IR Value (Basic)",
-						"Receipt Type",
-						"Receipt No.",
-						"WHR/PUR Date",	
-						"WHR/PUR value (Basic)",
-						"PO Gross value (latest approved revision)",	
-						"Payment Request",	
-						"Document No.",	
-						"Document Date"	,
-						"Invoice booked (Gross)",	
-						"Advance",	
-						"Advance adj.",	
-						"Unallocated Payment",	
-						"Unallocated adj.",	
-						"Bill Payment",	
-						"Debit Notes",
-						"Debit Notes Adjusted"	,
-						"Total Paid",	
-						"Total Unpaid PO value (gross)"
+						"Purchase Order",	|1
+						"BP Code",		|2
+						"BP Name",		|3
+						"Project",		|4
+						"Division (EU)",	|5
+						"IR NO",		|6
+						"IR date",		|7
+						"Supplier's Invoice Number",	|#GH273CR567_000.n
+						"Invoice Date",			|#GH273CR567_000.n
+						"IR Value (Basic)",	|8
+						"Receipt Type",		|9
+						"Receipt No.",		|10
+						"WHR/PUR Date",		|11
+						"WHR/PUR value (Basic)",			|12
+						"PO Gross value (latest approved revision)", 	|13	
+						"Payment Request",				|14
+						"Document No.",					|15
+						"Document Date"	,				|16
+						"Invoice booked (Gross)",			|17	
+						"Advance",					|18
+						"Advance adj.",					|19
+						"Unallocated Payment",				|20	
+						"Unallocated adj.",				|21
+						"Bill Payment",			|22
+						"Debit Notes",			|23
+						"Debit Notes Adjusted"	,	|24
+						"Total Paid",			|25
+						"Total Unpaid PO value (gross)"	|26
 						)
 		read.data.detail()
 | 		tfisgdll0000.close.file(
@@ -382,7 +444,8 @@ function	initialization.variables()
 	uaas.w			=	0				
 	advance.date		=	0
 	o.tfacp200.docd		=	0
-	v.basic			=	0	
+	v.basic			=	0
+	sum.tfacp203.amti       =  0.00				|#anshu.17.07.2019.n
 }
 
 function	read.data()
@@ -446,10 +509,22 @@ function	read.data()
 			not	isspace(temp.orno)		then
 | 			v.basic	=	oamt.w - (o.tfacp251.amth - o.tfacp200.amth)	mod by arun.o
 			v.basic	=	oamt.w - (o.tfacp251.amth)	|mod by arun.n
-			if	v.tot.iram >	o.tfacp251.amth	then
+| 			if	v.tot.iram >	o.tfacp251.amth	then				|#anshu.18.07.2019.o
 | 				v.basic	=	v.basic - (v.tot.iram - (o.tfacp251.amth - o.tfacp200.amth)) |mod by arun.o
-				v.basic	=	v.basic - v.tot.iram		|mod by arun.n
+| 				v.basic	=	v.basic - v.tot.iram		|mod by arun.n		|#anshu.18.07.2019.o
+| 			endif									#anshu.18.07.2019.o
+			
+								|#anshu.17.07.2019.sn
+			if (p.tfacp203.amti < 0.00) then
+								
+				p.tfacp203.amti = (abs(p.tfacp203.amti) + abs(sum.tfacp203.amti)) * (-1)
+			else
+				p.tfacp203.amti = p.tfacp203.amti + sum.tfacp203.amti
 			endif
+								
+								|#anshu.17.07.2019.en
+			
+			get.sup.invoice.no(i.rvno)				|#GH273CR567_000.n
 			tfisgdll0000.create.detail.line(
 						file_pointer,		|File Pointer,
 						9,
@@ -501,7 +576,8 @@ function	read.data()
 		tfacp200.docd	=	0
 		tfacp251.ityp	=	""
 		tfacp251.idoc	=	0
-		
+		temp.cprj	=	tdpur401.cprj	
+
 		if	tdpur400.ccur	=	"INR"	then
 			curr.type	=	ltoe(1)
 		else
@@ -528,6 +604,194 @@ function	read.data()
 		selectdo
 			get.details()
 		endselect
+		temp.old.orno = ""			|#anshu.17.07.2019.n
+		select	tfmsl020.adrq,
+	 		tfmsl020.ttyp,
+	 		tfmsl020.docn,
+	 		tfmsl020.lino,
+	 		tfmsl020.optn
+	 	from	tfmsl020
+	 	where	tfmsl020._index2	=	{:tdpur401.orno}
+	 	and	tfmsl020._compnr	=	:i.ncmp
+	 	selectdo
+			select 	tfacp200.ttyp,
+				tfacp200.ninv,
+				tfacp200.line,
+				tfacp200.whti,
+				tfacp200.tpay,
+				tfacp200.balc,
+				tfacp200.bala,
+				tfacp200.amti,
+				tfacp200.amth,
+				tfacp200.balh,
+				tfacp200.bahc,
+				tfacp200.docd
+			from	tfacp200
+			where	tfacp200._index1	=	{:tfmsl020.ttyp, :tfmsl020.docn, :tfmsl020.lino}
+			and	tfacp200.docn		=	0
+			and	tfacp200.ifbp		=	:tdpur400.otbp
+			and	tfacp200._compnr	=	:tcmcs065.comp
+			selectdo
+				if	tfmsl020.optn	=	tfoption.advance	then
+					if	tfacp200.tpay	=	tfacp.tpay.advance.ant	then     
+						if curr.type = tfisg.curr.typ.fc then			
+							adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
+	| 						|adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.bala)
+							adas.w = adas.w + abs(tfacp200.amti)
+							advance.date	=	tfacp200.docd
+						else
+							adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
+	| 						|adas.w = adas.w + abs(tfacp200.amth(1))  - abs(tfacp200.bahc(1))
+							adas.w = adas.w + abs(tfacp200.amth(1))
+							advance.date	=	tfacp200.docd
+						endif	
+					endif	
+					if	tfacp200.tpay	=	tfacp.tpay.advance	then     
+						if curr.type = tfisg.curr.typ.fc then			
+							adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
+	| 						|adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.balc)
+							adas.w = adas.w + abs(tfacp200.amti) 
+							advance.date	=	tfacp200.docd
+						else
+							adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
+	| 						|adas.w = adas.w + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))
+							adas.w = adas.w + abs(tfacp200.amth(1)) 
+							advance.date	=	tfacp200.docd
+						endif	
+					endif
+										|#anshu.17.07.2019.sn
+									
+					on case tfacp200.tpay
+						case tfacp.tpay.advance.ant:
+						case tfacp.tpay.advance:
+						
+							if tfacp200.whti <> tcyesno.no then
+								select	tfacp203.amti,
+									tfacp203.amth
+								from	tfacp203
+								where	tfacp203._index1 = {:tfacp200.ttyp,:tfacp200.ninv,:tfacp200.line}
+								selectdo
+									
+								selectempty
+									tfacp203.amti = 0.00
+									tfacp203.amth(1) = 0.00
+								endselect
+								
+								if curr.type = tfisg.curr.typ.fc then
+									adas.w = adas.w + abs(tfacp203.amti)
+									adua.w = adua.w + abs(tfacp203.amti)
+								else
+									adas.w = adas.w + abs(tfacp203.amth(1))
+									adua.w = adua.w + abs(tfacp203.amth(1))
+								endif
+							endif
+							
+							break
+					endcase
+										
+										|#anshu.17.07.2019.en
+										
+
+
+				endif
+				
+				select 	tfcmg112.cdoc,
+					tfcmg112.stat		
+				from	tfcmg112
+				where	tfcmg112._index2	=	{:tfmsl020.ttyp,:tfmsl020.docn,:tfmsl020.lino}
+				and	tfcmg112._compnr	=	:i.ncmp						
+				as	set with 1 rows
+				selectdo
+				selectempty
+					tfcmg112.cdoc	=	0
+					tfcmg112.stat	=	empty
+				endselect
+				
+				if	tfmsl020.optn	=	tfoption.exchange	then
+					if	tfacp200.tpay = tfacp.tpay.unallocated then                   
+						if	curr.type = tfisg.curr.typ.fc then				
+	| 						|adv.un.assign = adv.un.assign + abs(tfacp200.amti) - abs(tfacp200.balc)				
+							adv.un.assign = adv.un.assign + abs(tfacp200.amti)
+							un.adv.balance = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+							payment.date	=	tfacp200.docd
+						else
+	| 						|adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))					
+							adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) 
+							un.adv.balance = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+							payment.date	=	tfacp200.docd
+						endif 
+					endif
+					if	tfcmg112.stat	<>	tfcmg.stap.rejected		and
+						tfacp200.tpay	=	tfacp.tpay.unallocated.ant	then
+						if	curr.type	=	tfisg.curr.typ.fc	then			
+	| 						|uaas.w = uaas.w + abs(tfacp200.amti) - abs(tfacp200.bala)		
+							uaas.w = uaas.w + abs(tfacp200.amti) 
+							un.adv.balance  = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+							payment.date	=	tfacp200.docd
+						else
+	| 						|uaas.w = uaas.w + abs(tfacp200.amth(1)) - abs(tfacp200.bahc)
+							uaas.w = uaas.w + abs(tfacp200.amth(1)) 
+							un.adv.balance  = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+							payment.date	=	tfacp200.docd
+						endif
+					endif					
+				endif
+								|#anshu.17.07.2019.sn
+			selectempty
+				if	tfmsl020.optn	=	tfoption.exchange	then
+					if temp.old.orno <> tdpur401.orno then 
+						select	tfacp200.amnt,
+							tfacp200.bahc,
+							tfacp200.balh,
+							tfacp200.balc,
+							tfacp200.docd,
+							tfacp200.bala,
+							tfacp200.amth,
+							tfacp200.tpay,
+							tfacp200.ttyp,
+							tfacp200.ninv
+						from	tfacp200
+						where	tfacp200.cdf_prno	=	:tdpur401.orno
+						and	tfacp200.docn		=	0
+						and	tfacp200.tpay in (tfacp.tpay.unallocated,tfacp.tpay.unallocated.ant)
+						and 	tfacp200._compnr	=	:tcmcs065.comp
+						selectdo
+							if	(tfacp200.tpay = tfacp.tpay.unallocated) then                   
+								if	(curr.type = tfisg.curr.typ.fc)  then				
+									adv.un.assign = adv.un.assign + abs(tfacp200.amti)
+									un.adv.balance = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+									payment.date	=	tfacp200.docd
+								else
+									adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) 
+									un.adv.balance = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+									payment.date	=	tfacp200.docd
+								endif 
+							endif
+							if	(tfacp200.tpay	=	tfacp.tpay.unallocated.ant)	then
+								if	(curr.type	=	tfisg.curr.typ.fc)	then			
+									uaas.w = uaas.w + abs(tfacp200.amti) 
+									un.adv.balance  = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+									payment.date	=	tfacp200.docd
+								else
+									uaas.w = uaas.w + abs(tfacp200.amth(1)) 
+									un.adv.balance  = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+									payment.date	=	tfacp200.docd
+								endif
+							endif			
+							
+						endselect
+						temp.old.orno = tdpur401.orno 
+					endif
+
+				endif
+								|#anshu.17.07.2019.en
+			endselect
+			advance_payment_total 	=	adas.w 
+			unadjusted_total	= 	adua.w
+			unallocated_pay		=	uaas.w + adv.un.assign 
+			unadjusted_pay		=	un.adv.balance
+		endselect		
+		
 		
 		select	tccom122.cfsg,
 			tfacp001.desc
@@ -556,7 +820,8 @@ function	read.data()
 		select	tppdm600.seak,
 			tppdm600.padr,
 			tppdm600.cdf_divs:division,
-			tccom130.ccty
+			tccom130.ccty,
+			tppdm600.ncmp		|#anshu.n
 		from	tppdm600,
 			tccom130
 		where	tppdm600._index1	=	{:tdpur401.cprj}
@@ -565,6 +830,19 @@ function	read.data()
 		and	tccom130._compnr	=	:i.ncmp
 		as	set with 1 rows
 		selectdo
+						|#anshu.sn
+			if isspace(division) then
+				select	tcemm030.eunt:division
+				from	tcemm030
+				where	tcemm030.fcmp = :tppdm600.ncmp
+				selectdo
+				selectempty
+					division = ""
+				endselect
+				
+			endif
+						|#anshu.en
+			
 		selectempty
 			tppdm600.seak	=	""
 		endselect
@@ -580,7 +858,8 @@ function	read.data()
 		
 | 		select	tfacp100.cdf_irdt:IR_date,				|mod by arun.n
 		select	tfacp100.cdf_irdt,
-			tfacp100.ninv
+			tfacp100.ninv,
+			tfacp100.amth(1):v.iram			|#anshu.17.07.2019.n
 		from	tfacp100
 		where	tfacp100.cdf_pono	=	:tdpur401.orno
 		and	tfacp100.cdf_cprj	=	:tdpur401.cprj
@@ -596,25 +875,38 @@ function	read.data()
 
 											|mod by arun.en
 | 			select	sum(tfisg407.assv+tfisg407.samt+tfisg407.camt+tfisg407.iamt):v.iram
-			select	sum(tfisg407.assv):v.iram
-			from	tfisg407
-			where	tfisg407._index1	=	{:tfacp100.ninv}
-			selectdo
-			selectempty
-				v.iram	=	0
-			endselect
+										|#anshu.17.07.2019.so
+| 			select	sum(tfisg407.assv):v.iram
+| 			from	tfisg407
+| 			where	tfisg407._index1	=	{:tfacp100.ninv}
+| 			selectdo
+| 			selectempty
+| 				v.iram	=	0
+| 			endselect
+										|#anshu.17.07.2019.eo
 			v.tot.iram	=	v.tot.iram	+	v.iram
 		endselect
 		
-		select max(tfisg003.grdt):IR_date			|veena.sn 10-07-2019
-		from	tfisg003, tfacp100
-		where	tfisg003.irno = tfacp100.ninv
-		and tfisg003.grdt <> 0
-		and tfacp100.cdf_pono = :tdpur401.orno
-		and tfisg003._compnr = 200
+| 		select max(tfisg003.grdt):IR_date			|veena.sn 10-07-2019	|#anshu.17.07.2019.so
+| 		from	tfisg003, tfacp100
+| 		where	tfisg003.irno = tfacp100.ninv
+| 		and tfisg003.grdt <> 0
+| 		and tfacp100.cdf_pono = :tdpur401.orno
+| 		and tfisg003._compnr = 200
+| 		selectdo
+| 		endselect						|veena.en 10-07-2019	|#anshu.17.07.2019.eo
+									|#anshu.17.07.2019.sn
+									
+		select	max(tfisg002.grdt):IR_date			
+		from	tfisg002, tfacp100
+		where	tfisg002.irno = tfacp100.ninv 
+		and 	tfisg002.grdt <> 0
+		and 	tfacp100.cdf_pono = :tdpur401.orno
+		and 	tfisg002._compnr = 200
 		selectdo
-		endselect						|veena.en 10-07-2019
-
+		endselect					
+									
+									|#anshu.17.07.2019.en
 				
 		utc.to.local(IR_date, o.IR_date, i.time)
 		
@@ -645,15 +937,26 @@ function	read.data()
 
 		switch.to.company(i.ncmp)
 		
-		tfmsldll0020.purchase_order_amount(
-							tdpur401.orno,
-							tot.bas,	|Basic Amount
-							tot.amnt,	|Total Order Amount
-							tot.exc,	|Excise Tax Amount
-							tot.stx,	|Salse/Server Tax Amount
-							tot.oth1,	|Other Charge 1	
-							tot.oth2	|Other Charge 2
-							)
+		select	sum(tdpur401.qoor):o.tdpur401.qoor
+		from	tdpur401
+		where	tdpur401._index1	=	{:tdpur401.orno}
+		selectdo
+		selectempty
+			o.tdpur401.qoor	=	0	
+		endselect
+		
+		if	o.tdpur401.qoor	>	0.00	then
+| 		if (tot.bas > 0.00) then			|#anshu.n
+			tfmsldll0020.purchase_order_amount(
+								tdpur401.orno,
+								tot.bas,	|Basic Amount
+								tot.amnt,	|Total Order Amount
+								tot.exc,	|Excise Tax Amount
+								tot.stx,	|Salse/Server Tax Amount
+								tot.oth1,	|Other Charge 1	
+								tot.oth2	|Other Charge 2
+								)
+		endif						|#anshu.n
 			
 		oamt.w = tot.bas							
 		gros.w = tot.amnt		
@@ -680,12 +983,23 @@ function	read.data()
 							:tdpur401.orno}
 		group	by tfacp251.ityp, tfacp251.idoc 
 		selectdo
-			select	tfacp200.amth
+			select	tfacp200.amth,
+				tfacp200.whti
 			from	tfacp200
 			where	tfacp200._index1	=	{:i.ityp,:i.idoc}
 			and	tfacp200.tpay		=	tfacp.tpay.invoice
 			selectdo
-				o.tfacp200.amth	=	o.tfacp200.amth	+	tfacp200.amth(1)	
+				o.tfacp200.amth	=	o.tfacp200.amth	+	tfacp200.amth(1)
+				if	tfacp200.whti		=	tcyesno.yes	then				|monika.sn
+| 						p.tfacp203.amti	=	p.tfacp203.amti + get.paid.adjusted.value(
+| 													tfacp200.ttyp,
+| 													tfacp200.ninv
+| 													)
+					o.tfacp200.amth = o.tfacp200.amth - get.paid.adjusted.value(
+													i.ityp,
+													i.idoc
+													)
+				endif											|monika.en
 			endselect
 		endselect
 		
@@ -708,23 +1022,52 @@ function	read.data()
 			unadjusted.debit.note	=	unadjusted.debit.note + (abs(tfacp200.balh(1)) + tfacp200.bahc(1))	
 			o.tfacp200.docd		=	tfacp200.docd
 		endselect
+			
+						|#anshu.sn
+| 		select	tdpur401.cprj
+| 		from	tdpur401
+| 		where	tdpur401._index1 = {:tdpur401.orno}
+| 		as set with 1 rows
+| 		selectdo
+| 		selectempty
+| 			tdpur401.cprj = ""			
+| 		endselect
+		
+					|#anshu.en
+		
 		
 		temp.orno	=	tdpur401.orno
 		temp.otbp	=	tdpur400.otbp
 		temp.nama	=	tccom100.nama	
 		temp.ccur	=	tdpur400.ccur	
-		temp.cprj	=	tdpur401.cprj	
+		
+		
+		
+| 		temp.cprj	=	tdpur401.cprj	
 		temp.ccon	=	tdpur400.ccon
 		temp.dsca	=	tccom001.nama
 		temp.cnam	=	tdpur400.refa
 	endselect
 	
 | 		v.basic	=	oamt.w - (o.tfacp251.amth - o.tfacp200.amth)	mod by arun.o
-		v.basic	=	oamt.w - (o.tfacp251.amth)	|mod by arun.n
-	if	v.tot.iram >	o.tfacp251.amth	then
+| 		v.basic	=	oamt.w - (o.tfacp251.amth)	|mod by arun.n			|#anshu.18.07.2019.o	
+		v.basic	=	oamt.w - (v.damt)				|#anshu.18.07.2019.n
+| 		v.basic	=	oamt.w - (v.tot.iram)		|mod by arun.n		|#anshu.17.07.2019.n
+				
+| 	if	v.tot.iram >	o.tfacp251.amth	then					|#anshu.17.07.2019.o
 | 		v.basic	=	v.basic - (v.tot.iram - (o.tfacp251.amth - o.tfacp200.amth)) |mod by arun.o
-		v.basic	=	v.basic - v.tot.iram		|mod by arun.n
+| 		v.basic	=	v.basic - v.tot.iram		|mod by arun.n			|#anshu.17.07.2019.o
+| 	endif	|#anshu.17.07.2019.o
+								|#anshu.17.07.2019.sn
+	if (p.tfacp203.amti < 0.00) then
+						
+		p.tfacp203.amti = (abs(p.tfacp203.amti) + abs(sum.tfacp203.amti)) * (-1)
+	else
+		p.tfacp203.amti = p.tfacp203.amti + sum.tfacp203.amti
 	endif
+				
+								|#anshu.17.07.2019.en
+	get.sup.invoice.no(i.rvno)						|#GH273CR567_000.n
 	tfisgdll0000.create.detail.line(
 					file_pointer,		|File Pointer,
 					9,
@@ -735,7 +1078,8 @@ function	read.data()
 					i.rvno,				|5
 					sprintf$("%u(%02d/%02m/%04Y)",tdmsl400.apdt),			|6
 					tdpur400.ccur,			|7
-					tdpur401.cprj,			|8
+| 					tdpur401.cprj,			|8
+					temp.cprj,			|8
 					tppdm600.seak,			|9
 					v.type,				|10
 					division,			|11
@@ -770,6 +1114,7 @@ function	read.data()
 | 					(o.tfacp200.amth-advance_payment_total+p.tfacp203.amti-debit.note.assigned),	|36
 					v.basic				|37
 					)
+		sum.tfacp203.amti       =  0.00				|#anshu.17.07.2019.n
 	switch.to.company(i.ncmp)				
 }
 
@@ -836,17 +1181,21 @@ function	domain	tfgld.amnt	get.open.retention.total(
 								)
 {
 	domain	tcamnt	total_retention
+	domain	tcamnt	total.bala					|#anshu.18.07.2019.n
 	
-	select	sum(tfacp201.balc):total_retention
+	select	sum(tfacp201.balc):total_retention,
+		sum(tfacp201.bala):total.bala				|#anshu.18.07.2019.n
 	from	tfacp201
 	where	tfacp201._index1 = {:i.ttyp,:i.ninv}
 	and	tfacp201.cdf_bloc = "002                           "
 	selectdo
 	selectempty
 		total_retention = 0.00
+		total.bala = 0.00			|#anshu.18.07.2019.n
 	endselect
 	
-	return(total_retention)
+| 	return(total_retention)				|#anshu.18.07.2019.o
+	return(total_retention - total.bala)		|#anshu.18.07.2019.n
 }
 
 function	domain	tfgld.amnt	get.open.retention.total.other(
@@ -855,8 +1204,10 @@ function	domain	tfgld.amnt	get.open.retention.total.other(
 								)
 {
 	domain	tcamnt	total_retention_other
+	domain	tcamnt	total.bala			|#anshu.18.07.2019.n
 	
-	select	sum(tfacp201.balc):total_retention_other
+	select	sum(tfacp201.balc):total_retention_other,
+		sum(tfacp201.bala):total.bala				|#anshu.18.07.2019.n
 	from	tfacp201
 	where	tfacp201._index1 = {:i.ttyp,:i.ninv}
 	and	tfacp201.cdf_bloc <> "                              "	|Added by Veena on 10-07-2019
@@ -864,14 +1215,27 @@ function	domain	tfgld.amnt	get.open.retention.total.other(
 	selectdo
 	selectempty
 		total_retention_other = 0.00
+		total.bala = 0.00			|#anshu.18.07.2019.n
 	endselect
 	
-	return(total_retention_other)
+| 	return(total_retention_other)				|#anshu.18.07.2019.o
+	return(total_retention_other - total.bala)		|#anshu.18.07.2019.n
 }
 
 
 function	get.details()
 {
+	
+			|#anshu.17.07.2019.sn
+			
+	domain	tfgld.ttyp	tds.tfacp200.ttyp
+	domain	tfgld.ninv	tds.tfacp200.ninv
+	domain	tfgld.lino	tds.tfacp200.line
+	domain	tcyesno		tds.tfacp200.whti		
+			
+			|#anshu.17.07.2019.en
+	
+	
 	advance.date		=	0
 	invoice.date		=	0
 	advance_payment_total 	=	0	
@@ -882,7 +1246,8 @@ function	get.details()
 	uaas.w			=	0	
 	adv.un.assign		=	0	 
 	unadjusted_pay		=	0
-	un.adv.balance		=	0	
+	un.adv.balance		=	0
+	
 	
 	select	tfacp200.docd:invoice.date
 	from	tfacp200
@@ -892,19 +1257,48 @@ function	get.details()
 	selectdo
 	endselect
 	
-	select	tfacp200.docd:invoice.date.2
+	
+| 	select	tfacp200.docd:invoice.date.2,		|#anshu.17.07.2019.o
+	select	tfacp200.docd,				|#anshu.17.07.2019.sn
+		tfacp200.tpay,
+		tfacp200.typa,
+		tfacp200.doca
+							|#anshu.17.07.2019.en
 	from	tfacp200
 	where	tfacp200._index1	=	{:tfacp251.ityp, :tfacp251.idoc}
 	and	tfacp200.docn		<>	0
+	and	tfacp200.step <>  tfcmg.step.doc.rejected
+	and	tfacp200.tpay in (2,8)
 	selectdo
+							|#anshu.17.07.2019.sn
+		if (tfacp200.tpay  = tfacp.tpay.normal) then
+			if not isspace(tfacp200.typa) and tfacp200.doca <> 0 then
+				
+				select	tfacp200.docd:tfacp200.docd
+				from	tfacp200
+				where	tfacp200._index1 = {:tfacp251.ityp, :tfacp251.idoc}
+				and	tfacp200.tdoc = :tfacp200.typa
+				and	tfacp200.docn = :tfacp200.doca
+				selectdo
+				selectempty
+					invoice.date.2 = tfacp200.docd
+				endselect
+			endif
+		else
+			invoice.date.2 = tfacp200.docd
+		endif
+							|#anshu.17.07.2019.en
 	endselect
+	
 	
 	select 	tfacp200.ttyp,
 		tfacp200.ninv,
 		tfacp200.tpay,
 		tfacp200.tdoc,			|Added by Veena on 10-07-2019
+		tfacp200.docn,
 		tfacp200.amth,
-		tfacp200.docd
+		tfacp200.docd,
+		tfacp200.whti
 	from	tfacp200
 	where	tfacp200._index1	=	{:tfacp251.ityp, :tfacp251.idoc}
 	and	tfacp200.docn		<>	0
@@ -946,16 +1340,43 @@ function	get.details()
 			endif		
 | 		endif
 	endselect
+								|#anshu.17.07.2019.sn
 	
-	select	tfmsl020.adrq,
-		tfmsl020.ttyp,
-		tfmsl020.docn,
-		tfmsl020.lino,
-		tfmsl020.optn
-	from	tfmsl020
-	where	tfmsl020._index2	=	{:tdpur401.orno}
-	and	tfmsl020._compnr	=	:i.ncmp
+	select 	tfacp200.ttyp:tds.tfacp200.ttyp,
+		tfacp200.ninv:tds.tfacp200.ninv,
+		tfacp200.line:tds.tfacp200.line,
+		tfacp200.whti:tds.tfacp200.whti
+	from	tfacp200
+	where	tfacp200._index1 = {:tfacp251.ityp, :tfacp251.idoc}
+	and	tfacp200.docn = 0
+	and	tfacp200._compnr = :tcmcs065.comp
+	and	tfacp200.whti = tcyesno.yes
 	selectdo
+		select 	tfacp203.amti
+		from	tfacp203
+		where	tfacp203._index1 = {:tds.tfacp200.ttyp,:tds.tfacp200.ninv}
+		and	tfacp203.txtp = tctax.txtp.income.tax
+		and	tfacp203._compnr = :tcmcs065.comp		
+		selectdo
+				
+			sum.tfacp203.amti = sum.tfacp203.amti + tfacp203.amti
+		selectempty
+			tfacp203.amti  =0
+			tds.tfacp200.whti = tcyesno.no								
+		endselect
+	endselect
+	
+	
+								|#anshu.17.07.2019.en
+| 	select	tfmsl020.adrq,
+| 		tfmsl020.ttyp,
+| 		tfmsl020.docn,
+| 		tfmsl020.lino,
+| 		tfmsl020.optn
+| 	from	tfmsl020
+| 	where	tfmsl020._index2	=	{:tdpur401.orno}
+| 	and	tfmsl020._compnr	=	:i.ncmp
+| 	selectdo
 | 		if	temp.ttyp	=	tfmsl020.ttyp	and
 | 			temp.docn	=	tfmsl020.docn	then
 | 			adas.w		=	0	
@@ -969,100 +1390,100 @@ function	get.details()
 | 		temp.ttyp	=	tfmsl020.ttyp
 | 		temp.docn	=	tfmsl020.docn
 		
-		select 	tfacp200.ttyp,
-			tfacp200.ninv,
-			tfacp200.line,
-			tfacp200.whti,
-			tfacp200.tpay,
-			tfacp200.balc,
-			tfacp200.bala,
-			tfacp200.amti,
-			tfacp200.amth,
-			tfacp200.balh,
-			tfacp200.bahc,
-			tfacp200.docd
-		from	tfacp200
-		where	tfacp200._index1	=	{:tfmsl020.ttyp, :tfmsl020.docn, :tfmsl020.lino}
-		and	tfacp200.docn		=	0
-		and	tfacp200.ifbp		=	:tdpur400.otbp
-		and	tfacp200._compnr	=	:tcmcs065.comp
-		selectdo
-			if	tfmsl020.optn	=	tfoption.advance	then
-				if	tfacp200.tpay	=	tfacp.tpay.advance.ant	then     
-					if curr.type = tfisg.curr.typ.fc then			
-						adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
-| 						adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.bala)
-						adas.w = adas.w + abs(tfacp200.amti)
-						advance.date	=	tfacp200.docd
-					else
-						adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
-| 						adas.w = adas.w + abs(tfacp200.amth(1))  - abs(tfacp200.bahc(1))
-						adas.w = adas.w + abs(tfacp200.amth(1))
-						advance.date	=	tfacp200.docd
-					endif	
-				endif	
-				if	tfacp200.tpay	=	tfacp.tpay.advance	then     
-					if curr.type = tfisg.curr.typ.fc then			
-						adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
-| 						adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.balc)
-						adas.w = adas.w + abs(tfacp200.amti) 
-						advance.date	=	tfacp200.docd
-					else
-						adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
-| 						adas.w = adas.w + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))
-						adas.w = adas.w + abs(tfacp200.amth(1)) 
-						advance.date	=	tfacp200.docd
-					endif	
-				endif	
-			endif
-			
-			select 	tfcmg112.cdoc,
-				tfcmg112.stat		
-			from	tfcmg112
-			where	tfcmg112._index2	=	{:tfmsl020.ttyp,:tfmsl020.docn,:tfmsl020.lino}
-			and	tfcmg112._compnr	=	:i.ncmp						
-			as	set with 1 rows
-			selectdo
-			selectempty
-				tfcmg112.cdoc	=	0
-				tfcmg112.stat	=	empty
-			endselect
-			
-			if	tfmsl020.optn	=	tfoption.exchange	then
-				if	tfacp200.tpay = tfacp.tpay.unallocated then                   
-					if	curr.type = tfisg.curr.typ.fc then				
-| 						adv.un.assign = adv.un.assign + abs(tfacp200.amti) - abs(tfacp200.balc)				
-						adv.un.assign = adv.un.assign + abs(tfacp200.amti)
-						un.adv.balance = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
-						payment.date	=	tfacp200.docd
-					else
-| 						adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))					
-						adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) 
-						un.adv.balance = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
-						payment.date	=	tfacp200.docd
-					endif 
-				endif
-				if	tfcmg112.stat	<>	tfcmg.stap.rejected		and
-					tfacp200.tpay	=	tfacp.tpay.unallocated.ant	then
-					if	curr.type	=	tfisg.curr.typ.fc	then			
-| 						uaas.w = uaas.w + abs(tfacp200.amti) - abs(tfacp200.bala)		
-						uaas.w = uaas.w + abs(tfacp200.amti) 
-						un.adv.balance  = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
-						payment.date	=	tfacp200.docd
-					else
-| 						uaas.w = uaas.w + abs(tfacp200.amth(1)) - abs(tfacp200.bahc)
-						uaas.w = uaas.w + abs(tfacp200.amth(1)) 
-						un.adv.balance  = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
-						payment.date	=	tfacp200.docd
-					endif
-				endif					
-			endif	
-		endselect
-	endselect				
-	advance_payment_total 	=	adas.w 
-	unadjusted_total	= 	adua.w
-	unallocated_pay		=	uaas.w + adv.un.assign 
-	unadjusted_pay		=	un.adv.balance
+| 		select 	tfacp200.ttyp,
+| 			tfacp200.ninv,
+| 			tfacp200.line,
+| 			tfacp200.whti,
+| 			tfacp200.tpay,
+| 			tfacp200.balc,
+| 			tfacp200.bala,
+| 			tfacp200.amti,
+| 			tfacp200.amth,
+| 			tfacp200.balh,
+| 			tfacp200.bahc,
+| 			tfacp200.docd
+| 		from	tfacp200
+| 		where	tfacp200._index1	=	{:tfmsl020.ttyp, :tfmsl020.docn, :tfmsl020.lino}
+| 		and	tfacp200.docn		=	0
+| 		and	tfacp200.ifbp		=	:tdpur400.otbp
+| 		and	tfacp200._compnr	=	:tcmcs065.comp
+| 		selectdo
+| 			if	tfmsl020.optn	=	tfoption.advance	then
+| 				if	tfacp200.tpay	=	tfacp.tpay.advance.ant	then     
+| 					if curr.type = tfisg.curr.typ.fc then			
+| 						adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
+						|adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.bala)
+| 						adas.w = adas.w + abs(tfacp200.amti)
+| 						advance.date	=	tfacp200.docd
+| 					else
+| 						adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
+						|adas.w = adas.w + abs(tfacp200.amth(1))  - abs(tfacp200.bahc(1))
+| 						adas.w = adas.w + abs(tfacp200.amth(1))
+| 						advance.date	=	tfacp200.docd
+| 					endif	
+| 				endif	
+| 				if	tfacp200.tpay	=	tfacp.tpay.advance	then     
+| 					if curr.type = tfisg.curr.typ.fc then			
+| 						adua.w = adua.w + abs(tfacp200.balc) + abs(tfacp200.bala)	
+						|adas.w = adas.w + abs(tfacp200.amti) - abs(tfacp200.balc)
+| 						adas.w = adas.w + abs(tfacp200.amti) 
+| 						advance.date	=	tfacp200.docd
+| 					else
+| 						adua.w = adua.w + abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))	
+						|adas.w = adas.w + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))
+| 						adas.w = adas.w + abs(tfacp200.amth(1)) 
+| 						advance.date	=	tfacp200.docd
+| 					endif	
+| 				endif	
+| 			endif
+| 			
+| 			select 	tfcmg112.cdoc,
+| 				tfcmg112.stat		
+| 			from	tfcmg112
+| 			where	tfcmg112._index2	=	{:tfmsl020.ttyp,:tfmsl020.docn,:tfmsl020.lino}
+| 			and	tfcmg112._compnr	=	:i.ncmp						
+| 			as	set with 1 rows
+| 			selectdo
+| 			selectempty
+| 				tfcmg112.cdoc	=	0
+| 				tfcmg112.stat	=	empty
+| 			endselect
+| 			
+| 			if	tfmsl020.optn	=	tfoption.exchange	then
+| 				if	tfacp200.tpay = tfacp.tpay.unallocated then                   
+| 					if	curr.type = tfisg.curr.typ.fc then				
+						|adv.un.assign = adv.un.assign + abs(tfacp200.amti) - abs(tfacp200.balc)				
+| 						adv.un.assign = adv.un.assign + abs(tfacp200.amti)
+| 						un.adv.balance = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+| 						payment.date	=	tfacp200.docd
+| 					else
+						|adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) - abs(tfacp200.balh(1))					
+| 						adv.un.assign = adv.un.assign + abs(tfacp200.amth(1)) 
+| 						un.adv.balance = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+| 						payment.date	=	tfacp200.docd
+| 					endif 
+| 				endif
+| 				if	tfcmg112.stat	<>	tfcmg.stap.rejected		and
+| 					tfacp200.tpay	=	tfacp.tpay.unallocated.ant	then
+| 					if	curr.type	=	tfisg.curr.typ.fc	then			
+						|uaas.w = uaas.w + abs(tfacp200.amti) - abs(tfacp200.bala)		
+| 						uaas.w = uaas.w + abs(tfacp200.amti) 
+| 						un.adv.balance  = un.adv.balance +  abs(tfacp200.balc) + abs(tfacp200.bala)
+| 						payment.date	=	tfacp200.docd
+| 					else
+						|uaas.w = uaas.w + abs(tfacp200.amth(1)) - abs(tfacp200.bahc)
+| 						uaas.w = uaas.w + abs(tfacp200.amth(1)) 
+| 						un.adv.balance  = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
+| 						payment.date	=	tfacp200.docd
+| 					endif
+| 				endif					
+| 			endif	
+| 		endselect
+| 	endselect				
+| 	advance_payment_total 	=	adas.w 
+| 	unadjusted_total	= 	adua.w
+| 	unallocated_pay		=	uaas.w + adv.un.assign 
+| 	unadjusted_pay		=	un.adv.balance
 	
 	retention 	=	retention + get.open.retention.total(tfacp251.ityp,tfacp251.idoc)
 	other_retention	= 	other_retention + get.open.retention.total.other(tfacp251.ityp,tfacp251.idoc)
@@ -1070,6 +1491,17 @@ function	get.details()
 
 function	read.data.detail()
 {
+	
+			|#anshu.18.07.2019.sn
+			
+	domain	tfgld.ttyp	tds.tfacp200.ttyp
+	domain	tfgld.ninv	tds.tfacp200.ninv
+	domain	tfgld.lino	tds.tfacp200.line
+	domain	tcyesno		tds.tfacp200.whti		
+			
+			|#anshu.18.07.2019.en
+	
+	
 	temp.orno		=	""
 	g.gros.w		=	0	
 	g.tfacp200.amth		=	0	
@@ -1133,7 +1565,8 @@ function	read.data.detail()
 		unadjusted_total	=	0	
 		unallocated_pay		=	0		
 		unadjusted_pay		=	0
-		p.tfacp203.amti		=	0	
+		p.tfacp203.amti		=	0
+		
 		v.tfacp203.amti		=	0	
 		v.tfacp200.amth		=	0	
 		debit.note.assigned	=	0
@@ -1155,6 +1588,7 @@ function	read.data.detail()
 | 		temp.p.tfacp203.amti = 0
 | 		old.temp.assign = 0
 		temp.orno = ""
+		v.temp.assign	=	0
 		select	tppdm600.seak,
 			tppdm600.padr,
 			tppdm600.cdf_divs:division,
@@ -1197,16 +1631,28 @@ function	read.data.detail()
 
 		switch.to.company(i.ncmp)
 		
-		tfmsldll0020.purchase_order_amount(
-							tdpur401.orno,
-							tot.bas,	|Basic Amount
-							tot.amnt,	|Total Order Amount
-							tot.exc,	|Excise Tax Amount
-							tot.stx,	|Salse/Server Tax Amount
-							tot.oth1,	|Other Charge 1	
-							tot.oth2	|Other Charge 2
-							)
-		gros.w	=	tot.bas
+		select	sum(tdpur401.qoor):o.tdpur401.qoor
+		from	tdpur401
+		where	tdpur401._index1	=	{:tdpur401.orno}
+		selectdo
+		selectempty
+			o.tdpur401.qoor	=	0	
+		endselect
+		
+		if	o.tdpur401.qoor	>	0.00	then
+| 		if (tot.bas > 0.00) then			|#anshu.n
+			tfmsldll0020.purchase_order_amount(
+								tdpur401.orno,
+								tot.bas,	|Basic Amount
+								tot.amnt,	|Total Order Amount
+								tot.exc,	|Excise Tax Amount
+								tot.stx,	|Salse/Server Tax Amount
+								tot.oth1,	|Other Charge 1	
+								tot.oth2	|Other Charge 2
+								)
+		endif						|#anshu.n
+| 		gros.w	=	tot.bas		|monika.o
+		gros.w	=	tot.amnt
 | 		if	temp.orno	<>	tdpur401.orno	then
 			t.gros.w	=	gros.w
 			g.gros.w	=	g.gros.w	+	gros.w
@@ -1337,7 +1783,7 @@ function	read.data.detail()
 				o.tfacp200.amth	=	0	
 			endselect
 			
-			v.tfacp200.amth	=	v.tfacp200.amth	+ o.tfacp200.amth
+| 			v.tfacp200.amth	=	v.tfacp200.amth	+ o.tfacp200.amth	|#anshu.18.07.2019.o
 			g.tfacp200.amth	=	g.tfacp200.amth	+ o.tfacp200.amth
 			print.once	=	false
 
@@ -1347,7 +1793,8 @@ function	read.data.detail()
 				tfacp200.amth,
 				tfacp200.docd,
 				tfacp200.tdoc,
-				tfacp200.docn
+				tfacp200.docn,
+				tfacp200.whti			|#anshu.18.07.2019.n
 			from	tfacp200
 			where	tfacp200._index1	=	{:tfacp251.ityp, :tfacp251.idoc}
 | 			and	tfacp200.docn		<>	0
@@ -1356,7 +1803,8 @@ function	read.data.detail()
 			selectdo
 				if	(trim$(tfacp251.ityp)	=	"PTR"			and
 					tfacp200.tpay		=	tfacp.tpay.assignment	)or
-					tfacp200.tdoc		=	"PDA"			then
+					tfacp200.tdoc		=	"PDA"			or
+					tfacp200.tpay		=	tfacp.tpay.credit	then
 					continue
 				endif
 					
@@ -1372,10 +1820,30 @@ function	read.data.detail()
 						p.tfacp203.amti	=	p.tfacp203.amti + tfacp200.amth(1)						
 					endif
 				
-					v.tfacp203.amti	=	v.tfacp203.amti	+ p.tfacp203.amti
+| 					v.tfacp203.amti	=	v.tfacp203.amti	+ p.tfacp203.amti	|#anshu.18.07.2019.o
 					g.tfacp203.amti	=	g.tfacp203.amti	+ p.tfacp203.amti
 				endif
+										|#anshu.17.07.2019.sn
+									
+				|*********TDS amount addition ************************|
+								
+				if tfacp200.whti <> tcyesno.no then
+					select	tfacp203.amti
+					from	tfacp203
+					where	tfacp203._index1 = {:tfacp200.ttyp,:tfacp200.ninv}
+					and	tfacp203._compnr	=	:tcmcs065.comp
+					selectdo
+						o.tfacp200.amth = o.tfacp200.amth + tfacp203.amti
+					selectempty
+						tfacp203.amti = 0.00
+						tfacp203.amth(1) = 0.00
+					endselect
+				endif
+				|******************************************************|
 				
+				
+									
+										|#anshu.17.07.2019.en
 				if	not	print.once	then
 					if	trim$(tfacp251.ityp)	<>	"PTR"	then
 						tfacp100.ninv	=	0
@@ -1410,44 +1878,63 @@ function	read.data.detail()
 							tot.paid.po = gros.w - temp.assign
 						endif
 					endif
+								|#anshu.18.07.2019.sn
+					if  advance_payment_total <> 0.00 then 
+						unadjusted_total = 0.00 
+										
+					endif
+					temp.assign	=	temp.assign*-1
+								|#anshu.18.07.2019.en
+					get.sup.invoice.no(tfacp100.ninv)				|#GH273CR567_000.n
 					tfisgdll0000.create.detail.line(
 									file_pointer,		|File Pointer,
 									9,
-									tdpur401.orno,	
-									tdpur400.otbp,	
-									tccom100.nama,	
-									tdpur401.cprj,	
-									division,
-									tfacp100.ninv,
-									sprintf$("%u(%02d/%02m/%04Y)",IR_date),
-									v.tot.iram,
-									receipt.type,
-									tfacp251.rcno,
-									sprintf$("%u(%02d/%02m/%04Y)",tfacp245.rdat),
-									v.tot.vamt,
-									t.gros.w,	
-									tfmsl020.adrq,	
-									tfacp251.ityp&"/"&str$(tfacp251.idoc),	
-									sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),
-									o.tfacp200.amth,	
-									advance_payment_total,	
-									unadjusted_total,	
-									unallocated_pay,	
-									unadjusted_pay,	
-									0,	
-									debit.note.assigned,
-									unadjusted.debit.note,
+									tdpur401.orno,		|1
+									tdpur400.otbp,		|2
+									tccom100.nama,		|3
+									tdpur401.cprj,		|4
+									division,		|5
+									tfacp100.ninv,		|6
+									sprintf$("%u(%02d/%02m/%04Y)",IR_date),	|7
+									sup.inv,		|#GH273CR567_000.n
+									inv.date,		|#GH273CR567_000.n
+									v.tot.iram,					|8
+									receipt.type,					|9
+									tfacp251.rcno,					|10
+									sprintf$("%u(%02d/%02m/%04Y)",tfacp245.rdat),	|11
+									v.tot.vamt,					|12
+									t.gros.w,					|13
+									tfmsl020.adrq,					|14
+									tfacp251.ityp&"/"&str$(tfacp251.idoc),		|15
+									sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),	|16
+									o.tfacp200.amth,				|17
+									advance_payment_total,				|18
+									unadjusted_total,				|19	
+									unallocated_pay,				|20
+									unadjusted_pay,					|21
+									0,						|22
+									debit.note.assigned,				|23
+									unadjusted.debit.note,				|24
 | 									advance_payment_total+unallocated_pay+debit.note.assigned,
-									temp.assign,			|monika.n
+									temp.assign,			|monika.n	|25
 | 									gros.w+(advance_payment_total+unallocated_pay+debit.note.assigned)
 | 									t.gros.w-(tot.unpay)
-									tot.paid.po			|monika.n
+									tot.paid.po			|monika.n	|26
 									)
 					print.once	=	true
 					print.record    = false
 					old.orno = tdpur401.orno
 					old.rcno = tfacp251.rcno
 					t.gros.w	=	0
+														|#anshu.18.07.2019.sn
+					v.tfacp200.amth = v.tfacp200.amth + o.tfacp200.amth		
+					v.advance_payment_total = v.advance_payment_total + advance_payment_total
+					v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+					v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+					v.tfacp203.amti = 	v.tfacp203.amti	+ 0			|22
+					v.temp.assign = 	v.temp.assign + temp.assign		|25		
+													|#anshu.18.07.2019.en
+														|#anshu.18.07.2019.en
 				endif
 				old.temp.assign  = tot.paid.po		|monika.n
 				if	not	isspace(tfacp200.tdoc)	and
@@ -1479,45 +1966,153 @@ function	read.data.detail()
 							tot.paid.po =  temp - temp.p.tfacp203.amti
 						endif
 					endif
+								|#anshu.18.07.2019.sn
+					if  advance_payment_total <> 0.00 then 
+						unadjusted_total = 0.00 				|
+					endif
+					temp.assign	=	temp.assign*-1
+								|#anshu.18.07.2019.en
 					tfisgdll0000.create.detail.line(
 									file_pointer,		|File Pointer,
 									9,
-									tdpur401.orno,	
-									tdpur400.otbp,	
-									tccom100.nama,	
-									tdpur401.cprj,	
-									division,
-									"",
-									"",
-									"",
-									"",
-									"",
-									"",
-									"",
-									0,	
-									tfmsl020.adrq,	
-									tfacp200.tdoc&"/"&str$(tfacp200.docn),	
-									sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),
-									0,	
-									advance_payment_total,	
-									unadjusted_total,	
-									unallocated_pay,	
-									unadjusted_pay,	
-									p.tfacp203.amti,	
-									debit.note.assigned,
-									unadjusted.debit.note,
+									tdpur401.orno,			|1
+									tdpur400.otbp,			|2
+									tccom100.nama,			|3
+									tdpur401.cprj,			|4
+									division,			|5
+									"",				|6
+									"",				|7
+									"",				|#GH273CR567_000.n
+									"",				|#GH273CR567_000.n
+									"",				|8
+									"",				|9
+									"",				|10
+									"",				|11
+									"",				|12
+									t.gros.w,					|13
+									tfmsl020.adrq,				|14
+									tfacp200.tdoc&"/"&str$(tfacp200.docn),		|15
+									sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),	|16
+									0,						|17
+									advance_payment_total,				|18
+									unadjusted_total,				|19
+									unallocated_pay,				|20
+									unadjusted_pay,					|21
+									p.tfacp203.amti,				|22
+									debit.note.assigned,				|23
+									unadjusted.debit.note,				|24
 | 									advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned,
-									temp.assign,
+									temp.assign,					|25
 | 									gros.w+(advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned)
-									tot.paid.po
+									tot.paid.po						|26
 | 									gros.w-(advance_payment_total-unallocated_pay+p.tfacp203.amti-debit.note.assigned)
 | 									tot.unpay
-									)				
+									)	
+					v.advance_payment_total = v.advance_payment_total + advance_payment_total	|#anshu.18.07.2019.sn
+					v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+					v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+					v.tfacp203.amti = 	v.tfacp203.amti	+ p.tfacp203.amti	|22
+					v.temp.assign = 	v.temp.assign + temp.assign		|25	
+					t.gros.w	=	0
+													|#anshu.18.07.2019.en					
 				endif		
 				old.temp.assign = tot.paid.po
 				old.orno = tdpur401.orno
 				old.rcno = tfacp251.rcno
 				print.record = false
+														
+										|#anshu.18.07.2019.sn
+			selecteos
+				tds.tfacp200.ttyp	=	""
+				tds.tfacp200.ninv	=	0	
+				tds.tfacp200.line	=	0
+				tds.tfacp200.whti	=	empty
+				select 	tfacp200.ttyp:tds.tfacp200.ttyp,
+					tfacp200.ninv:tds.tfacp200.ninv,
+					tfacp200.line:tds.tfacp200.line,
+					tfacp200.whti:tds.tfacp200.whti
+				from	tfacp200
+				where	tfacp200._index1 = {:tfacp251.ityp, :tfacp251.idoc}
+				and	tfacp200.docn = 0
+				and	tfacp200._compnr = :tcmcs065.comp
+				and	tfacp200.whti = tcyesno.yes
+				selectdo
+					select 	tfacp203.amti
+					from	tfacp203
+					where	tfacp203._index1 = {:tds.tfacp200.ttyp,:tds.tfacp200.ninv}
+					and	tfacp203.txtp = tctax.txtp.income.tax
+					and	tfacp203._compnr = :tcmcs065.comp		
+					selectdo
+							
+						sum.tfacp203.amti = sum.tfacp203.amti + tfacp203.amti
+					selectempty
+						tfacp203.amti  =0
+						tds.tfacp200.whti = tcyesno.no								
+					endselect
+				endselect
+				old.temp.assign  = tot.paid.po		
+				if	not	isspace(tds.tfacp200.ttyp)	and
+					(tds.tfacp200.ninv	<>	0)	then
+					temp.assign = tfacp203.amti *(-1)
+					
+					if temp.assign = 0 then
+						tot.paid.po = old.temp.assign
+						
+					else
+						tot.paid.po = tot.paid.po + temp.assign
+					endif
+					
+					
+					if  advance_payment_total <> 0.00 then 
+						unadjusted_total = 0.00 				
+					endif
+					temp.assign	=	temp.assign*-1			
+					tfisgdll0000.create.detail.line(
+									file_pointer,		|File Pointer,
+									9,
+									tdpur401.orno,			|1
+									tdpur400.otbp,			|2
+									tccom100.nama,			|3
+									tdpur401.cprj,			|4
+									division,			|5
+									"",				|6
+									"",				|7
+									"",				|#GH273CR567_000.n
+									"",				|#GH273CR567_000.n
+									"",				|8
+									"",				|9
+									"",				|10
+									"",				|11
+									"",				|12
+									t.gros.w,			|13
+									tfmsl020.adrq,				|14
+									tds.tfacp200.ttyp&"/"&str$(tds.tfacp200.ninv),		|15
+									sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),	|16
+									0,						|17
+									advance_payment_total,				|18
+									unadjusted_total,				|19
+									unallocated_pay,				|20
+									unadjusted_pay,					|21
+									temp.assign,					|22
+									debit.note.assigned,				|23
+									unadjusted.debit.note,				|24
+									temp.assign,					|25
+									tot.paid.po					|26
+									)
+					v.advance_payment_total = v.advance_payment_total + advance_payment_total	|#anshu.18.07.2019.sn
+					v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+					v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+					v.tfacp203.amti = 	v.tfacp203.amti	+ temp.assign	|22
+					v.temp.assign = 	v.temp.assign + temp.assign		|25	
+					t.gros.w	=	0						
+													|#anshu.18.07.2019.en		
+				endif		
+				old.temp.assign = tot.paid.po
+				old.orno = tdpur401.orno
+				old.rcno = tfacp251.rcno
+				print.record = false
+										|#anshu.18.07.2019.en
+										
 			endselect
 				
 			p.tfacp203.amti	=	0		
@@ -1718,7 +2313,37 @@ function	read.data.detail()
 					un.adv.balance = un.adv.balance +  abs(tfacp200.balh(1)) + abs(tfacp200.bahc(1))
 				endif 
 			endif
-			
+										|#anshu.17.07.2019.sn
+									
+			on case tfacp200.tpay
+				case tfacp.tpay.advance.ant:
+				case tfacp.tpay.advance:
+				
+					if tfacp200.whti <> tcyesno.no then
+						select	tfacp203.amti,
+							tfacp203.amth
+						from	tfacp203
+						where	tfacp203._index1 = {:tfacp200.ttyp,:tfacp200.ninv,:tfacp200.line}
+						selectdo
+							
+						selectempty
+							tfacp203.amti = 0.00
+							tfacp203.amth(1) = 0.00
+						endselect
+						
+						if curr.type = tfisg.curr.typ.fc then
+							adas.w = adas.w + abs(tfacp203.amti)
+							adua.w = adua.w + abs(tfacp203.amti)
+						else
+							adas.w = adas.w + abs(tfacp203.amth(1))
+							adua.w = adua.w + abs(tfacp203.amth(1))
+						endif
+					endif
+					
+					break
+			endcase
+										
+										|#anshu.17.07.2019.en
 			advance_payment_total 	=	adas.w
 			unadjusted_total	= 	adua.w
 			unallocated_pay		=	un.adv.balance 
@@ -1726,11 +2351,11 @@ function	read.data.detail()
 			debit.note.assigned	=	0	
 			unadjusted.debit.note	=	0	
 			
-			v.advance_payment_total	=	v.advance_payment_total + advance_payment_total
-			v.unadjusted_total	=	v.unadjusted_total	+ unadjusted_total
-			v.unallocated_pay	=	v.unallocated_pay	+ unallocated_pay 
-			v.unadjusted_pay	=	v.unadjusted_pay	+ unadjusted_pay
-
+| 			v.advance_payment_total	=	v.advance_payment_total + advance_payment_total	|#anshu.18.07.2019.so
+| 			v.unadjusted_total	=	v.unadjusted_total	+ unadjusted_total
+| 			v.unallocated_pay	=	v.unallocated_pay	+ unallocated_pay 
+| 			v.unadjusted_pay	=	v.unadjusted_pay	+ unadjusted_pay
+													|#anshu.18.07.2019.eo
 			g.advance_payment_total	=	g.advance_payment_total + advance_payment_total
 			g.unadjusted_total	=	g.unadjusted_total	+ unadjusted_total
 			g.unallocated_pay	=	g.unallocated_pay	+ unallocated_pay 
@@ -1778,17 +2403,24 @@ function	read.data.detail()
 				endif
 			endif
 			 
-			
+								|#anshu.18.07.2019.sn
+				if  advance_payment_total <> 0.00 then 
+					unadjusted_total = 0.00 				|
+				endif
+								|#anshu.18.07.2019.en	
+				get.sup.invoice.no(tfacp100.ninv)		|#GH273CR567_000.n
 				tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
-							tdpur401.orno,	
-							tdpur400.otbp,	
-							tccom100.nama,	
-							tdpur401.cprj,	
-							division,
+							tdpur401.orno,		|1
+							tdpur400.otbp,			|2
+							tccom100.nama,			|3
+							tdpur401.cprj,			|4
+							division,			|5
 							tfacp100.ninv,
 							sprintf$("%u(%02d/%02m/%04Y)",IR_date),
+							sup.inv,				|#GH273CR567_000.n
+							inv.date,				|#GH273CR567_000.n
 							v.tot.iram,
 							receipt.type,
 							tfacp251.rcno,
@@ -1807,10 +2439,17 @@ function	read.data.detail()
 							debit.note.assigned,
 							unadjusted.debit.note,
 | 								advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned,	
-							temp.assign,	
+							temp.assign*1,	
 | 								gros.w+(advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned)
 							tot.paid.po
 							)
+													|#anshu.18.07.2019.sn
+				v.advance_payment_total = v.advance_payment_total + advance_payment_total	
+				v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+				v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+				v.tfacp203.amti = 	v.tfacp203.amti	+ p.tfacp203.amti	|22
+				v.temp.assign = 	v.temp.assign + temp.assign		|25		
+													|#anshu.18.07.2019.en
 			endif
 			old.temp.assign = tot.paid.po	
 			old.orno = tdpur401.orno
@@ -1863,6 +2502,12 @@ function	read.data.detail()
 						tot.paid.po = gros.w - temp - temp.p.tfacp203.amti
 					endif
 				endif
+							|#anshu.18.07.2019.sn
+				if  advance_payment_total <> 0.00 then 
+					unadjusted_total = 0.00 				|
+				endif
+				temp.assign	=	temp.assign*-1
+								|#anshu.18.07.2019.en
 				tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
@@ -1873,12 +2518,14 @@ function	read.data.detail()
 							division,
 							"",
 							"",
+							"",				|#GH273CR567_000.n
+							"",				|#GH273CR567_000.n
 							"",
 							"",
 							"",
 							"",
 							"",
-							0,	
+							t.gros.w,	
 							tfmsl020.adrq,	
 							tfacp200.tdoc&"/"&str$(tfacp200.docn),	
 							sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),
@@ -1896,6 +2543,13 @@ function	read.data.detail()
 							tot.paid.po
 							)
 | 			endif
+					v.advance_payment_total = v.advance_payment_total + advance_payment_total	|#anshu.18.07.2019.sn
+					v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+					v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+					v.tfacp203.amti = 	v.tfacp203.amti	+ p.tfacp203.amti	|22
+					v.temp.assign = 	v.temp.assign + temp.assign		|25	
+					t.gros.w	=	0						
+													|#anshu.18.07.2019.en
 			endselect
 			endif
 			old.temp.assign = tot.paid.po
@@ -1995,6 +2649,8 @@ function	read.data.detail()
 					tot.paid.po = gros.w - temp.assign
 				endif
 			endif
+			temp.assign	=	temp.assign*-1
+			get.sup.invoice.no(tfacp100.ninv)			|#GH273CR567_000.n
 			tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
@@ -2005,6 +2661,8 @@ function	read.data.detail()
 							division,
 							tfacp100.ninv,
 							sprintf$("%u(%02d/%02m/%04Y)",IR_date),
+							sup.inv,		|#GH273CR567_000.n
+							inv.date,		|#GH273CR567_000.n
 							v.tot.iram,
 							receipt.type,
 							tfacp251.rcno,
@@ -2055,41 +2713,43 @@ function	read.data.detail()
 					tot.paid.po = gros.w - temp - p.tfacp203.amti
 				endif
 			endif
+						
 			
 			tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
-							"Total for PO - "&tdpur401.orno,	
-							"",	
-							"",	
-							"",	
-							"",
-							"",
-							"",
-							"",
-							"",
-							"",
-							"",
-							"",
-							gros.w,	
-							"",	
-							"",	
-							"",
-							v.tfacp200.amth,	
-							v.advance_payment_total,	
-							v.unadjusted_total,	
-							v.unallocated_pay,	
-							v.unadjusted_pay,	
-							v.tfacp203.amti,	
-							v.debit.note.assigned,
-							v.unadjusted.debit.note,
-							temp.assign,
-| 							tot.paid.po
-							old.temp.assign
-| 							v.advance_payment_total+v.unallocated_pay+v.tfacp203.amti+v.debit.note.assigned,	
-| 							gros.w+(v.advance_payment_total+v.unallocated_pay+v.tfacp203.amti+v.debit.note.assigned)
+							"Total for PO - "&tdpur401.orno,	|1
+							"",					|2
+							"",					|3
+							"",					|4
+							"",					|5
+							"",					|6
+							"",					|7
+							"",					|#GH273CR567_000.n
+							"",					|#GH273CR567_000.n
+							"",					|8
+							"",					|9
+							"",					|10
+							"",					|11
+							"",					|12
+							gros.w,					|13
+							"",					|14
+							"",					|15
+							"",					|16
+							v.tfacp200.amth,			|17
+							v.advance_payment_total,		|18
+							v.unadjusted_total,			|19
+							v.unallocated_pay,			|20
+							v.unadjusted_pay,			|21
+							v.tfacp203.amti,			|22
+							v.debit.note.assigned,			|23
+							v.unadjusted.debit.note,		|24
+| 							temp.assign,				|25		|#anshu.18.07.2019.o
+							v.temp.assign,				|25		|#anshu.18.07.2019.n
+							old.temp.assign				|26
 							)
-		endif
+			endif
+			
 		tot.old.temp.assign = tot.old.temp.assign + old.temp.assign
 		temp.orno		=	tdpur401.orno
 | 		old.orno = tdpur401.orno
@@ -2302,7 +2962,37 @@ function	get.linking.documents()
 					adua.w			=	abs(tfacp200.amti)
 				endselect
 			endif
-			
+										|#anshu.17.07.2019.sn
+									
+			on case tfacp200.tpay
+				case tfacp.tpay.advance.ant:
+				case tfacp.tpay.advance:
+				
+					if tfacp200.whti <> tcyesno.no then
+						select	tfacp203.amti,
+							tfacp203.amth
+						from	tfacp203
+						where	tfacp203._index1 = {:tfacp200.ttyp,:tfacp200.ninv,:tfacp200.line}
+						selectdo
+							
+						selectempty
+							tfacp203.amti = 0.00
+							tfacp203.amth(1) = 0.00
+						endselect
+						
+						if curr.type = tfisg.curr.typ.fc then
+							adas.w = adas.w + abs(tfacp203.amti)
+							adua.w = adua.w + abs(tfacp203.amti)
+						else
+							adas.w = adas.w + abs(tfacp203.amth(1))
+							adua.w = adua.w + abs(tfacp203.amth(1))
+						endif
+					endif
+					
+					break
+			endcase
+										
+										|#anshu.17.07.2019.en
 			advance_payment_total 	=	adas.w
 			unadjusted_total	= 	adua.w
 			unallocated_pay		=	uaas.w + adv.un.assign |mod by arun.o
@@ -2311,10 +3001,10 @@ function	get.linking.documents()
 			debit.note.assigned	=	0	
 			unadjusted.debit.note	=	0	
 			
-			v.advance_payment_total	=	v.advance_payment_total + advance_payment_total
-			v.unadjusted_total	=	v.unadjusted_total	+ unadjusted_total
+| 			v.advance_payment_total	=	v.advance_payment_total + advance_payment_total	|#anshu.18.07.2019.so
+| 			v.unadjusted_total	=	v.unadjusted_total	+ unadjusted_total		|#anshu.18.07.2019.o
 			v.unallocated_pay	=	v.unallocated_pay	+ unallocated_pay 
-			v.unadjusted_pay	=	v.unadjusted_pay	+ unadjusted_pay
+| 			v.unadjusted_pay	=	v.unadjusted_pay	+ unadjusted_pay		|#anshu.18.07.2019.o
 			
 			g.advance_payment_total	=	g.advance_payment_total + advance_payment_total
 			g.unadjusted_total	=	g.unadjusted_total	+ unadjusted_total
@@ -2356,6 +3046,13 @@ function	get.linking.documents()
 						tot.paid.po = gros.w - temp -  temp.p.tfacp203.amti
 					endif
 				endif
+								|#anshu.18.07.2019.sn
+				if  advance_payment_total <> 0.00 then 
+					unadjusted_total = 0.00 
+					
+				endif
+							|#anshu.18.07.2019.en
+				get.sup.invoice.no(tfacp100.ninv)		|#GH273CR567_000.n
 				tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
@@ -2366,12 +3063,14 @@ function	get.linking.documents()
 							division,
 							tfacp100.ninv,
 							sprintf$("%u(%02d/%02m/%04Y)",IR_date),
+							sup.inv,		|#GH273CR567_000.n
+							inv.date,		|#GH273CR567_000.n
 							v.tot.iram,
 							receipt.type,
 							tfacp251.rcno,
 							sprintf$("%u(%02d/%02m/%04Y)",tfacp245.rdat),
 							v.tot.vamt,
-							0,	
+							t.gros.w,	
 							tfmsl020.adrq,	
 							tfacp200.ttyp&"/"&str$(tfacp200.ninv),	
 							sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),
@@ -2388,11 +3087,19 @@ function	get.linking.documents()
 							tot.paid.po
 | 							gros.w+(advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned)
 							)
+				v.advance_payment_total = v.advance_payment_total + advance_payment_total		|#anshu.18.07.2019.n
+				v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+				v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+				v.tfacp203.amti = 	v.tfacp203.amti	+ p.tfacp203.amti	|22
+				v.temp.assign = 	v.temp.assign + temp.assign		|25
+				t.gros.w	=	0					
+													|#anshu.18.07.2019.en
 			endif
 			old.temp.assign = tot.paid.po
 			old.orno = tdpur401.orno
 			old.rcno = tfacp251.rcno
-			print.record = false			
+			print.record = false
+			
 			if	tfacp200.docn	<>	0	then
 				temp.assign = advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned
 | 				temp = advance_payment_total + unallocated_pay +debit.note.assigned
@@ -2418,6 +3125,11 @@ function	get.linking.documents()
 						tot.paid.po = gros.w -temp -  temp.p.tfacp203.amti 
 					endif
 				endif
+								|#anshu.18.07.2019.sn
+				if  advance_payment_total <> 0.00 then 
+					unadjusted_total = 0.00 				|
+				endif
+							|#anshu.18.07.2019.en
 				tfisgdll0000.create.detail.line(
 							file_pointer,		|File Pointer,
 							9,
@@ -2428,12 +3140,14 @@ function	get.linking.documents()
 							division,
 							"",
 							"",
+							"",				|#GH273CR567_000.n
+							"",				|#GH273CR567_000.n
 							"",
 							"",
 							"",
 							"",
 							"",
-							0,	
+							t.gros.w,	
 							tfmsl020.adrq,	
 							tfacp200.tdoc&"/"&str$(tfacp200.docn),	
 							sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),
@@ -2450,14 +3164,37 @@ function	get.linking.documents()
 							tot.paid.po
 | 							gros.w+(advance_payment_total+unallocated_pay+p.tfacp203.amti+debit.note.assigned)
 							)
+				v.advance_payment_total = v.advance_payment_total + advance_payment_total		|#anshu.18.07.2019.n
+				v.unadjusted_total = 	v.unadjusted_total + unadjusted_total		|19
+				v.unadjusted_pay = 	v.unadjusted_pay + 	unadjusted_pay	|21
+				v.tfacp203.amti = 	v.tfacp203.amti	+ p.tfacp203.amti	|22
+				v.temp.assign = 	v.temp.assign + temp.assign		|25		
+				t.gros.w	=	0	
+													|#anshu.18.07.2019.en
 			endif
 			old.temp.assign = tot.paid.po			
 			tfmsl020.adrq	=	""
 			old.orno = tdpur401.orno
 			old.rcno = tfacp251.rcno
-			print.record = false			
+			print.record = false	
 		endselect
 	endselect							
 
 }
+
+function get.sup.invoice.no(domain	tfgld.docn	ii.rvno)		|#GH273CR567_000.sn
+{
+	select	a_tfacp100.isup:sup.inv,
+		a_tfacp100.invd:inv.date1
+	from	tfacp100 a_tfacp100
+	where	a_tfacp100._index1 = {:ii.rvno}
+	as set with 1 rows
+	selectdo
+		inv.date = sprintf$("%D(%02d/%02m/%04Y)",inv.date1)
+	selectempty
+		sup.inv = ""
+		inv.date = ""
+	endselect
+}										|#GH273CR567_000.en
+
 |******************************* END OF CODE **********************************
