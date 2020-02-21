@@ -7,7 +7,10 @@
 |* Main table tfisg041 Cash Flow Data, Form Type 1
 |******************************************************************************
 |* "GH251CR545_000", New form field added Amount in Lacs(amtl)
-|* Paras Kukreti, 2019-01-22
+|* Paras Kukreti, 2020-01-22
+|*                                                                                
+|* "GH274CR568_000" Minor change in script to get amount in lac.                                                                               
+|*  Paras Kukreti, 2020-02-21                                                                             
 |*                                                                                
 |****************************** declaration section ***************************
 declaration:
@@ -47,11 +50,13 @@ before.display.object:
 	
 	select	tfisg041.ctyp, tfisg041.amnt					|#GH251CR545_000.sn
 	from	tfisg041
-	where	tfisg041._index1 = {:tfisg041.fcmp, :tfisg041.btno, :tfisg041.bpcd,
+	where	tfisg041._index1 = {:tfisg041.fcmp, :tfisg041.btno, :tfisg041.bpcd,	
 				    :tfisg041.comp,
 				   :tfisg041.type, :tfisg041.ttyp, :tfisg041.docn,
 				   :tfisg041.line, :tfisg041.seqn, :tfisg041.mode,
-				   :tfisg041.srno, :tfisg041.year, :tfisg041.prod}
+| 				   :tfisg041.srno, :tfisg041.year, :tfisg041.prod}	|#GH274CR568_000.o
+				   :tfisg041.srno, :tfisg041.year, :tfisg041.prod,	|#GH274CR568_000.n
+				   :tfisg041.cfam, :tfisg041.cprj}			|#GH274CR568_000.n
 	selectdo
 		if tfisg041.ctyp = tfcash.flow.out then
 			amtl = tfisg041.amnt/(-100000)

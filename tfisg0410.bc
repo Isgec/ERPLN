@@ -23,7 +23,11 @@
 |*
 |* "GH251CR545_000", New field(tfisg041.cfam) added to indentify the cashflow 
 |* insertion type and Logic modify for cancle cheq 
-|* Paras Kukreti, 2019-01-22
+|* Paras Kukreti, 2020-01-22
+|*
+|* "GH274CR568_000" In Cash flow data, logic required to be changes for ledger 
+|*  account 2510311
+|*  Paras Kukreti, 2020-02-21
 |*
 |******************************************************************************
         table	ttfcmg101	| Payment Batch
@@ -1324,8 +1328,10 @@ function extern boolean InsertIntotfisg041.1
 	|******Inserting Data in tfisg041***********
 	
 	domain	tcncmp		current.comp
+	domain	tcncmp		current.company					|#GH274CR568_000.n
 	domain	tfgld.dbcr	dbt.crdt					|#GH238CR530_000.n
 | 	current.comp = get.compnr()
+	current.company = get.compnr()						|#GH274CR568_000.n
 	
 | 	select	tfgld018.user:i.user					|#ISGEC016022.sn
 | 	from	tfgld018
@@ -1413,12 +1419,12 @@ function extern boolean InsertIntotfisg041.1
 		endif
 		
 		tfisg041.amnt = i.amth						|#CR-540-GH245_000.sn
-		if trim$(i.leac) = "3110121" then				
+		if trim$(i.leac) = "3110121" then							
 			select	c_tfgld106.dbcr:dbt.crdt
 			from	tfgld106 c_tfgld106
 			where	c_tfgld106._index1 = {:i.ptyp, :i.pdoc, :i.line}
 			and	c_tfgld106.obat = :tfisg041.btno
-			and	c_tfgld106.leac = "3110121"
+			and	(c_tfgld106.leac = "3110121")
 			and	c_tfgld106._compnr = :i.fin.comp
 			selectdo
 				if dbt.crdt = tfgld.dbcr.credit then
@@ -1431,14 +1437,14 @@ function extern boolean InsertIntotfisg041.1
 			endselect
 		endif								|#CR-540-GH245_000.en
 		
-		if (trim$(i.leac) = "2510121"					|#GH238CR530_000.sn
-		   or	trim$(i.leac) = "6131352") then				|#CR-540-GH245_000.n
+		if trim$(i.leac) = "2510121"	then				|#GH238CR530_000.sn	
+| 		   or	trim$(i.leac) = "6131352") then				|#CR-540-GH245_000.n	|#GH274CR568_000.o
 			select	c_tfgld106.dbcr:dbt.crdt
 			from	tfgld106 c_tfgld106
 			where	c_tfgld106._index1 = {:i.ptyp, :i.pdoc, :i.line}
 			and	c_tfgld106.obat = :tfisg041.btno
-			and	(c_tfgld106.leac = "2510121"
-			or	c_tfgld106.leac = "6131352")
+			and	(c_tfgld106.leac = "2510121")
+| 			or	c_tfgld106.leac = "6131352")			|#GH274CR568_000.o
 			and	(c_tfgld106.refr like ".*cancel.*" 		|#CR-540-GH245_000.sn
 			or c_tfgld106.refr like ".*CANCEL.*" 
 			or  c_tfgld106.refr like ".*Cancel.*")			|#CR-540-GH245_000.en	
@@ -1497,6 +1503,48 @@ function extern boolean InsertIntotfisg041.1
 					endselect
 				endselect
 			endselect
+			
+			if trim$(o.trns.type) = "" then 				|#GH274CR568_000.sn
+				select	e_tfgld106.otyp:o.trns.type,			
+					e_tfgld106.odoc:o.docn
+				from	tfgld106 e_tfgld106
+				where	e_tfgld106._index1 = {:i.ptyp, :i.pdoc, :i.line}
+				and	e_tfgld106._compnr = :current.company
+				as set with 1 rows
+				selectdo
+					select	f_tfcmg001.bank:bank
+					from	tfcmg001 f_tfcmg001
+					where	f_tfcmg001.ttyp = :o.trns.type
+					and	f_tfcmg001._compnr = :o.ocmp
+					as set with 1 rows
+					selectdo
+						select	f_tfcmg110.cheq:cheq.number
+						from	tfcmg110 f_tfcmg110
+						where	f_tfcmg110._index1 = {:bank}
+						and	f_tfcmg110.ptyp = :o.trns.type
+						and	f_tfcmg110.docn = :o.docn
+						and	f_tfcmg110._compnr = :o.ocmp
+						as set with 1 rows
+						selectdo				
+							select	f_tfcmg100.chst:cheq.status
+							from	tfcmg100 f_tfcmg100
+							where	f_tfcmg100._index1 = {:bank}
+							and	f_tfcmg100.cheq = :cheq.number
+							and	f_tfcmg100._compnr = :o.ocmp
+							as set with 1 rows
+							selectdo
+								if cheq.status = tfcmg.chst.rejected then
+									tfisg041.ctyp = tfcash.flow.out
+									ii.amth = i.amth				
+									ii.amnt = i.amnt 			
+									tfisg041.amnt = ii.amth * (-1)		
+									tfisg041.amtf = ii.amnt * (-1)
+								endif
+							endselect
+						endselect
+					endselect
+				endselect
+			endif							|#GH274CR568_000.en
 			if i.cheq = "" then
 				i.cheq = cheq.number
 			endif							|#GH251CR545_000.en
@@ -1513,7 +1561,16 @@ function extern boolean InsertIntotfisg041.1
 				tfisg041.amtf = ii.amnt * (-1)			|#CR-540-GH245_000.n
 			endif
 		endif								|#GH238CR530_000.en
- 
+		if trim$(i.leac) = "2510311" then				|#GH274CR568_000.sn						
+			if i.cflo = tfcash.flow.out then
+				tfisg041.ctyp = tfcash.flow.in
+				ii.amnt = i.amnt				
+				ii.amth = i.amth				
+				tfisg041.amnt = ii.amth * (-1)			
+				tfisg041.amtf = ii.amnt * (-1)			
+			endif
+
+		endif								|#GH274CR568_000.en
 
 | 		tfisg041.amnt = round(((i.amnt * i.rate)),2,1)		|#ISGEC016022.o
 | 		tfisg041.amnt = i.amth					|#ISGEC016022.n		|#CR-540-GH245_000.o
