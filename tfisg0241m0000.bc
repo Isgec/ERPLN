@@ -35,6 +35,9 @@
 |* data", 
 |* Paras Kukreti, 2020-02-11
 |* 
+|* "GH281CR579_000", Changes in  Cash flow data, 
+|* Paras Kukreti, 2020-02-28
+|*
 |****************************** declaration section ***************************
 declaration:
 
@@ -235,6 +238,9 @@ check.input:
 		set.input.error("tfisg0241.002",e)
 	endif
 	
+field.ncmp.f1:									|#GH281CR579_000.sn
+when.field.changes:						
+	ncmp.t = ncmp.f1							|#GH281CR579_000.en
 	
 | before.zoom:
 | 	query.extend.where.in.zoom("ttaad100.comp in (200,400)")
@@ -1246,6 +1252,7 @@ function boolean Getdatafromtfgld106()
 			where	a_tfisg041._index1	=	{:tcemm170.comp,:i.batch.number}
 			and	a_tfisg041.amth		=	:main.amth
 			and	a_tfisg041.comp		<>	:tcemm170.comp
+			and	a_tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 			selectdo
 				document.found	=	true
 			endselect
@@ -1259,6 +1266,7 @@ function boolean Getdatafromtfgld106()
 				and	a_tfisg041.docn		=	:main.cinv
 				and	a_tfisg041.amth		=	:main.amth
 				and	a_tfisg041.comp		<>	:tcemm170.comp
+				and	a_tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 				selectdo
 					document.found	=	true
 				selectempty
@@ -1270,6 +1278,7 @@ function boolean Getdatafromtfgld106()
 					and	a_tfisg041.docn		=	:main.cinv
 					and	a_tfisg041.amtf		=	:i.amnt
 					and	a_tfisg041.comp		<>	:tcemm170.comp
+					and	a_tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 					selectdo
 						document.found	=	true
 					endselect
@@ -1282,6 +1291,7 @@ function boolean Getdatafromtfgld106()
 				and	a_tfisg041.docn		=	:main.cinv
 				and	a_tfisg041.amth		=	:main.amth
 				and	a_tfisg041.comp		<>	:tcemm170.comp
+				and	a_tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 				selectdo
 					document.found	=	true
 				endselect			
@@ -3100,6 +3110,7 @@ function	insert.tfisg041()
 		and	tfisg041.ptyp		=	:r.ctyp
 		and	tfisg041.pdoc		=	:r.cinv
 		and	tfisg041.lino		=	:tfgld106.olin
+		and	tfisg041.cfam = tfcf.auto.man.cashflow.auto		|#GH281CR579_000.n
 		selectdo
 		selectempty
 			tfisg044.reas	=	empty
@@ -3416,6 +3427,23 @@ function	get.new.project(
 			endselect
 		endif
 	endif
+	if trim$(o.cprj) = "ACCTS" then						|#GH281CR579_000.sn
+		if tfgld106.bpid(1;3) = "CUS" then
+			select	tfgld106.dim1:o.cprj
+			from	tfgld106
+			where	tfgld106._index1	=	{:r.ttyp,:r.docn}	
+			and	tfgld106.dim1		<>	""
+			and	tfgld106._compnr	=	:r.ncmp
+			as	set with 1 rows
+			selectdo
+			selectempty
+				o.cprj		=	"ACCTS"	
+			endselect
+		endif
+	endif							
+	if trim$(tfgld106.leac) = "6515473" then				
+		o.cprj = "ACCTS"
+	endif									|#GH281CR579_000.en
 }
 
 function	domain	tcbool	get.target.company(domain	tcncmp	t.ncmp)
@@ -3455,6 +3483,7 @@ function	update.existing.reason.code()
 | 	and	tfisg041.comp		=	:tfgld106.ocmp
 	and	tfisg041.reas		in	(tfcash.reasons.reason.inter, tfcash.reasons.paym.reco)
 	and	tfisg041._compnr	=	:ncmp.f
+	and	tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 	selectdo
 		on	case	m.reas
 			case	tfcash.reasons.reason.inter:
@@ -3467,6 +3496,7 @@ function	update.existing.reason.code()
 				and	tfisg041.lino		=	:m.olin
 				and	tfisg041.reas		=	tfcash.reasons.user.input
 				and	tfisg041._compnr	=	:ncmp.f
+				and	tfisg041.cfam = tfcf.auto.man.cashflow.auto		|#GH281CR579_000.n
 				selectdo
 					tfisg041.reas	=	tfcash.reasons.reason.inter
 					tfisg041.cprj	=	"ACCTS"
@@ -3484,6 +3514,7 @@ function	update.existing.reason.code()
 				and	tfisg041.lino		=	:m.olin
 				and	tfisg041.reas		<>	tfcash.reasons.paym.reco
 				and	tfisg041._compnr	=	:ncmp.f
+				and	tfisg041.cfam = tfcf.auto.man.cashflow.auto		|#GH281CR579_000.n
 				selectdo
 					tfisg041.reas	=	tfcash.reasons.paym.reco
 					tfisg041.cprj	=	"ACCTS"

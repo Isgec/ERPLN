@@ -29,6 +29,9 @@
 |*  account 2510311
 |*  Paras Kukreti, 2020-02-21
 |*
+|* "GH281CR579_000", Changes in  Cash flow data, 
+|* Paras Kukreti, 2020-02-28
+|*
 |******************************************************************************
         table	ttfcmg101	| Payment Batch
 	table	ttfcmg401	| Direct Debit Batch
@@ -1366,6 +1369,7 @@ function extern boolean InsertIntotfisg041.1
 				:i.srno,
 				:i.fyer,
 				:i.prod}
+	and	tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH281CR579_000.n
 		
 	selectdo
 		tfisg041.cprj = i.cprj				|bharti.sn
@@ -1561,7 +1565,18 @@ function extern boolean InsertIntotfisg041.1
 				tfisg041.amtf = ii.amnt * (-1)			|#CR-540-GH245_000.n
 			endif
 		endif								|#GH238CR530_000.en
-		if trim$(i.leac) = "2510311" then				|#GH274CR568_000.sn						
+| 		if trim$(i.leac) = "2510311" then				|#GH274CR568_000.sn	|#GH281CR579_000.o						
+		if (trim$(i.leac) = "1550264")  then				|#GH281CR579_000.sn					
+			if i.cflo = tfcash.flow.in then
+				tfisg041.ctyp = tfcash.flow.out
+				ii.amnt = i.amnt				
+				ii.amth = i.amth				
+				tfisg041.amnt = ii.amth * (-1)			
+				tfisg041.amtf = ii.amnt * (-1)			
+			endif
+
+		endif	
+		if (trim$(i.leac) = "2510311" or trim$(i.leac) = "1550911" or trim$(i.leac) = "2510814")  then|#GH281CR579_000.en					
 			if i.cflo = tfcash.flow.out then
 				tfisg041.ctyp = tfcash.flow.in
 				ii.amnt = i.amnt				

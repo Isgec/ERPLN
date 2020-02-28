@@ -15,6 +15,9 @@
 |* respectively. So amount should comes in cash flow report with minus sign in 
 |* outflow and inflow.
 |*
+|* "GH281CR579_000", Changes in  Cash flow data, 
+|* Paras Kukreti, 2020-02-28
+|*
 
 |****************************** declaration section ***************************
 declaration:
@@ -330,7 +333,7 @@ function read.main.table()
 			v.ncmp	=	fcmp		|ISG01010.n
 		endif	
 		i	=	0
-		for	j	=	1	to	prod.f
+		for	j	=	1	to	prod.f			
 			i	=	i	+	1
 			k=j				|ISG01010.sn
 | 			select	tfisg041.fcmp:fcmp1,
@@ -373,8 +376,10 @@ function read.main.table()
 					selectdo
 					endselect
 					amnt2=o.tfisg041.amtf
-					if amnt1>amnt2 then
-						if amnt2 < 0 then		|#GH246CR542_000.sn
+						
+					if amnt1>amnt2 then							
+| 						if amnt2 < 0 then		|#GH246CR542_000.sn	|#GH281CR579_000.o	
+						if (amnt2 < 0 and amnt1<=0 )then		|#GH281CR579_000.n
 							amnt2=amnt2-amnt1
 							out.amnt=amnt2+out.amnt
 						else
@@ -383,20 +388,21 @@ function read.main.table()
 						endif				|#GH246CR542_000.en
 | 						amnt1=amnt1-amnt2		|#GH246CR542_000.o
 | 						in.amnt=amnt1+in.amnt		|#GH246CR542_000.o
-					else if amnt1<amnt2 then
-						if amnt1 < 0 then		|#GH246CR542_000.sn
-							amnt1=amnt1-amnt2
-							in.amnt=amnt1+in.amnt
+					else 	if amnt1<amnt2 then
+| 							if amnt1 < 0 then		|#GH246CR542_000.sn	|#GH281CR579_000.o
+							if (amnt1 < 0 and amnt2 <= 0) then		|#GH281CR579_000.n	
+								amnt1=amnt1-amnt2
+								in.amnt=amnt1+in.amnt
+							else
+								amnt2=amnt2-amnt1
+								out.amnt=amnt2+out.amnt
+							endif				|#GH246CR542_000.en
+	| 						amnt2=amnt2-amnt1		|#GH246CR542_000.o	
+	| 						out.amnt=amnt2+out.amnt		|#GH246CR542_000.o
 						else
-							amnt2=amnt2-amnt1
-							out.amnt=amnt2+out.amnt
-						endif				|#GH246CR542_000.en
-| 						amnt2=amnt2-amnt1		|#GH246CR542_000.o	
-| 						out.amnt=amnt2+out.amnt		|#GH246CR542_000.o
-					else
-						in.amnt=0.00+in.amnt
-						out.amnt=0.00+out.amnt
-					endif
+							in.amnt=0.00+in.amnt
+							out.amnt=0.00+out.amnt
+						endif
 					endif
 				endselect
 				
