@@ -11,6 +11,9 @@
 |* Isgec Onsite Deployment
 |* Merino Services
 |******************************************************************************
+|* GH284CR582_000,Data for GSTR-1 Advance receipt in company 651
+|* Paras Kukreti, 2020-02-28
+|******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
 declaration:
@@ -186,6 +189,10 @@ function read.main.table()
 	if curr.comp = 700 then
 		sfcp.t = 700
 	endif
+	
+	if curr.comp = 651 then							|#GH284CR582_000.sn
+		sfcp.t = 651
+	endif									|#GH284CR582_000.en
 	
 	select	tfgld001.ncmp
 	from	tfgld001
