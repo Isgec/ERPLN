@@ -372,7 +372,7 @@ function extern long ue.after.before.save.object(long mode)
 		tdisgdll0400.Purchase_Order_ION_Tracking(tdpur400.orno,max_version,work_flow_status)
 		with.old.object.values.do(tdisgdll0400.order_status,tdpur400.orno,o.hdst)
 		on case tdpur400.hdst
-		case	tdpur.hdst.in.process:								|RAvi.a		
+| 		case	tdpur.hdst.in.process:								|RAvi.a		
 | 			DISCREPANCY.EXISTS.IN.PO.LINE.EXTENSION = check.discrepancy.in.all.lines()
 | 					
 | 			if DISCREPANCY.EXISTS.IN.PO.LINE.EXTENSION then
