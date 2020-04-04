@@ -41,6 +41,9 @@
 |* ID:ISGEC016050, Mudit Sharma, 28-12-2016
 |* Modifications 
 |* 
+|* ID: GH294CR597, RAvi Kumar, 03-04-2020
+|* Please provide correction rights in warehouse receipt after confirmation on ID "3717"
+
 |******************************************************************************
                                                                                 
 #include <bic_dal>
@@ -118,6 +121,17 @@ function extern long ue.before.before.save.object(long mode)
 | 			endif
 | 		endif
 					|#SD01112017.en
+					
+		get.var(pid,"prog.name$",calling.prog)								|GH294CR597.a.s
+		
+		if calling.prog = "tdpur4106s100" then
+			if curr.user = "3717" then
+			else
+				dal.set.error.message("@Receipt Correction are not allowed..")
+				return(DALHOOKERROR)
+			endif
+		endif
+														|GH294CR597.a.e
 		if	isspace(tdpur406.dino)	then
 			dal.set.error.message("@ IR Mandatory !!!")
 			return(DALHOOKERROR)
