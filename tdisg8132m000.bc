@@ -1186,6 +1186,7 @@ function extern get_attachment()								|GH300CR602.a.s
 	domain	tclogn			o.user
 	domain	tcmcs.str50		pass.string, handle.string
 		string			open.link(200),sess.code(30)
+	domain	tcibd.sern	irno.str	
 		
 	o.user = logname$
 	
@@ -1196,10 +1197,25 @@ function extern get_attachment()								|GH300CR602.a.s
 	curr.comp = get.compnr()
 	p.char = ""
 	c.char = ""
+	irno.str = ""
 	handle.string = ""
-	handle.string =  "RECEIPT_" & str$(curr.comp)
+	handle.string =  "IRN_" & str$(curr.comp)
 	
-	pass.string = trim$(tdisg832.rcno) 
+	select	whinh310.dino:irno.str
+	from	whinh310
+	where	whinh310._index1 = {:tdisg832.rcno}
+	as set with 1 rows
+	selectdo
+	selectempty
+		select	tdpur406.dino:irno.str
+		from	tdpur406
+		where	tdpur406._index2 = {:tdisg832.rcno}
+		as set with 1 rows
+		selectdo
+		endselect
+	endselect
+	
+	pass.string = trim$(irno.str) 
 	
 | 	p.char = (whinh312.lsta  = whinh.lstc.confirmed) ? "n":"y"
 	p.char = "n"

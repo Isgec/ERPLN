@@ -12,6 +12,8 @@ declaration:
 
   table   twhinh312 | Receipt Lines
   table	   ttdpur406
+  table	ttdisg832
+  table	ttfacp100
    
 	domain	tcncmp			curr.comp
 	domain	tcmcs.str1		p.char, c.char
@@ -23,6 +25,9 @@ declaration:
 	extern	domain	whinh.shpm	rcno
 	extern	domain	tcmcs.str16	prog.sess
 	extern	domain	tcorno		orno, rcno.po
+	extern	domain	tfgld.docn	irno
+	extern	domain	tcibd.sern	irno.str
+	extern	domain	tcorno		rcno.ir.no
 	
 	
 #include<bic_desktop>
@@ -43,38 +48,99 @@ before.program:
 	p.char = ""
 	c.char = ""
 	handle.string = ""
-	handle.string =  "RECEIPT_" & str$(curr.comp)
+	rcno.ir.no = ""
+| 	handle.string =  "RECEIPT_" & str$(curr.comp)
+	handle.string =  "IRN_" & str$(curr.comp)
 	
 	if prog.sess = "whinh3512m000" then
-		import("whinh310.rcno", rcno)
-		pass.string = trim$(rcno) 
+| 		import("whinh310.rcno", rcno)
+		import("whinh310.dino", irno.str)
 		
-		select	whinh312.lsta
-		from	whinh312
-		where	whinh312._index1 = {:rcno}		
-		as set with 1 rows
-		selectdo
-		endselect
+		pass.string = trim$(irno.str) 
 		
-		p.char = (whinh312.lsta  = whinh.lstc.confirmed) ? "n":"y"
+| 		select	whinh312.lsta
+| 		from	whinh312
+| 		where	whinh312._index1 = {:rcno}		
+| 		as set with 1 rows
+| 		selectdo
+| 		endselect
+		
+| 		p.char = (whinh312.lsta  = whinh.lstc.confirmed) ? "n":"y"
+		p.char = "n"
 	else
 		if prog.sess = "tdpur4106m000" then
-			import("tdpur406.orno", orno)
-			import("tdpur406.rcno", rcno.po)
+| 			import("tdpur406.orno", orno)
+| 			import("tdpur406.orno", orno)
+| 			import("tdpur406.rcno", rcno.po)
+			import("tdpur406.dino", irno.str)
 			
-			select	tdpur406.conf
-			from	tdpur406
-			where	tdpur406._index1 = {:orno}
-			and	tdpur406.rcno = :rcno.po
-			and	tdpur406.conf = tcyesno.yes
-			as set with 1 rows
-			selectdo
-			selectempty
-				tdpur406.conf = tcyesno.no
-			endselect
+			pass.string = trim$(irno.str) 
 			
-			pass.string = trim$(rcno.po)
-			p.char = (tdpur406.conf  = tcyesno.no) ? "y":"n"
+| 			select	tdpur406.conf
+| 			from	tdpur406
+| 			where	tdpur406._index1 = {:orno}
+| 			and	tdpur406.rcno = :rcno.po
+| 			and	tdpur406.conf = tcyesno.yes
+| 			as set with 1 rows
+| 			selectdo
+| 			selectempty
+| 				tdpur406.conf = tcyesno.no
+| 			endselect
+
+| 			p.char = (tdpur406.conf  = tcyesno.no) ? "y":"n"
+			p.char = "n"
+		else
+			if prog.sess = "tfacp1500m000" then
+				import("tfacp100.ninv", irno)
+				
+				select	tfacp100.stin
+				from	tfacp100
+				where	tfacp100._index1 = {:irno}
+				as set with 1 rows
+				selectdo
+				endselect
+				irno.str = str$(irno)
+				if tfacp100.stin <> tfacp.stin.open then
+					p.char = "n"
+				else
+					select	whinh310.rcno:rcno.ir.no
+					from	whinh310
+					where	whinh310.dino = {:irno.str}
+					as set with 1 rows
+					selectdo
+					selectempty
+						select	tdpur406.rcno:rcno.ir.no
+						from	tdpur406
+						where	tdpur406.dino = {:irno.str}
+						as set with 1 rows
+						selectdo
+						selectempty
+							rcno.ir.no = ""
+						endselect
+					endselect
+					
+					select	tdisg832.edrn
+					from	tdisg832
+					where	tdisg832._index4 = {:rcno.ir.no}
+					as set with 1 rows
+					selectdo
+						select	tdisg831.stat
+						from	tdisg831
+						where	tdisg831._index1 = {:tdisg832.edrn}
+						and	tdisg831.stat = tdisg.stat.process
+						as set with 1 rows
+						selectdo
+							p.char = "n"
+						selectempty
+							p.char = "y"
+						endselect
+					selectempty
+						p.char = "y"
+					endselect					
+				endif
+				
+				pass.string = trim$(str$(irno))
+			endif
 		endif
 	endif
 		

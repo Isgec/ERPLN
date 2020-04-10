@@ -1967,6 +1967,7 @@ function extern get_attachment()									|GH300CR602.a.s
 	domain	tclogn			o.user
 	domain	tcmcs.str50		pass.string, handle.string
 		string			open.link(200),sess.code(30)
+	domain	tcibd.sern	irno.str
 	
 	pass.string = trim$(tfisg182.irno) 
 	
@@ -1980,9 +1981,11 @@ function extern get_attachment()									|GH300CR602.a.s
 	p.char = ""
 	c.char = ""
 	handle.string = ""
-	handle.string =  "DOCUMENTTRACKING_" & str$(curr.comp)
+| 	handle.string =  "DOCUMENTTRACKING_" & str$(curr.comp)
+	handle.string =  "IRN_" & str$(curr.comp)
 	
-	p.char = (tfisg182.lsta  = tfisg.doc.stat.free) ? "y":"n"
+| 	p.char = (tfisg182.lsta  = tfisg.doc.stat.free) ? "y":"n"
+	p.char = "n"
 		
 	on case i.host
 	case "VISHNU":	
