@@ -17,6 +17,9 @@
 |*
 | ID: GH293CR596, RAvi Kumar, 27-03-2020
 |* New column in reports
+|*
+|* ID: GH301CR601, RAvi Kumar, 12-04-2020
+|* New col added - PO approval Date and Indent Approval Date
 
 |****************************** declaration section ***************************
 declaration:
@@ -98,6 +101,8 @@ declaration:
 	extern	domain	tcmcs.str100m	rep.dsca		|34			|GH293CR596.a
 	extern	domain	dmdoc.revv	rep.revn		|35			|GH293CR596.a
 	extern	domain	tcdate		rep.drdt		|36			|GH293CR596.a
+	extern	domain	tcdate		rep.trtd		|37			|GH301CR601.a
+	extern	domain	tcdate		rep.podt		|38			|GH301CR601.a
 	
 |*************** Include **************
 #include<bic_desktop>	
@@ -177,6 +182,8 @@ function read.main.table()
 		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
 				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.indt)
 				
+		Get_Dates(rep.orno, rep.vrsn, rep.rqno, rep.trtd, rep.podt)		|GH301CR601.a	
+		
 		if rep.qnty = 0 then								|GH293CR596.a.s
 			rep.qnty = tcisg004.qnty
 			rep.cuni = tcisg004.quom
@@ -521,9 +528,11 @@ function	generate.header()
 		sprintf$("Total Weight"),				|12
 		sprintf$("Indent No."),				|13
 		sprintf$("Indent Date"),				|14
+		sprintf$("Requisition Approval Date"),			|14.1			|GH301CR601.a
 		sprintf$("PO No."),					|15
 		sprintf$("Latest PO Revision"),			|16
 		sprintf$("PO Date"),					|17
+		sprintf$("PO Approval Date"),				|17.1			|GH301CR601.a
 		sprintf$("Supplier"),					|18		
 		sprintf$("Supplier Name"),				|19		
 		sprintf$("Child Receipt Qnty."),			|20		
@@ -566,9 +575,11 @@ function	print.detail()
 		sprintf$("%f", rep.twgt),				|12
 		sprintf$("%s", rep.rqno),				|13
 		sprintf$("%s", rep.indt),				|14
+		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.trtd)),	|14.1 		|GH301CR601.a	
 		sprintf$("%s", rep.orno),				|15
 		sprintf$("%d", rep.vrsn),				|16
 		sprintf$("%s", rep.odat),				|17
+		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.podt)),	|17.1		|GH301CR601.a	
 		sprintf$("%s", rep.bpid),				|18				
 		sprintf$("%s", rep.bpnm),				|19
 		sprintf$("%f", rep.crqt),				|20
@@ -628,6 +639,8 @@ function Initialize_Variables()
 	rep.dsca = ""
 	rep.revn = ""
 	rep.drdt = 0						|GH293CR596.a.e
+	rep.trtd = 0						|GH301CR601.a
+	rep.podt = 0 						|GH301CR601.a
 }
 
 
@@ -685,7 +698,8 @@ function get_drawing_release_records()		|#ISGEC015040.sn
 		rep.cspa = dmisg005.cspa
 		rep.eldsc = tpptc100.desc
 		rep.item = dmisg005.item
-		rep.idsc = tcibd001.dsca
+| 		rep.idsc = tcibd001.dsca
+		rep.idsc = dmisg005.dsca						|GH293CR596.cng
 		rep.stat	=	dmisg005.stat	|#ISGEC016009.n		
 		rep.qnty = dmisg005.qnty
 		rep.cuni = dmisg005.cuni
@@ -702,5 +716,31 @@ function get_drawing_release_records()		|#ISGEC015040.sn
 		print.detail()
 	endselect
 }					|#ISGEC015040.en
+
+function Get_Dates(	domain	tcorno	orno.dt,				|GH301CR601.a.s
+			domain	tcpono	rvsn.dt,
+			domain	tcrqno	rqno.dt,
+		ref	domain	tcdate	trdt.dt,
+		ref	domain	tcdate	podt.dt)
+{
+	select	tdisg210.apdt:trdt.dt
+	from	tdisg210
+	where	tdisg210._index1 = {:rqno.dt}
+	selectdo
+	selectempty
+		trdt.dt = 0
+	endselect
+	
+	select	tdmsl400.apdt:podt.dt
+	from	tdmsl400
+	where	tdmsl400._index1 = {:orno.dt, :rvsn.dt}
+	as set with 1 rows
+	selectdo
+	selectempty
+		podt.dt = 0
+	endselect
+	
+}										|GH301CR601.a.e
+
 
 	
