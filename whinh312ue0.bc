@@ -75,6 +75,16 @@
 |*
 |* ID: ISGEC01170,Prasanna Bhuyan, 07-03-2019, VRC B61U a7 isg
 |* Quantity adding not to be done if calling from Receipt Correction session 'whinh3121s000'
+|*
+|* ID: ISGEC01196, Arun Chauhan, 07-08-2019, VRC B61U a7 isg
+|* Tolerrance to be handeled in sanction
+|* Insert and upate  ta tdisg230
+|*
+|* ID: GH304CR000, RAvi Kumar, 15-04-2020
+|* To allow Previous Months Entries in Warehouse Receipts 
+|*
+|* ID: GH309CR609, RAvi Kumar, 27-04-2020
+|* Warehouse receipt confirmation in back date should be restricted, uncomment Github GH304CR000
 |******************************************************************************
 #ident "@(#)ISG001012	Manish Kumar, IT0303, 20/02/2014 VRC B61U a7 live"
 #ident "@(#)ISG001041	Abhishek Singh, IT0352, 04/06/2014 VRC B61U a7 live"
@@ -113,6 +123,8 @@ table	ttdisg030
 table	ttdisg026
 table	twhinh200					|#ISGEC018001.sn
 table	twhinh220					|#ISGEC018001.en
+table 	ttdisg231					|ISGEC01196.n
+table 	ttdisg232					|ISGEC01196.n
 
 extern	domain	tcorno	whinh301.micn
 | extern	domain	tcyesno	whinh301.lmcn
@@ -138,6 +150,7 @@ extern	domain	tcpono		receipt.line
 #include <bic_dal>
 #include "itdisgdll0003"
 #pragma used dll ottstpapihand
+#include "itcmcs2000"		|ISGEC01196.n
 
 function extern long ue.before.before.save.object(long mode)
 {
@@ -208,7 +221,7 @@ function extern long ue.before.before.save.object(long mode)
 		endselect
 		if whinh310.cwar <> whinh312.cwar	then
 			dal.set.error.message("@Receipt cannot be linked, as Warehouse do not match at Header & Line levels. Please amend PO & update the same.")
-			return(DALHOOKERROR)
+			return(DALHOOKERROR)		
 		endif											|ISGEC018001.en
 		
 		|#sujeet.4
@@ -618,9 +631,9 @@ function extern long ue.after.before.save.object(long mode)
 					recp_date = utc.num()
 					return_value = check.header.date()
  					if return_value = 1 then
-  						dal.set.error.message("@ Receipt date should not be less than current date")
+  						dal.set.error.message("@ Receipt date should not be less than current date")	|GH304CR000.com.s
   						show.dal.messages(MSG.ALL)
-  						return(DALHOOKERROR)
+  						return(DALHOOKERROR)								|GH304CR000.com.e
  					endif
 					whinh312.ardt = whinh310.crdt
 					
@@ -630,7 +643,7 @@ function extern long ue.after.before.save.object(long mode)
  						result =  sprintf$("%D(%02d/%02m/%04Y)", o.tdisg831.cind)
  						dal.set.error.message("@ Receipt date should be equal to commercial invoice date %s",result)
  						show.dal.messages(MSG.ALL)
- 						return(DALHOOKERROR)
+ 						return(DALHOOKERROR)			
 					endif
 					whinh312.ardt = whinh310.crdt
 				endif	
@@ -644,9 +657,9 @@ function extern long ue.after.before.save.object(long mode)
 					recp_date = utc.num()
 					return_value = check.header.date() 
  					if return_value = 1 then
-  						dal.set.error.message("@Receipt date should not be less than current date")
+  						dal.set.error.message("@Receipt date should not be less than current date")		|GH304CR000.com.s
   						show.dal.messages(MSG.ALL)
-  						return(DALHOOKERROR)
+  						return(DALHOOKERROR)									|GH304CR000.com.e
  					endif
 				else
 | 					recp_date = tdisg831.ivdt				|ISGEC01087.O
@@ -725,6 +738,11 @@ function extern long ue.after.after.save.object(long mode)
 			|** data not saved to whisg313
 			return(DALHOOKERROR)
 		endif
+		
+		if not insert.and.update.tdisg230()  then		 |#ISGEC01196.sn
+			show.dal.messages(MSG.ALL)
+			return(DALHOOKERROR)
+		endif							|#ISGEC01196.en
 		break
 	case DAL_UPDATE:
 		if not update.whisg312() then
@@ -733,6 +751,10 @@ function extern long ue.after.after.save.object(long mode)
 			return(DALHOOKERROR)
 		endif
 		
+		if not insert.and.update.tdisg230()  then		 |#ISGEC01196.sn
+			show.dal.messages(MSG.ALL)
+			return(DALHOOKERROR)
+		endif							|#ISGEC01196.en
 		break
 	endcase
 	return(0)
@@ -1808,4 +1830,204 @@ function process.warehouse.order()
 
 									|#ISGEC018001.en
 
-				
+						|#ISGEC01196.sn
+function boolean insert.and.update.tdisg230()
+{
+	long ret_val
+	domain	tccprj		v.cprj
+	domain	tppdm.cspa	v.cspa
+	domain	tcqnty		v.qoor,v.pric
+	domain	tcamnt		o.amnt
+	domain	tcamnt		exce.qnty
+	v.cprj = ""
+	v.cspa = ""
+	o.amnt = 0.00
+	v.qoor = 0.00
+	v.pric = 0.00
+	exce.qnty = 0.00
+	
+	select	tdisg231.stat,
+		tdisg231.rqno
+	from	tdisg232,tdisg231
+	where	tdisg232._index2 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+	and 	tdisg231._index1 = {tdisg232.rqno,tdisg232.rcno}
+	and 	tdisg231.stat in (2,3)
+	as set with 1 rows
+	selectdo
+		dal.set.error.message("whisg231.mess1",tdisg231.rqno,enum.descr$("tdisg.rqno",tdisg231.stat),whinh312.orno,whinh312.pono,whinh312.seqn)
+		return(false)
+	selectempty
+		
+		get.project.element(
+				whinh312.orno,
+				whinh312.pono,
+				whinh312.seqn,
+				v.cprj,
+				v.cspa,
+				v.qoor,
+				v.pric
+				)
+		get.exceed.qunatity(
+				whinh312.orno,
+				whinh312.pono,
+				whinh312.seqn,
+				exce.qnty
+				)
+		if etol(whinh312.oorg) = 80 and exce.qnty > v.qoor then
+			select	tdisg230.*
+			from	tdisg230 for update
+			where	tdisg230._index2 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+			selectdo
+				o.amnt = (exce.qnty - v.qoor) * v.pric 
+				dal.change.object("tdisg230")
+				dal.set.field("tdisg230.orno",whinh312.orno)
+				dal.set.field("tdisg230.pono",whinh312.pono)
+				dal.set.field("tdisg230.seqn",whinh312.seqn)
+				dal.set.field("tdisg230.qrcr",whinh312.qrcr)
+				dal.set.field("tdisg230.qapr",whinh312.qapr)
+				dal.set.field("tdisg230.cprj",v.cprj)
+				dal.set.field("tdisg230.cspa",v.cspa)
+				dal.set.field("tdisg230.exqt",(exce.qnty - v.qoor))
+				dal.set.field("tdisg230.exam",o.amnt)
+				ret_val = dal.save.object("tdisg230")
+				if ret_val  <> 0 then
+					return(false)
+				endif
+				update.in.tdisg232()  	
+			selectempty
+				o.amnt = (exce.qnty - v.qoor) * v.pric 
+				dal.new.object("tdisg230")
+				dal.set.field("tdisg230.rcno",whinh312.rcno)
+				dal.set.field("tdisg230.rcln",whinh312.rcln)
+				dal.set.field("tdisg230.orno",whinh312.orno)
+				dal.set.field("tdisg230.pono",whinh312.pono)
+				dal.set.field("tdisg230.seqn",whinh312.seqn)
+				dal.set.field("tdisg230.qrcr",whinh312.qrcr)	
+				dal.set.field("tdisg230.qapr",whinh312.qapr)
+				dal.set.field("tdisg230.cprj",v.cprj)
+				dal.set.field("tdisg230.cspa",v.cspa)
+				dal.set.field("tdisg230.exqt",(exce.qnty - v.qoor))
+				dal.set.field("tdisg230.exam",o.amnt)
+				ret_val = dal.save.object("tdisg230")
+				if ret_val <> 0 then
+					return(false)
+				endif
+			endselect
+		else
+			select	tdisg230.*
+			from	tdisg230 for update
+			where	tdisg230._index2 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+			selectdo
+				RETIFNOK(dal.destroy.object("tdisg230"))
+				select	tdisg231.*
+				from	tdisg231 for update
+				where	tdisg231.rcno = {:whinh312.rcno}
+				and 	tdisg231.stat = 1 
+				selectdo
+					RETIFNOK(dal.destroy.object("tdisg231"))
+				endselect
+			endselect
+			
+		endif
+	endselect
+	return(true)
+
+}
+
+function  get.project.element(
+					domain	tcorno		i.orno,
+					domain	tcpono		i.pono,
+					domain	tcpono		i.seqn,
+				ref	domain	tccprj		o.cprj,
+				ref 	domain	tppdm.cspa	o.cspa,
+				ref 	domain	tcqnty		o.qoor,
+				ref 	domain	tcqnty		o.pric
+				)
+	{
+	select 	tdpur401.cprj:o.cprj,
+		tdpur401.cspa:o.cspa,
+		tdpur401.qoor:o.qoor,
+		tdpur401.pric:o.pric
+	from	tdpur401
+	where	tdpur401._index1 = {:i.orno,:i.pono,:i.seqn}
+	as set with 1 rows
+	selectdo
+	endselect
+}
+									
+function long update.in.tdisg232()
+{
+	
+	domain	tccprj		o.cprj
+	domain	tcorno		o.vers
+	domain	tcamnt		o.amnt
+	domain	tcamnt		o.avai
+	domain	tcamnt		o.qoor,o.pric,exce.qnty
+	long 			ret_val
+	o.cprj = ""
+	o.vers = ""
+	o.avai = 0.00
+	o.amnt = 0.00
+	o.qoor = 0.00
+	o.amnt = 0.00
+	exce.qnty = 0.00
+	
+	get.exceed.qunatity(
+			whinh312.orno,
+			whinh312.pono,
+			whinh312.seqn,
+			exce.qnty
+			)
+	
+	select	tdisg232.amnt,
+		tdisg232.exqt,
+		tdisg232.rcno
+	from	tdisg232 for update
+	where	tdisg232._index2 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+	selectdo
+		select	tdisg231.rcno,
+			tdisg231.rqno
+		from	tdisg231
+		where	tdisg231.rcno = {:tdisg232.rcno}
+		and 	tdisg231.stat = 1
+		selectdo
+			select 	tdpur401.cprj:o.cprj,
+				tdpur401.qoor:o.qoor,
+				tdpur401.pric:o.pric
+			from	tdpur401
+			where	tdpur401._index1 = {:whinh312.orno,:whinh312.pono,:whinh312.seqn}
+			as set with 1 rows
+			selectdo
+				o.amnt = (exce.qnty - o.qoor) * o.pric 
+
+				dal.change.object("tdisg232")
+				dal.set.field("tdisg232.amnt",o.amnt)
+				dal.set.field("tdisg232.exqt",(exce.qnty - o.qoor))
+				ret_val = dal.save.object("tdisg232")
+				if ret_val <> 0 then
+					return(DALHOOKERROR)
+				endif
+
+			endselect
+		endselect
+	endselect
+	return(0)	
+}
+								
+
+function get.exceed.qunatity(		
+			domain	tcorno		i.orno,
+			domain	tcpono		i.pono,
+			domain	tcpono		i.seqn,
+		ref	domain	tcamnt		exed.qnty)
+{	
+	select sum(whinh312.qrcr):exed.qnty
+	from	whinh312
+	where 	whinh312._index4 = {80,:i.orno,:i.pono,:i.seqn}
+	selectdo
+	selectempty
+		exed.qnty = 0.00
+	endselect
+	
+}						
+												|#ISGEC01196.en				
