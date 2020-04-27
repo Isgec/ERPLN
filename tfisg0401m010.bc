@@ -35,6 +35,9 @@
 |*
 |* ID: GH305CR575, RAvi Kumar, 21-04-2020
 |* Modification in report Payment Details IR Wise
+|*
+|* ID: GH308CR000, RAvi Kumar, 27-04-2020
+|* IR140296-Bugfixing in Payment detail IRwise for intercompany transactions
 |****************************** declaration section ***************************
 declaration:
 #include<bic_desktop>
@@ -378,8 +381,8 @@ function write.data()
 		sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),						|13	Purchase Booking Date/Ptr Date
 		sprintf$("%f",tfacp200.amth(1)),							|14	Invoice Amount
 		sprintf$("%f",ret.amnt),								|15	Retention Amount
-		sprintf$("%f",link.amth),								|16	Paid Amount
-		sprintf$("%f",assig.amth),								|17	Assigned Amount
+		sprintf$("%f", abs(link.amth)),								|16	Paid Amount			|GH308CR000.a
+		sprintf$("%f", abs(assig.amth)),								|17	Assigned Amount		|GH308CR000.a
 		sprintf$("%f",abs(tfacp200.amth(1)) - abs(link.amth) -abs(assig.amth)),		|18	Balance Include Retention
 		sprintf$("%s",trim$(reason.code)),							|19	Reason Amount
 		sprintf$("%s",trim$(pay.mode)),							|19.1	Payment Mode	|ISGEC01199.n
@@ -428,9 +431,9 @@ function write.total()
 		sprintf$(""),								|13	Purchase Booking Date/Ptr Date
 		sprintf$("%f",total_invoice_amount),					|14	Invoice Amount
 		sprintf$("%f",total_reten_amount),					|15	Retention Amount
-		sprintf$("%f",total_paid_amount),					|16	Paid Amount
-		sprintf$("%f",total_assign_amount),					|17	Assigned Amount
-		sprintf$("%f",total_bal_inc_reten),					|18	Balance Include Retention
+		sprintf$("%f", abs(total_paid_amount)),					|16	Paid Amount
+		sprintf$("%f", abs(total_assign_amount)),					|17	Assigned Amount		|GH308CR000.a.abs
+		sprintf$("%f",total_bal_inc_reten),					|18	Balance Include Retention	|GH308CR000.a.abs
 		sprintf$(""),								|19	Reason Amount
 		sprintf$(""),								|19.1	Payment Mode	|ISGEC01199.n
 		sprintf$(""),								|20	Cheque
@@ -445,7 +448,7 @@ function read.main.table()
 {
 
 	domain	tfacp.tpay	dummy.tpay
-
+		long		flag.comp.cng			|GH308CR000.a
 								|#ISGEC001173.sn
 	
 	
@@ -455,6 +458,7 @@ function read.main.table()
 | 	hours = 0
 | 	minutes = 0
 | 	seconds=  0
+	flag.comp.cng = 0					|GH308CR000.a
 	
 	num.to.date(irdt.f, yearno, monthno, month_dayno)
 | 	irdt.f = date.to.utc(yearno, monthno, month_dayno, 00, 00, 00)		|#ISGEC001220.o
@@ -491,8 +495,8 @@ function read.main.table()
 		where 	tdpur400._index1 = {:tfisg001.orno}
 		and	tdpur400.fdpt refers to tcmcs065
 		selectdo
-			switch.to.company(tcmcs065.comp)
-	
+| 			switch.to.company(tcmcs065.comp)				|GH308CR000.com
+			flag.comp.cng = 1						|GH308CR000.a	
 		endselect								|ISGEC001232.en    
 |  	
 		
@@ -580,6 +584,11 @@ function read.main.table()
 		tfacp200.docd = 0
 		
 		get_gross_amount()		|ISGEC01023.n
+		
+		if flag.comp.cng = 1 then				|GH308CR000.a.s
+			switch.to.company(tcmcs065.comp)
+		endif
+		
 		select	tfacp100.*			|#ISGEC01023.sn
 		from	tfacp100
 		where	tfacp100._index1 = {:tfisg001.irno}
