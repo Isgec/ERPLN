@@ -1,0 +1,399 @@
+|******************************************************************************
+|* tdisg1540m000  0  VRC B61U a7 isg 
+|* Superprocure
+|* Ravi Kumar                    
+|* 2020-04-13
+|******************************************************************************
+|* Main table tdisg140 Superprocure, Form Type 1
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttdisg140 | Superprocure
+  table	ttccom001
+  table	ttccom100
+  table	ttppdm600
+  table	ttcmcs065
+  table	ttdpur400
+  table	ttdpur401
+  table	ttctax400
+  
+	extern	domain	tcorno	orno.org
+			string	error.msg(500)
+			
+#include<bic_dam>
+#include<bic_text>
+
+|****************************** program section ********************************
+before.program:
+	query.extend.where("tdisg140.genp = tcyesno.yes and tdisg140.proc = tcyesno.no", EXTEND_OVERWRITE)
+
+
+|****************************** group section **********************************
+form.all:
+init.form:
+	set.checked.command("show.all", 0)
+	
+|****************************** choice section **********************************
+choice.generate:
+before.choice:
+	if tdisg140.proc = tcyesno.yes then
+		message("Already Processed")
+		choice.again()
+	endif
+	
+	if tdisg140.genp = tcyesno.no then
+		message("PO should not generate")
+		choice.again()
+	endif
+	
+on.choice:
+	if (ask.enum("tdisg154000000", tcyesno.no, tdisg140.load)) = tcyesno.yes then
+		
+		generate.po()
+		
+		if not isspace(orno.org) then
+			message("Process Completed, PO " & trim$(orno.org) & " is generated")
+		endif
+	else
+		choice.again()
+	endif
+	
+
+functions:
+function extern show.all()
+{
+	query.extend.where("", EXTEND_OVERWRITE)
+	rebuild.query()   
+	set.checked.command("show.all", 1)
+}
+
+function generate.po()
+{
+	domain	tclogn	curr.logn
+	domain	tcncmp	comp
+	domain	tcorno	orno.series
+	
+	curr.logn = logname$
+	comp = get.compnr()
+	orno.org = ""
+	
+	if comp = 200 then
+		orno.series = "P601"
+	else
+		if comp = 700 then
+			orno.series = "P701"
+		else
+			if comp = 651 then
+				orno.series = "P651"
+			endif
+		endif
+	endif
+	
+	select	tccom001.emno
+	from	tccom001
+	where	tccom001._index4 = {:curr.logn}
+	as set with 1 rows
+	selectdo 
+	selectempty
+		tccom001.emno = ""
+	endselect
+	
+	select	tdisg140.*
+	from	tdisg140
+	where	tdisg140._index1 = {:tdisg140.load}
+	as set with 1 rows
+	selectdo
+		select	tccom100.cadr
+		from	tccom100
+		where	tccom100._index1 = {:tdisg140.tran}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom100.cadr = ""
+		endselect
+		
+		select	tppdm600.ncmp
+		from	tppdm600
+		where	tppdm600._index1 = {:tdisg140.cprj}
+		as set with 1 rows
+		selectdo
+			select	tcmcs065.cwoc
+			from	tcmcs065
+			where	tcmcs065.comp = :tppdm600.ncmp
+			and	tcmcs065.typd = tctypd.pur.office
+			as set with 1 rows
+			selectdo
+			endselect
+		endselect
+	
+		if dal.new.object("tdpur400") = 0 then			
+			dal.set.field("tdpur400.orno", orno.series)
+			dal.set.field("tdpur400.otbp", tdisg140.tran)
+			dal.set.field("tdpur400.stbp", tdisg140.tran)
+			dal.set.field("tdpur400.otad", tccom100.cadr)
+			dal.set.field("tdpur400.sfad", tccom100.cadr)
+			dal.set.field("tdpur400.odat", utc.num())
+			dal.set.field("tdpur400.cotp", "DL1")
+			dal.set.field("tdpur400.cofc", tcmcs065.cwoc)
+			dal.set.field("tdpur400.cdf_qapa", tcyesno.no)
+			dal.set.field("tdpur400.cpay", "001")
+			dal.set.field("tdpur400.ccon", tccom001.emno)
+			if dal.save.object("tdpur400") = 0 then
+				commit.transaction()
+				orno.org = tdpur400.orno
+				generate.po.line(orno.org)
+				select	tdisg140.orno,
+					tdisg140.proc
+				from	tdisg140 for update
+				where	tdisg140._index1 = {:tdisg140.load}
+				as set with 1 rows
+				selectdo
+					tdisg140.proc = tcyesno.yes
+					tdisg140.orno = orno.org
+					db.update(ttdisg140, db.retry)
+					commit.transaction()
+				endselect
+			else
+				abort.transaction()
+				dal.get.error.message(error.msg)
+				message(error.msg)
+			endif
+		endif
+	endselect
+}
+
+
+function generate.po.line(	domain	tcorno	orno.po.line)
+{
+	domain	tcitem	item
+	domain	tcncmp	comp
+	
+	comp = get.compnr()
+	
+	if comp = 200 then
+		item = "         ACFC001"
+	else
+		if comp = 700 then
+			item = "         ACFR001"
+		endif
+	endif
+	
+	select	tdpur400.cdf_qapa
+	from	tdpur400 for update
+	where	tdpur400._index1 = {:orno.po.line}
+	as set with 1 rows
+	selectdo
+		if dal.change.object("tdpur400") = 0 then
+			dal.set.field("tdpur400.cdf_qapa", tcyesno.no)
+			if dal.save.object("tdpur400") = 0 then
+				commit.transaction()
+			else
+				abort.transaction()
+				dal.get.error.message(error.msg)
+				message(error.msg)
+			endif
+		endif
+	endselect
+	
+	select	tdpur401.orno
+	from	tdpur401
+	where	tdpur401._index1 = {:orno.po.line, 1, 1}
+	as set with 1 rows
+	selectdo
+	selectempty
+		select	tppdm600.rsac
+		from	tppdm600
+		where	tppdm600._index1 = {:tdisg140.cprj}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tppdm600.rsac = ""
+		endselect
+		
+		select	tctax400.seqn.l
+		from	tctax400
+		where	tctax400._index2 = {:tdisg140.tgst, :tdisg140.tran}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tctax400.seqn.l = 0
+		endselect
+		
+		if dal.new.object("tdpur401") = 0 then
+			dal.set.field("tdpur401.orno", orno.po.line)
+			dal.set.field("tdpur401.pono", 1)
+			dal.set.field("tdpur401.sqnb", 1)
+			dal.set.field("tdpur401.item", item)
+			dal.set.field("tdpur401.qoor", tdisg140.amnt)
+			dal.set.field("tdpur401.pric", 1)
+			dal.set.field("tdpur401.cprj", tdisg140.cprj)
+			dal.set.field("tdpur401.cspa", "99050500")
+			dal.set.field("tdpur401.cact", tppdm600.rsac)
+			dal.set.field("tdpur401.rnsb.l", tctax400.seqn.l)
+			if dal.save.object("tdpur401") = 0 then
+				commit.transaction()
+				create.text(orno.po.line)
+				generate.po.line.ex(orno.po.line)
+				generate.document.req(orno.po.line)
+				commit.transaction()
+			else
+				abort.transaction()
+				dal.get.error.message(error.msg)
+				message(error.msg)
+			endif
+		endif
+	endselect
+}
+
+function generate.po.line.ex(	domain	tcorno	orno.po.line.ex)
+{
+	select	tdmsl503.orno
+	from	tdmsl503
+	where	tdmsl503._index1 = {:orno.po.line.ex, 1}
+	as set with 1 rows
+	selectdo
+	selectempty
+		select	tdpur401.orno,
+			tdpur401.rnsb.l,
+			tdpur401.rnso.l,
+			tdpur401.cvat
+		from	tdpur401
+		where	tdpur401._index1 = {:orno.po.line.ex, 1 ,1}
+		as set with 1 rows
+		selectdo
+			if dal.new.object("tdmsl503") = 0 then
+				dal.set.field("tdmsl503.orno", orno.po.line.ex)
+				dal.set.field("tdmsl503.pono", 1)
+				dal.set.field("tdmsl503.typo", tpisg.cont.typ.services)
+				dal.set.field("tdmsl503.gstn.b", tdpur401.rnsb.l)
+				dal.set.field("tdmsl503.gstn.c", tdpur401.rnso.l)
+				dal.set.field("tdmsl503.cvat", tdpur401.cvat)
+				if dal.save.object("tdmsl503") = 0 then
+					commit.transaction()
+				else
+					abort.transaction()
+					dal.get.error.message(error.msg)
+					message(error.msg)
+				endif
+			endif
+		endselect
+	endselect
+}
+
+
+function generate.document.req(	domain	tcorno	orno.po.line.ex)
+{
+	long	i
+	domain	tfgld.ttyp	docn
+	
+	for i = 1 to 3
+		if i = 1 then
+			docn = "V08"
+		else
+			if i = 2 then
+				docn = "V09"
+			else
+				if i = 3 then
+					docn = "V21"
+				endif
+			endif
+		endif
+		
+		select	tdisg001.*
+		from	tdisg001
+		where	tdisg001._index1 = {:orno.po.line.ex, 0, :i}
+		selectdo
+		selectempty
+			if dal.new.object("tdisg001") = 0 then
+				dal.set.field("tdisg001.orno", orno.po.line.ex)
+				dal.set.field("tdisg001.vrsn", 0)
+				dal.set.field("tdisg001.pono", i)
+				dal.set.field("tdisg001.docn", docn)
+				dal.set.field("tdisg001.catg", tdisg.dcat.information)
+				dal.set.field("tdisg001.nods", 30)
+				dal.set.field("tdisg001.bdat", tdisg.bdat.del.dt)
+				dal.set.field("tdisg001.pdat", 0)
+				dal.set.field("tdisg001.pmtl", 1)
+				if dal.save.object("tdisg001") = 0 then
+				else
+					dal.get.error.message(error.msg)
+					message(error.msg)
+				endif
+			endif
+		endselect
+	endfor	
+}
+
+function domain	tcmcs.str500m	get.text.line()
+{
+	domain	tcmcs.str500m	str.text
+	domain	tcdsca	to.state, from.state
+	
+| 	select	tdpur401.ccty
+| 	from	tdpur401
+| 	where	tdpur401._index1 = {:orno.org, 1, 1}
+| 	as set with 1 rows
+| 	selectdo
+| 	selectempty
+| 		tdpur401.ccty = ""
+| 	endselect
+	
+| 	select	tcmcs143.dsca:from.state
+| 	from	tcmcs143
+	|where	tcmcs143._index1 = {:tdpur401.ccty, :tdisg140.fcst}
+| 	where	tcmcs143.cdf_scod = :tdisg140.fcst
+| 	as set with 1 rows
+| 	selectdo
+| 	selectempty
+| 		from.state = ""
+| 	endselect
+| 	
+| 	select	tcmcs143.dsca:to.state
+| 	from	tcmcs143
+| 	where	tcmcs143.cdf_scod = :tdisg140.tcst
+| 	as set with 1 rows
+| 	selectdo
+| 	selectempty
+| 		to.state = ""
+| 	endselect
+	
+	str.text = "Load no - " & trim$(str$(tdisg140.load)) & ", "
+	str.text = str.text & "Vehicle Request no - " & trim$(tdisg140.ivrn) & ", "
+	str.text = str.text & "From State - " & trim$(tdisg140.fcst) & ", "
+	str.text = str.text & "To state - " & trim$(tdisg140.tcst) & ", "
+	str.text = str.text & "Type of Vehicle - " & trim$(tdisg140.type) & ", "
+	str.text = str.text & "Weight - " & trim$(str$(tdisg140.wght)) & ", "
+	str.text = str.text & "Size of Vehicle - " & trim$(tdisg140.size) & ", "
+	str.text = str.text & "No. of Vehicle - " & trim$(str$(tdisg140.novc)) & ", "
+	str.text = str.text & "Amount - " & trim$(str$(tdisg140.amnt))
+	
+	return(str.text)
+}
+
+function create.text(domain	tcorno	orno.po.line.text)
+{
+	
+	string	temp.file1(500), text(300), kw1(17),kw2(17),kw3(17),kw4(17)
+	long	write.return, input.file, seq
+	domain	tcmcs.str500m	buffer.string
+	
+	select	tdpur401.txta
+	from	tdpur401 for update
+	where	tdpur401._index1 = {:orno.po.line.text, 1, 1}
+	as set with 1 rows
+	selectdo
+		buffer.string = get.text.line()
+		temp.file1 = creat.tmp.file$(bse.tmp.dir$())
+		temp.file1 = strip$(temp.file1)
+		input.file = seq.open(temp.file1,"w")
+		seq = seq.puts(buffer.string, input.file)
+		seq = seq.close(input.file)
+		
+		write.return = text.write("tdpur401.txta", "2", kw1, kw2, kw3, kw4, "text", "", temp.file1)
+		db.update(ttdpur401, db.retry)
+		seq = seq.unlink(temp.file1)
+		commit.transaction()
+	endselect
+}
