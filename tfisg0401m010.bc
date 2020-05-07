@@ -38,6 +38,9 @@
 |*
 |* ID: GH308CR000, RAvi Kumar, 27-04-2020
 |* IR140296-Bugfixing in Payment detail IRwise for intercompany transactions
+|*
+|* ID: GH310CR610, RAvi Kumar, 02-05-2020
+|* Modification in Payment detail IR wise by accounts
 |****************************** declaration section ***************************
 declaration:
 #include<bic_desktop>
@@ -66,6 +69,7 @@ declaration:
   table		ttcmcs065				|ISGEC001232.n    
   table 	ttdmsl400				|ISGEC01199.n
   table		ttppdm600				|ISGEC01199.n	
+  table		ttfisg207				|GH310CR610.a
   
 	extern	domain	tccom.bpid	bpid.f
 	extern	domain	tccom.bpid	bpid.t
@@ -123,6 +127,8 @@ declaration:
 	extern	domain	tcmcs.str10		pay.mode	|ISGEC01199.n
 	extern domain	tfcmg.cheq		o.cheq		|ISGEC01199.n
 	extern	domain	tcibd.sern		var.temp	|ISGEC01201.n
+	extern	domain	tclogn			proc.f, proc.t	|GH310CR610.a
+	extern	domain	tcyesno			recv		|GH310CR610.a
 	
   
 |****************************** program section ********************************
@@ -176,6 +182,10 @@ when.field.changes:
 field.irdt.f:
 when.field.changes:
 	irdt.t = irdt.f
+	
+field.proc.f:						|GH310CR610.a
+when.field.changes:
+	proc.t = proc.f
 	
 |****************************** function section ******************************
 
@@ -248,7 +258,9 @@ function generate.header()
 | 			sprintf$("Purchase Order From " & orno.f & " To " & orno.t))			
 | 		line = strip$(shiftl$(line))
 | 		seq.puts(line, stat.fp)						|ISGEC01199.eo
-		
+
+
+		header.INR.type()					|GH310CR610.a
 		line =concat$("	", 
 			sprintf$("IR No."),				|0.1	|ISGEC01199.n
 			sprintf$("IR Date"),				|1
@@ -282,7 +294,8 @@ function generate.header()
 			sprintf$("Retention Amount(With Reason Codes)"),|19
 			sprintf$("Payment Mode"),			|19.1	 |ISGEC01199.n
 			sprintf$("Cheque/RTGS"),				|20
-			sprintf$("Cheque/RTGS Date"))			|21
+			sprintf$("Cheque/RTGS Date"),			|21
+			sprintf$("Processor"))				|22		|GH310CR610.a
 		line = strip$(shiftl$(line))
 		seq.puts(line, stat.fp)
 	endif
@@ -387,8 +400,10 @@ function write.data()
 		sprintf$("%s",trim$(reason.code)),							|19	Reason Amount
 		sprintf$("%s",trim$(pay.mode)),							|19.1	Payment Mode	|ISGEC01199.n
 		sprintf$("%s",tfcmg110.cheq),								|20	Cheque
-		sprintf$("%u(%02d/%02m/%04Y) %U(%02h%x%02m%x%02s %a)",tfcmg100.rdat,tfcmg100.rdat))	|21	Cheque Date
+		sprintf$("%u(%02d/%02m/%04Y) %U(%02h%x%02m%x%02s %a)",tfcmg100.rdat,tfcmg100.rdat),	|21	Cheque Date
 | 		sprintf$("%s",tccom122.cpay))								|22
+		sprintf$("%s",trim$(tfisg207.proc)))								|22	|GH310CR610.a
+		
 		
 		line = strip$(shiftl$(line))
 		seq.puts(line, stat.fp)
@@ -450,7 +465,8 @@ function read.main.table()
 	domain	tfacp.tpay	dummy.tpay
 		long		flag.comp.cng			|GH308CR000.a
 								|#ISGEC001173.sn
-	
+
+	domain	tfacp.stin	stin.f, stin.t				|GH310CR610.a
 	
 	yearno = 0
 	monthno = 0
@@ -475,7 +491,20 @@ function read.main.table()
 	total_paid_amount = 0
 	total_assign_amount = 0			|ISGEC001214.en
 
-	
+	if recv = tcyesno.yes then						|GH310CR610.a.s
+		stin.f = tfacp.stin.open
+		stin.t = tfacp.stin.open
+	else
+		stin.f = tfacp.stin.open
+		stin.t = tfacp.stin.cancelled
+	endif
+										|GH310CR610.a.e
+										
+	select	tfisg207.*							|GH310CR610.a
+	from	tfisg207
+	where	tfisg207._index1 inrange {:cprj.f} and {:cprj.t}
+	and	tfisg207.proc inrange :proc.f and :proc.t
+ 	selectdo
 	select 	tfisg001.*,
 		tccom100.nama
 	from	tfisg001,tccom100
@@ -484,12 +513,19 @@ function read.main.table()
 	and	tfisg001.irdt inrange :o.irdt.f and :o.irdt.t					|#ISGEC001220.n
 | 	and	tfisg001.cust inrange :bpid.f and :bpid.t
 	and	tfisg001.bpid inrange :bpid.f and :bpid.t
-	and	tfisg001.cprj inrange :cprj.f and :cprj.t
+| 	and	tfisg001.cprj inrange :cprj.f and :cprj.t
+	and	tfisg001.cprj = :tfisg207.proj					|GH310CR610.a
 	and 	tfisg001.orno inrange :orno.f and :orno.t
 | 	and	tfisg001.cust refers to tccom100
 	and	tfisg001.bpid refers to tccom100
 	order by tfisg001.irdt
 	selectdo
+		select	tfacp100.stin,							|GH310CR610.a
+			tfacp100.ninv
+		from	tfacp100
+		where	tfacp100._index1 = {:tfisg001.irno}
+		and	tfacp100.stin inrange {:stin.f} and {:stin.t}
+		selectdo
 		select	tdpur400.orno,tdpur400.fdpt,tcmcs065.comp			|ISGEC001232.sn     
 		from	tdpur400,tcmcs065
 		where 	tdpur400._index1 = {:tfisg001.orno}
@@ -807,6 +843,8 @@ function read.main.table()
 		
 		
 		switch.to.company(new_compnr)       |ISGEC001232.n  
+	endselect
+	endselect
 	endselect
 	write.total()
  								|#ISGEC001173.en
@@ -1336,3 +1374,37 @@ function get_gross_fromservice()
 			gross_amnt = 0
 	endselect
 }
+
+function header.INR.type()					|GH310CR610.a.s
+{
+	string	header.type(40)
+	
+	header.type = ""
+	if recv = tcyesno.yes then
+		header.type = "Only Received IRNs"
+	else
+		header.type = "All IRNs"
+	endif
+	
+	line = concat$("	",
+		sprintf$(""),					|1	
+		sprintf$(""),					|2
+		sprintf$(""),					|3	
+		sprintf$(""),					|4
+		sprintf$(""),					|5
+		sprintf$(""),					|6 
+		sprintf$("%s", trim$(header.type)),		|7
+		sprintf$(""),					|8
+		sprintf$(""),					|9
+		sprintf$(""),					|10
+		sprintf$(""),					|11
+		sprintf$(""),					|12	
+		sprintf$(""),					|13
+		sprintf$(""),					|14
+		sprintf$(""))					|15
+		line = strip$(shiftl$(line))
+		seq.puts(line, stat.fp)
+		
+}
+								|GH310CR610.a.e
+
