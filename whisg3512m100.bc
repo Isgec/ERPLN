@@ -15,7 +15,7 @@ declaration:
   table	ttdisg832
   table	ttfacp100
    
-	domain	tcncmp			curr.comp
+	domain	tcncmp			curr.comp, curr.comp.o
 	domain	tcmcs.str1		p.char, c.char
 	domain	tcmcs.str30		i.host	
 	domain	tclogn			o.user
@@ -44,7 +44,17 @@ before.program:
 	i.host =  toupper$(i.host)
 	i.host = trim$(i.host)
 	
-	curr.comp = get.compnr()
+	curr.comp.o = get.compnr()
+	
+	select	tcemm030.lcmp:curr.comp
+	from	tcemm030
+	where	tcemm030.fcmp = :curr.comp.o
+	as set with 1 rows
+	selectdo
+	selectempty
+		curr.comp = 0
+	endselect
+	
 	p.char = ""
 	c.char = ""
 	handle.string = ""
@@ -103,43 +113,51 @@ before.program:
 				if tfacp100.stin <> tfacp.stin.open then
 					p.char = "n"
 				else
-					select	whinh310.rcno:rcno.ir.no
-					from	whinh310
-					where	whinh310.dino = {:irno.str}
-					as set with 1 rows
-					selectdo
-					selectempty
-						select	tdpur406.rcno:rcno.ir.no
-						from	tdpur406
-						where	tdpur406.dino = {:irno.str}
-						as set with 1 rows
-						selectdo
-						selectempty
-							rcno.ir.no = ""
-						endselect
-					endselect
-					
-					select	tdisg832.edrn
-					from	tdisg832
-					where	tdisg832._index4 = {:rcno.ir.no}
-					as set with 1 rows
-					selectdo
-						select	tdisg831.stat
-						from	tdisg831
-						where	tdisg831._index1 = {:tdisg832.edrn}
-						and	tdisg831.stat = tdisg.stat.process
-						as set with 1 rows
-						selectdo
-							p.char = "n"
-						selectempty
-							p.char = "y"
-						endselect
-					selectempty
-						p.char = "y"
-					endselect					
+| 					select	whinh310.rcno:rcno.ir.no
+| 					from	whinh310
+| 					where	whinh310.dino = {:irno.str}
+| 					as set with 1 rows
+| 					selectdo
+| 					selectempty
+| 						select	tdpur406.rcno:rcno.ir.no
+| 						from	tdpur406
+| 						where	tdpur406.dino = {:irno.str}
+| 						as set with 1 rows
+| 						selectdo
+| 						selectempty
+| 							rcno.ir.no = ""
+| 						endselect
+| 					endselect
+| 					
+| 					select	tdisg832.edrn
+| 					from	tdisg832
+| 					where	tdisg832._index4 = {:rcno.ir.no}
+| 					as set with 1 rows
+| 					selectdo
+| 						select	tdisg831.stat
+| 						from	tdisg831
+| 						where	tdisg831._index1 = {:tdisg832.edrn}
+| 						and	tdisg831.stat = tdisg.stat.process
+| 						as set with 1 rows
+| 						selectdo
+| 							p.char = "n"
+| 						selectempty
+| 							p.char = "y"
+| 						endselect
+| 					selectempty
+| 						p.char = "y"
+| 					endselect
+					p.char = "y"
 				endif
 				
 				pass.string = trim$(str$(irno))
+			else
+				if prog.sess = "tfisg1500m100" then
+					import("tfacp100.ninv", irno)
+					
+					p.char = "n"
+					pass.string = trim$(str$(irno))
+				endif
 			endif
 		endif
 	endif
