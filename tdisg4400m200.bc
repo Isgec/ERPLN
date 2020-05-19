@@ -108,7 +108,8 @@ declaration:
 	extern	domain	tcmcs.str10	rep.ipdt			|#ISGECDV001177.n
 		domain	tcmcs.str80	r.rqno				|#Adarsh.28.06.19.n
 		domain	tcmcs.str100	r.apdt				|#Adarsh.28.06.19.n
-	extern	domain	tdparty		rep.prty			|GH306CR608.a
+	extern	domain	tdparty.basis		rep.prty			|GH306CR608.a
+	extern	domain	tcmcs.str15		rep.prty.desc			|GH306CR608.a
 	
 |************** Script Variables ******************
 		domain	tcdate		v.apdt.f
@@ -496,9 +497,15 @@ function read.main.table()
 		as set with 1 rows
 		selectdo
 		selectempty
-			rep.prty = tdparty.high
-		endselect									|GH306CR608.a.e
-	
+			rep.prty = tdparty.basis.empty
+		endselect								
+
+		if rep.prty = tdparty.basis.empty then
+			rep.prty.desc = " "
+		else
+			rep.prty.desc = trim$(enum.descr$("tdparty", rep.prty))
+		endif
+												|GH306CR608.a.e	
 		write.data()
 
 	endselect
@@ -506,6 +513,7 @@ function read.main.table()
 
 function write.data()
 {	
+	
 	line3 =	concat$("	",
 		sprintf$("%s", rep.grid),				|1
 		sprintf$("%s", rep.orno),				|2				
@@ -535,7 +543,7 @@ function write.data()
 		sprintf$("%s", tcmcs041.dsca),				|25			|#ISGEC01151.n
 		sprintf$("%s", r.rqno),					|26			|#Adarsh.28.06.19.n
 		sprintf$("%s", r.apdt),					|27			|#Adarsh.28.06.19.n
-		sprintf$("%s", trim$(enum.descr$("tdparty", rep.prty))))|28			|GH306CR608.a
+		sprintf$("%s", trim$(rep.prty.desc)))|28			|GH306CR608.a
 	line3 = strip$(shiftl$(line3))
 		seq.puts(line3, stat.fp)
 }	
