@@ -1471,8 +1471,10 @@ function get.irno(	domain	tfgld.ttyp	irno.ttyp,						|GH315CR613.a.s
 	rep.irno.str = ""
 	
 	select	tfacp100.ninv:rep.irno
-	from	tfacp100
+	from	tfacp100, tfisg001
 	where	tfacp100._index4 = {:irno.ttyp, :irno.docn}
+	and	tfisg001.ncmp = :ncmp.f
+	and 	tfacp100.ninv refers to tfisg001
 	as set with 1 rows
 	selectdo
 		rep.irno.str = str$(rep.irno)
