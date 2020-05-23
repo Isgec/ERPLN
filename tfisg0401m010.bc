@@ -41,6 +41,10 @@
 |*
 |* ID: GH310CR610, RAvi Kumar, 02-05-2020
 |* Modification in Payment detail IR wise by accounts
+|*
+|* ID: GH316CR617, RAvi Kumar, 23-05-2020
+|* Modifcation in report Payment detail IRN wise
+
 |****************************** declaration section ***************************
 declaration:
 #include<bic_desktop>
@@ -70,6 +74,7 @@ declaration:
   table 	ttdmsl400				|ISGEC01199.n
   table		ttppdm600				|ISGEC01199.n	
   table		ttfisg207				|GH310CR610.a
+  table		ttccom122				|GH316CR617.a
   
 	extern	domain	tccom.bpid	bpid.f
 	extern	domain	tccom.bpid	bpid.t
@@ -273,6 +278,7 @@ function generate.header()
 			sprintf$("Project name"),			|6.1	|ISGEC01199.n
 			sprintf$("Supplier Code"),			|6.2	|ISGEC01199.n
 			sprintf$("Supplier"),				|7
+			sprintf$("Financial Supplier Group"),		|7.0.1	|GH316CR617.a
 			sprintf$("Supplier Invoice No."),		|7.1	|ISGEC01199.n
 			sprintf$("Supplier Invoice Date."),		|7.2	|ISGEC01199.n
 			sprintf$("Supplier Invoice Amount."),		|7.3	|ISGEC01199.n
@@ -316,6 +322,7 @@ function write.reason.code()
 		sprintf$(""),					|6.1	|ISGEC01199.n
 		sprintf$(""),					|6.2	|ISGEC01199.n
 		sprintf$(""),					|7
+		sprintf$(""),					|7.0.1	|GH316CR617.a
 		sprintf$(""),					|7.1	|ISGEC01199.n
 		sprintf$(""),					|7.2	|ISGEC01199.n
 		sprintf$(""),					|7.3	|ISGEC01199.n
@@ -379,6 +386,7 @@ function write.data()
 		sprintf$("%s",trim$(tppdm600.seak)),							|6.1	Project Name	|ISGEC01199.n
 		sprintf$("%s",trim$(tfisg001.bpid)),							|6.2	Supplier Code	|ISGEC01199.n
 		sprintf$("%s",trim$(tccom100.nama)),							|7	Supplier 
+		sprintf$("%s",trim$(tccom122.cfsg)),							|7.0.1	Financial Supplier Group |GH316CR617.a
 		sprintf$("%s",trim$(tfacp100.isup)),							|7.1	Supplier invoice No.	|ISGEC01199.n
 		sprintf$("%D(%02d/%02m/%04Y)",tfacp100.invd),						|7.2	Supplier Invoice Date |ISGEC01199.n
 		sprintf$("%f",tfacp100.amti),								|7.3	Supplier Invoice Amount |ISGEC01199.n
@@ -431,7 +439,8 @@ function write.total()
 		sprintf$(""),								|6	Project
 		sprintf$(""),								|6.1	Project Name	|ISGEC01199.n
 		sprintf$(""),								|6.2	Supplier Code	|ISGEC01199.N
-		sprintf$(""),								|7	Supplier 
+		sprintf$(""),								|7	Supplier
+		sprintf$(""),								|7.0.1	Financial Supplier Group	|GH316CR617.a 
 		sprintf$(""),								|7.1	Supplier invoice No.	|ISGEC01199.n
 		sprintf$(""),								|7.2	Supplier Invoice Date |ISGEC01199.n
 		sprintf$(""),								|7.3	Supplier Invoice Amount |ISGEC01199.n
@@ -500,26 +509,38 @@ function read.main.table()
 	endif
 										|GH310CR610.a.e
 										
-	select	tfisg207.*							|GH310CR610.a
-	from	tfisg207
-	where	tfisg207._index1 inrange {:cprj.f} and {:cprj.t}
-	and	tfisg207.proc inrange :proc.f and :proc.t
- 	selectdo
+| 	select	tfisg207.*							|GH310CR610.a
+| 	from	tfisg207
+| 	where	tfisg207._index1 inrange {:cprj.f} and {:cprj.t}
+| 	and	tfisg207.proc inrange :proc.f and :proc.t
+|  	selectdo
 	select 	tfisg001.*,
-		tccom100.nama
-	from	tfisg001,tccom100
+		tccom100.nama,
+		tfisg207.*
+	from	tfisg001,tccom100, tfisg207
 	where	tfisg001._index1 inrange {:irno.f} and {:irno.t}
 | 	and	tfisg001.irdt inrange :irdt.f and :irdt.t		|#ISGEC001173.n		|#ISGEC001220.o
 	and	tfisg001.irdt inrange :o.irdt.f and :o.irdt.t					|#ISGEC001220.n
 | 	and	tfisg001.cust inrange :bpid.f and :bpid.t
 	and	tfisg001.bpid inrange :bpid.f and :bpid.t
 | 	and	tfisg001.cprj inrange :cprj.f and :cprj.t
-	and	tfisg001.cprj = :tfisg207.proj					|GH310CR610.a
+	and	tfisg001.cprj = tfisg207.proj					|GH310CR610.a
 	and 	tfisg001.orno inrange :orno.f and :orno.t
 | 	and	tfisg001.cust refers to tccom100
+	and	tfisg207._index1 inrange {:cprj.f} and {:cprj.t}
+	and	tfisg207.proc inrange :proc.f and :proc.t
 	and	tfisg001.bpid refers to tccom100
 	order by tfisg001.irdt
 	selectdo
+		select	tccom122.cfsg							|GH316CR617.a.s
+		from	tccom122
+		where	tccom122._index1 = {:tfisg001.bpid}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom122.cfsg = ""
+		endselect	
+		
 		select	tfacp100.stin,							|GH310CR610.a
 			tfacp100.ninv
 		from	tfacp100
@@ -845,7 +866,7 @@ function read.main.table()
 		switch.to.company(new_compnr)       |ISGEC001232.n  
 	endselect
 	endselect
-	endselect
+| 	endselect
 	write.total()
  								|#ISGEC001173.en
 
