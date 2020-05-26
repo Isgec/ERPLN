@@ -819,6 +819,8 @@ function extern long tdisgdll0831.create.warehouse.order.line
 {
 	long ret_val
 	
+	string error.r(1000)
+	
 	dal.new.object("whinh220")
 	
 	dal.set.field("whinh220.oorg",i.oorg)
@@ -843,6 +845,7 @@ function extern long tdisgdll0831.create.warehouse.order.line
 		o.seqn = whinh220.seqn
 | 		commit.transaction()						|# ISGEC01082.o
 	else
+		dal.get.error.message(error.r)					|RAvi
 		return(DALHOOKERROR)
 	endif
 	return(0)
@@ -1880,8 +1883,8 @@ function long process.outbound(domain tcorno i.edrn)
 		selectdo
 		selectempty
 			update.error.flag(i.edrn,30)	|Error in Process Outbound 					
-			dal.set.error.message("@ Inventory Not Transferred!! Please Process Again...")
-			return(DALHOOKERROR)	
+			dal.set.error.message("@ Inventory Not Transferred!! Please Process Again...")	
+			return(DALHOOKERROR)								
 		endselect
 	endselect					
 	return(0)
@@ -2245,7 +2248,20 @@ function long change.status.of.billing.advice(domain tcorno i.edrn)
 			as set with 1 rows
 			selectdo
 			selectempty
-				error.msg = tpisgdll0038.Compose_Print_PostInvoice(
+| 				error.msg = tpisgdll0038.Compose_Print_PostInvoice(			|************By sanjeev case no. TV-12170***************OLD
+| 						tcyesno.no,		|Billing Request Set
+| 						o.brid,			|Billing Request Number
+| 						tcyesno.yes,		|Composing
+| 						tcyesno.yes,		|Compose 
+| 						tdisg831.ivdt,		|Invoice Date
+| 						tcyesno.yes,		|Printing
+| 						cisli.prno.original,
+| 						tcyesno.no,		|Invoice Delivery Method
+| 						tcyesno.no,		|Euro
+| 						"",			|Printing Sequence
+| 						tcyesno.yes,		|Posting
+| 						utc.num())		|Transaction Entry Date		|************By sanjeev case no. TV-12170***************OLD
+				error.msg = tpisgdll0038.Compose_Print_PostInvoice(			|************By sanjeev case no. TV-12170***************NEW
 						tcyesno.no,		|Billing Request Set
 						o.brid,			|Billing Request Number
 						tcyesno.yes,		|Composing
@@ -2257,7 +2273,7 @@ function long change.status.of.billing.advice(domain tcorno i.edrn)
 						tcyesno.no,		|Euro
 						"",			|Printing Sequence
 						tcyesno.yes,		|Posting
-						utc.num())		|Transaction Entry Date	
+						tdisg831.ivdt)		|Transaction Entry Date		|************By sanjeev case no. TV-12170***************NEW
 				
 				if not isspace(error.msg) then
 					update.error.flag(i.edrn,80)		|Error Duing Compose/Print/Post
@@ -2489,8 +2505,8 @@ function long check.subcon.advice.and.process(
 				selectdo
 				selectempty
 					update.error.flag(tdisg873.sdrn,30)	|Error in Process Outbound 					
-					dal.set.error.message("@ Inventory Not Transferred!! Please Process Again...")
-					return(DALHOOKERROR)	
+					dal.set.error.message("@ Inventory Not Transferred!! Please Process Again...")	
+					return(DALHOOKERROR)							
 				endselect
 			endif		
 		endselect
