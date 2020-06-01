@@ -82,6 +82,9 @@
 |*
 |* ID: GH304CR000, RAvi Kumar, 15-04-2020
 |* To allow Previous Months Entries in Warehouse Receipts 
+|*
+|* ID: GH309CR609, RAvi Kumar, 27-04-2020
+|* Warehouse receipt confirmation in back date should be restricted, uncomment Github GH304CR000
 |******************************************************************************
 #ident "@(#)ISG001012	Manish Kumar, IT0303, 20/02/2014 VRC B61U a7 live"
 #ident "@(#)ISG001041	Abhishek Singh, IT0352, 04/06/2014 VRC B61U a7 live"
