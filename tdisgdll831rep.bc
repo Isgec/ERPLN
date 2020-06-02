@@ -62,6 +62,9 @@
 |*
 |* ID: GH177CR495, RAvi Kumar, 17-10-2019
 |* Change cin, iec.no & pan no details in Export Invoice in Co. 700 
+|*
+|* ID: GH324CR636, RAvi Kumar, 29-05-2020
+|* Change Drawback Declaration Text in custom Invoice
 |******************************************************************************
 |Custom Invoice Report Tables *************************************************
   table   	ttdisg831 | Export Dispatch Request Data
@@ -211,7 +214,7 @@ extern	domain	tcdsca		label1,label2,label3,label4,label5,report_desc,
 				port_discharge,port_loading
 extern	domain	tcwght		gross_weight
 extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2
-extern domain	tcmcs.str100 	dbk_des6,dbk_des7	|ISGEC01158.n
+extern domain	tcmcs.str100 	dbk_des6,dbk_des7, dbk_des8	|ISGEC01158.n		|GH324CR636.a
 extern	domain	tcamnt		amnt.inr
 extern	domain	tcmcs.str5	i.rev
 |***************** Custom Invoice Report Variable End *****************************
@@ -293,6 +296,7 @@ extern	domain	tcorno		invoice.no	|#ISGEC017006.n
 extern	domain	tcamnt		tot.amnt	|#ISGEC017006.n
 	extern	long	curr.comp						|RAvi.a.GH177CR495
 							|# ISGEC004011.en
+	extern	domain	tfgld.date	date.280520			|GH324CR636.a
 
 #pragma used dll ottstpapihand
 |COMMERCIAL INVOICE VARIABLE DECLARATION END *************************************
@@ -952,14 +956,24 @@ function extern tdisgdll831rep.custom_invoice
 | 		dbk_des1 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT BEING"		|ISGEC01158.o
 | 		dbk_des2 = "RESTRICTED BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"	|ISGEC01158.o
 		dbk_des4 = "END USE CODE - GNX200"
-		dbk_des6 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT RESTRICTED"	|ISGEC01158.n
-		dbk_des7 = "BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"		|ISGEC01158.n
+		
+		date.280520 = date.to.num(2020, 05, 28)									|GH324CR636.a.s
+		if tdisg831.invd < date.280520 and tdisg831.invd <> 0 then
+			dbk_des6 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT RESTRICTED"	|ISGEC01158.n	
+			dbk_des7 = "BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"		|ISGEC01158.n	
+			dbk_des8 = ""
+		else
+			dbk_des6 = "WE HEREBY REQUEST CUSTOMS DEPARTMENT TO RELEASE DUTY DRAWBACK AS PER GOVERNMENT POLICY AND"		
+			dbk_des7 = "RULES OF DUTY DRAWBACK SCHEME APPLICABLE TO US. FURTHER DECLARE WE DO NOT HAVE ANY"			
+			dbk_des8 = "OBJECTION IF DBK AMOUNT IS RESTRICTED UNDER ANY PROVISION OF DBK RULES."				
+		endif													||GH324CR636.e
 	else										
 		dbk_des1 = ""
 		dbk_des2 = ""
 		dbk_des4 = ""
 		dbk_des6 = ""	|ISGEC01158.n
 		dbk_des7 = ""	|ISGEC01158.n
+		dbk_des8 = ""	|GH324CR636.a
 	endif	
 	
 	if tdisg832.efms = tcyesno.yes then
