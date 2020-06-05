@@ -1,0 +1,250 @@
+|******************************************************************************
+|* tfisg2401m000  0  VRC B61U a7 isg 
+|* Detail of Supplier wise and   P.O. wise  Payable/Retention A
+|* Ravi Kumar                    
+|* 2020-05-07
+|******************************************************************************
+|* Main table tfacp201 Payment Schedules, Form Type 4
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttfacp201 | Payment Schedules
+  table	ttfacp251
+  table	ttccom100
+  table	ttdpur401
+  table	ttcmcs052
+  table	ttfgld100
+  table	ttfacp200
+  table	ttcemm030
+  
+
+   extern  domain  tccom.bpid	bpid.f, bpid.t
+   extern	domain	tfacp.bloc	recn.f,	recn.t
+   extern	domain	tcorno	orno.f, orno.t	
+   extern	domain	tccprj	cprj.f, cprj.t
+   extern	domain	tcmcs.str60	label.format, label.format.2
+	
+	domain	tcncmp	curr_comp
+
+|**********Report Variables*******************************
+	extern	domain	tccom.bpid	rep.bpid
+	extern	domain	tcnama		rep.bpid.nama
+	extern	domain	tcmcs.str15	rep.purbook
+	extern	domain	tfgld.date	rep.docdate, rep.duedate
+	extern	domain	tfgld.btno	rep.btno
+	extern	domain	tcncmp		rep.comp
+	extern	domain	tfacp.isup	rep.isup
+	extern	domain	tcorno		rep.orno
+	extern	domain	tccprj		rep.cprj
+	extern	domain	tcdsca		rep.dsca
+	extern	domain	whinh.pksp	rep.shpm
+	extern	domain	tcdate		rep.irdate	
+	extern	domain	tcccur		rep.ccur
+	extern	domain	tcamnt		rep.final.amnt, rep.nonfinal.amnt
+	extern	domain	tfacp.bloc	rep.bloc
+	extern	domain	tfgld.desc	rep.cloc.dsca
+	
+	
+	domain	tfgld.docn	ir.no
+
+|****************************** program section ********************************
+before.program:
+	label.format = "Retention Code blank to blank means payable amount"
+	label.format.2 = "PTRs made after from Ist Sep 2014 onwards will appear"
+	curr_comp = get.compnr() 
+
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+
+|****************************** choice section ********************************
+
+choice.cont.process:
+on.choice:
+   execute(print.data)
+
+choice.print.data:
+on.choice:
+   if rprt_open() then
+       read.main.table()
+       rprt_close()
+   else
+       choice.again()
+   endif
+
+
+|****************************** field section *********************************
+
+field.bpid.f:
+when.field.changes:
+   bpid.t = bpid.f
+
+field.recn.f:
+when.field.changes:
+   recn.t = recn.f
+
+field.orno.f:
+when.field.changes:
+   orno.t = orno.f
+
+field.cprj.f:
+when.field.changes:
+   cprj.t = cprj.f
+
+
+|****************************** function section ******************************
+
+functions:
+
+function read.main.table()
+{
+	domain	tfacp.bloc	bloc.f,	bloc.t
+	domain	tfgld.date	after.doc.date
+	
+	if lval(recn.f) = 0 then
+		bloc.f = ""
+| 		|bloc.t = "~~~"
+		if isspace(recn.t) or  trim$(recn.t) = "0" or trim$(recn.t) = "00" or trim$(recn.t) = "000" then
+			bloc.t = ""
+		else
+			bloc.t = recn.t
+		endif
+	else
+		bloc.f = recn.f
+		bloc.t = recn.t
+	endif
+	after.doc.date = date.to.num(2014, 09, 01)
+	
+	select	tcemm030.fcmp,
+		tcemm030.lcmp
+	from	tcemm030
+	where	tcemm030.lcmp = :curr_comp
+	selectdo
+		switch.to.company(tcemm030.fcmp)
+		select	tfacp201.ttyp,
+			tfacp201.ninv,
+			tfacp201.amnt,
+			tfacp201.paia,
+			tfacp201.ifbp, 
+			tfacp201.icur,
+			tfacp201.docd,
+			tfacp201.payd,
+			tfacp201.cdf_bloc,
+			tccom100.nama,
+			tfacp251.orno,
+			tfacp251.icom,
+			tfacp251.shpm,
+			tdpur401.cprj,
+			tdpur401.orno,
+			tcmcs052.dsca
+		from	tfacp201, tccom100, tfacp251, tdpur401, tcmcs052
+		where	tfacp201._index3 inrange {:bpid.f} and {:bpid.t}
+		and	tfacp201.cdf_bloc inrange :bloc.f and :bloc.t
+		and	tfacp201.docd >= :after.doc.date
+		and	tfacp251.ityp = tfacp201.ttyp
+		and	tfacp251.idoc = tfacp201.ninv
+		and	tfacp251.orno inrange {:orno.f} and {:orno.t}
+		and	tdpur401.orno = tfacp251.orno
+		and	tdpur401.pono = tfacp251.pono
+		and	tdpur401.sqnb = tfacp251.sqnb
+		and	tdpur401.cprj inrange :cprj.f and :cprj.t
+		and	tdpur401._compnr = :tcemm030.lcmp
+		and	tdpur401.cprj refers to tcmcs052
+		and	tfacp201.ifbp refers to tccom100
+		order by tfacp251.icom, tfacp201.ttyp, tfacp201.ninv
+		selectdo
+			if (tfacp201.amnt - tfacp201.paia) > 0 then
+				intialize()
+				rep.bpid = tfacp201.ifbp
+				rep.bpid.nama = tccom100.nama
+				rep.purbook = tfacp201.ttyp & " " & str$(tfacp201.ninv)
+				rep.docdate = tfacp201.docd
+				rep.duedate = tfacp201.payd
+				rep.ccur = tfacp201.icur
+				rep.cprj = tdpur401.cprj
+				rep.dsca = tcmcs052.dsca
+				rep.comp = tfacp251.icom
+				rep.orno = tfacp251.orno
+				rep.shpm = tfacp251.shpm
+				
+				ir.no = lval(tfacp251.shpm)
+				select	tfacp100.cdf_oird:rep.irdate
+				from	tfacp100
+				where	tfacp100._index1 = {:ir.no}
+				as set with 1 rows
+				selectdo
+				selectempty
+					rep.irdate = 0
+				endselect
+				
+				select	tfacp200.btno:rep.btno,
+					tfacp200.isup:rep.isup,
+					tfacp200.year
+				from	tfacp200
+				where	tfacp200._index1 = {:tfacp201.ttyp, :tfacp201.ninv}
+				and	tfacp200.tpay = tfacp.tpay.invoice
+				as set with 1 rows
+				selectdo
+				selectempty
+					rep.btno = 0
+					rep.isup = ""
+				endselect
+				
+				select	tfgld100.stat
+				from	tfgld100
+				where	tfgld100._index1 = {:tfacp200.year, :rep.btno}
+				as set with 1 rows
+				selectdo
+					if tfgld100.stat = tfgld.bstt.term then
+						rep.final.amnt = tfacp201.amnt - tfacp201.paia
+						rep.nonfinal.amnt = 0
+					else
+						if tfgld100.stat <> tfgld.bstt.term then
+							rep.nonfinal.amnt = tfacp201.amnt - tfacp201.paia
+							rep.final.amnt = 0
+						endif
+					endif
+				endselect
+| 				rep.bloc = tfacp201.cdf_bloc
+				get.var(pid, "tfacp201.cdf_bloc", rep.bloc)
+
+				select	tfacp002.desc:rep.cloc.dsca
+				from	tfacp002
+				where	tfacp002._index1 = {:rep.bloc}
+				as set with 1 rows
+				selectdo
+				selectempty
+					rep.cloc.dsca = ""
+				endselect
+				rprt_send()
+			endif
+		endselect
+	endselect
+}
+
+function intialize()
+{
+	rep.bpid = ""
+	rep.bpid.nama= ""
+	rep.purbook = ""
+	rep.docdate = 0
+	rep.duedate = 0 
+	rep.irdate = 0
+	rep.btno = 0
+	rep.comp = 0
+	rep.isup = ""
+	rep.orno = ""
+	rep.cprj = ""
+	rep.dsca = ""
+	rep.shpm = ""
+	rep.ccur = ""
+	rep.final.amnt = 0
+	rep.nonfinal.amnt = 0
+	rep.bloc = ""
+	rep.cloc.dsca = ""
+}
+
