@@ -35,6 +35,9 @@
 |* 
 |* ID: GH315CR613, RAvi Kumar, 19-05-2020
 |* Add IR field in report
+|*
+|* ID: GH326CR620, RAvi Kumar, 30-05-2020
+|* Auto set of values while printing voucher from transactions
 
 |****************************** declaration section ***************************
 declaration:
@@ -161,10 +164,22 @@ declaration:
 	extern	 domain		tcdate	original_date		|ISG01020.n
 	extern	domain	tfgld.docn	rep.irno		|GH315CR613.a
 	extern	domain	tcmcs.str8	rep.irno.str		|GH315CR613.a
+		string		session.code(13)		|GH326CR620.a
+	extern	domain	tcncmp		comp.curr		|GH326CR620.a
 	#include <bic_text>
 	
 	#define	FIX_LEDGER "9500300     "	|#GST001026.n
 |****************************** program section ********************************
+before.program:							|GH326CR620.a.s
+	import("prog.name$", session.code)	
+	comp.curr = get.compnr()
+	
+	if session.code = "tfgld1101m000" then
+		import("tfgld100.year", fyer.f)
+		import("comp.curr", ncmp.f)
+		import("tfgld100.btno", btno.f)
+		import("tfgld100.btno", btno.t)
+	endif							|GH326CR620.a.e		
 
 
 |****************************** group section **********************************
@@ -202,7 +217,14 @@ on.choice:
 |****************************** field section *********************************
 field.fyer.f:
 before.display:
-	fyer.f = get.fiscal.year(date.num())
+	import("prog.name$", session.code)			|GH326CR620.a.s
+	if session.code <> "tfgld1101m000" then 
+		fyer.f = get.fiscal.year(date.num())
+	endif
+								|GH326CR620.a.e
+| field.fyer.f:
+| before.display:
+| 	fyer.f = get.fiscal.year(date.num())
 field.ncmp.f:
 before.display:
 	ncmp.f = get.compnr()
