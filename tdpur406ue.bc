@@ -43,6 +43,12 @@
 |* 
 |* ID: GH294CR597, RAvi Kumar, 03-04-2020
 |* Please provide correction rights in warehouse receipt after confirmation on ID "3717"
+|*
+|* ID: GH319CR616, RAvi Kumar, 23-05-2020
+|* One IR can be linked with One Receipt only
+|*
+|* ID: GH330CR626, RAvi Kumar, 02-06-2020
+|* Rights of purchase receipt correction session
 
 |******************************************************************************
                                                                                 
@@ -125,11 +131,20 @@ function extern long ue.before.before.save.object(long mode)
 		get.var(pid,"prog.name$",calling.prog)								|GH294CR597.a.s
 		
 		if calling.prog = "tdpur4106s100" then
-			if curr.user = "3717" then
-			else
+| 			if curr.user = "3717" or curr.user = "9686" or curr.user = "2320" or curr.user = "3380" then	|GH330CR626.com.s
+| 			else
+| 				dal.set.error.message("@Receipt Correction are not allowed..")
+| 				return(DALHOOKERROR)
+| 			endif												|GH294CR597.a.e
+			select	tdisg015.emno
+			from	tdisg015
+			where	tdisg015._index1 = {:curr.user}
+			as set with 1 rows
+			selectdo
+			selectempty
 				dal.set.error.message("@Receipt Correction are not allowed..")
 				return(DALHOOKERROR)
-			endif
+			endselect
 		endif
 														|GH294CR597.a.e
 		if	isspace(tdpur406.dino)	then
