@@ -141,6 +141,9 @@
 |*
 |* #GH187CR503, Adarsh Pal, 24-10-2019, VRC B61U a7 isg
 |* Modification in Basic Value as per Indent in Report Layout
+|*
+|* ID: GH335CR639, RAvi Kumar, 04-06-2020
+|* Display TCS on PO Print
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -1338,7 +1341,8 @@ function populate.tax.amounts()
 			cess.rate = cess.rate + o.tax.rates(tctax941.layr,tctax941.seqn)
 			break
 													|#ISGECMOD020.en			
-		default:
+| 		default:
+		case	tctax.indt.l.cgst:								|GH335CR639.cng		
 | 			stx.amnt = stx.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)	|#ISG10102.o
 | 			stx.rate = o.tax.rates(tctax941.layr,tctax941.seqn)				|#ISG10102.o
 			
@@ -1366,6 +1370,9 @@ function populate.tax.amounts()
 					endif					|#ISGEC001164.n	
 | 				endif										|#ISGEC001164.o					
 			endif			|#ISG10102.en
+			break											|GH335CR639.a
+		default:												
+			oth.chg2 = oth.chg2 + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 		endcase
 		
 	endselect
@@ -1922,7 +1929,7 @@ function Get_Landed_Cost(domain tcorno		im.orno,
 					prv.borf = tmp.borf
 					oth.chg1 = oth.chg1 + tclct200.lcam
 				else
-					oth.chg2 = oth.chg2 + tclct200.lcam
+| 					oth.chg2 = oth.chg2 + tclct200.lcam	|GH335CR639.com
 				endif	
 				calculate.oth.tax.amounts()			|#ISGEC001071.n
 				
