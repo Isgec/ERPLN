@@ -29,6 +29,10 @@
 |*
 |* ID GH222CR000, RAvi Kumar, 03-12-2019
 |* PMDL displaying different document no. than stored in table
+|*
+|* ID GH347CR000, RAvi Kumar, 13-06-2020
+|* System should show same element in session which is stored in PMDL table
+
 |****************************** declaration section ***************************
 declaration:
 
@@ -227,7 +231,7 @@ check.input:
 
 field.dmisg140.cspa:
 before.display:					|ISGEC002039.n
-	dmisg140.cspa = trim$(dmisg140.uidn(1;8))	|ISGEC002039.n
+| 	dmisg140.cspa = trim$(dmisg140.uidn(1;8))	|ISGEC002039.n |GH347CR000.com
 	
 							|ISGEC002039.so
 | before.zoom:
