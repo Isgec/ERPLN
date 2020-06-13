@@ -179,7 +179,15 @@ before.program:							|GH326CR620.a.s
 		import("comp.curr", ncmp.f)
 		import("tfgld100.btno", btno.f)
 		import("tfgld100.btno", btno.t)
-	endif							|GH326CR620.a.e		
+	endif							|GH326CR620.a.e	
+
+	
+	if session.code = "tfisg1201m000" then
+		import("c.btno", btno.f)
+		import("c.btno", btno.t)
+		import("c.year", fyer.f)
+		import("i.ncmp", ncmp.f)
+	endif
 
 
 |****************************** group section **********************************
@@ -219,7 +227,9 @@ field.fyer.f:
 before.display:
 	import("prog.name$", session.code)			|GH326CR620.a.s
 	if session.code <> "tfgld1101m000" then 
-		fyer.f = get.fiscal.year(date.num())
+		if session.code <> "tfisg1201m000" then
+			fyer.f = get.fiscal.year(date.num())
+		endif
 	endif
 								|GH326CR620.a.e
 | field.fyer.f:
@@ -1114,9 +1124,9 @@ function get.pay.due.date(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, do
 	where	tfacp100._index1 = {:tfisg001.irno}
 	selectdo
 		get.var(pid,"tfacp100.cdf_oird",oird)
-		if oird = 0 then						|ISG01020.sn
-			message("Date Not Filled.")
-		endif								|ISG01020.en
+| 		if oird = 0 then						|ISG01020.sn
+| 			message("Date Not Filled.")
+| 		endif								|ISG01020.en
 	endselect
 	
 	utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)

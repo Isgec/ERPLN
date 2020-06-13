@@ -33,6 +33,9 @@
 |*
 |* ID: GH334CR629, RAvi Kumar, 04-06-2020
 |* Display IR extension for Purchase Order Invoice Processing
+|*
+|* ID GH342CR632, RAvi Kumar, 13-06-2020
+|* Auto print of batch from Purchase Order Invoice Processing
 |****************************** declaration section ***************************
 declaration:
 
@@ -73,7 +76,7 @@ declaration:
 	extern	domain	tccvat		v.cvat
 	extern	domain	tcmcs.str1	labl.1, labl.2, labl.3, labl.4, labl.5, labl.6, 
 					labl.7, labl.8, labl.9, labl.10, labl.11, v.matc, 
-					v.appr, v.uppr, v.fina, v.umat
+					v.appr, v.uppr, v.fina, v.umat, print.batch
 	extern	domain	tcnama		v.user
 	extern	domain	tfgld.leac	v.pdif
 	extern	domain	tfgld.btno	c.btno
@@ -2752,4 +2755,14 @@ function extern ir.extension()					|GH334CR629.a.s
 	start.synchronized.child ("tfisg4105m100",
 		"v.docn", "tfisg405.ninv")
 }								|GH334CR629.a.e
+
+
+function extern	print.batchr()					|GH342CR632.a.s
+{
+	export("i.ncmp", i.ncmp)
+	export("c.btno", c.btno)
+	export("c.year", c.year)
+	start.session(MODAL,"tfisg1402m100","","")
+}								|GH342CR632.a.e
+
 
