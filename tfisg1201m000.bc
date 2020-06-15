@@ -711,8 +711,12 @@ function	extern	print.outstanding.pdn.adj()
 
 function	extern	unadjusted.purchase.inv()
 {
-
-	start.session(MODAL,"tfacp2520m000","","")
+	session.zoomindex = 2							|GH322CR628.a.s
+	start.synchronized.child.with(FIND.DATA)			
+	start.synchronized.child ("tfacp2520m000",
+		"i.ifbp", "tfacp200.ifbp")
+										|GH322CR628.a.e
+| 	start.session(MODAL,"tfacp2520m000","","")				|GH322CR628.com
 | 	switch.to.company(200)
 | 	
 | 	export("i.ifbp",i.ifbp)
@@ -2067,6 +2071,13 @@ function get.tax.from.tfacp935(
 				case 27:
 					o.rcst.amnt = o.rcst.amnt + amount
 					break
+				case 40:			|State GST		|#SN TV-12328
+				case 41:			|Central GST
+				case 42:			|Integrated GST
+				case 43:			|Union Territory GST
+				case 44:			|GST Cess
+					o.rexc.amnt = o.rexc.amnt + amount
+					break						|#EN TV-12328
 			endcase
 		endselect
 	endselect
