@@ -194,7 +194,9 @@ before.program:							|GH326CR620.a.s
 
 group.1:
 init.group:
-   get.screen.defaults()
+	if session.code <> "tfisg1201m000" then
+		get.screen.defaults()
+	endif
 
 |****************************** choice section ********************************
 
