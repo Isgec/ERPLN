@@ -44,6 +44,9 @@
 |*
 |* ID: GH316CR617, RAvi Kumar, 23-05-2020
 |* Modifcation in report Payment detail IRN wise
+|*
+|* ID: GH331CR625, RAvi Kumar, 02-06-2020
+|* Modification in Payment detail IR wise - Add nonfinalised option
 
 |****************************** declaration section ***************************
 declaration:
@@ -75,6 +78,8 @@ declaration:
   table		ttppdm600				|ISGEC01199.n	
   table		ttfisg207				|GH310CR610.a
   table		ttccom122				|GH316CR617.a
+  table		ttcemm030				|GH331CR625.a
+  table		ttccom001				|GH331CR625.a
   
 	extern	domain	tccom.bpid	bpid.f
 	extern	domain	tccom.bpid	bpid.t
@@ -133,7 +138,8 @@ declaration:
 	extern domain	tfcmg.cheq		o.cheq		|ISGEC01199.n
 	extern	domain	tcibd.sern		var.temp	|ISGEC01201.n
 	extern	domain	tclogn			proc.f, proc.t	|GH310CR610.a
-	extern	domain	tcyesno			recv		|GH310CR610.a
+	extern	domain	tcyesno			recv		|GH310CR610.a	
+	extern	domain	tcyesno			show.nonfin	|GH331CR625.a
 	
   
 |****************************** program section ********************************
@@ -289,6 +295,7 @@ function generate.header()
 			sprintf$("Billing Assign Date"),		|10
 			sprintf$("Sales Invoice Date"),		|11	
 			sprintf$("Sent to Finance (Original Invoice)"),|11.1	|ISGEC01199.n
+			sprintf$("PTR Batch no"),			|11.2		|GH331CR625.a
 			sprintf$("Purchase Booking No./Ptr No."),	|12
 			sprintf$("Purchase Booking Date/Ptr Date"),	|13
 | 			sprintf$("Invoice Amount"),			|14
@@ -301,7 +308,8 @@ function generate.header()
 			sprintf$("Payment Mode"),			|19.1	 |ISGEC01199.n
 			sprintf$("Cheque/RTGS"),				|20
 			sprintf$("Cheque/RTGS Date"),			|21
-			sprintf$("Processor"))				|22		|GH310CR610.a
+			sprintf$("Processor"),				|22		|GH310CR610.a
+			sprintf$("Processor Name"))			|23		|GH331CR625.a
 		line = strip$(shiftl$(line))
 		seq.puts(line, stat.fp)
 	endif
@@ -398,6 +406,7 @@ function write.data()
 		sprintf$("%D(%02d/%02m/%04Y)",tfisg001.bdat),	 					|10 	Billing Assign Date
 		sprintf$("%D(%02d/%02m/%04Y)",tfisg001.ivdt),						|11	Sales Invoice Date
 		sprintf$("%u(%02d/%02m/%04Y) ",tfisg001.date),						|11.1	Sent To Finance Date	|ISGEC01199.n
+		sprintf$("%s",trim$(str$(tfacp200.btno))),						|11.2	|GH331CR625.a
 		sprintf$("%s",tfisg001.invt & str$(tfisg001.pinv)),					|12	Purchase Booking No./Ptr No.	
 		sprintf$("%D(%02d/%02m/%04Y)",tfacp200.docd),						|13	Purchase Booking Date/Ptr Date
 		sprintf$("%f",tfacp200.amth(1)),							|14	Invoice Amount
@@ -410,7 +419,8 @@ function write.data()
 		sprintf$("%s",tfcmg110.cheq),								|20	Cheque
 		sprintf$("%u(%02d/%02m/%04Y) %U(%02h%x%02m%x%02s %a)",tfcmg100.rdat,tfcmg100.rdat),	|21	Cheque Date
 | 		sprintf$("%s",tccom122.cpay))								|22
-		sprintf$("%s",trim$(tfisg207.proc)))								|22	|GH310CR610.a
+		sprintf$("%s",trim$(tfisg207.proc)),								|22	|GH310CR610.a
+		sprintf$("%s",trim$(tccom001.nama)))								|23	|GH331CR625.a
 		
 		
 		line = strip$(shiftl$(line))
@@ -541,8 +551,19 @@ function read.main.table()
 			tccom122.cfsg = ""
 		endselect	
 		
+		select	tccom001.nama							|GH331CR625.a.s
+		from	tccom001
+		where	tccom001._index4 = {:tfisg207.proc}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom001.nama = ""
+		endselect								|GH331CR625.a.e		
+		
 		select	tfacp100.stin,							|GH310CR610.a
-			tfacp100.ninv
+			tfacp100.ninv,
+			tfacp100.ctyp, 							|GH331CR625.a
+			tfacp100.cinv							|GH331CR625.a
 		from	tfacp100
 		where	tfacp100._index1 = {:tfisg001.irno}
 		and	tfacp100.stin inrange {:stin.f} and {:stin.t}
@@ -664,7 +685,8 @@ function read.main.table()
 			tfacp200.isup,
 			tfacp200.docd,
 			tfacp200.amth,
-			tfacp200.dued
+			tfacp200.dued,
+			tfacp200.btno					|GH331CR625.a
 		from	tfacp200
 		where	tfacp200._index1 = {:tfisg001.invt,:tfisg001.pinv}
 | 		and	(tfacp200.tpay = 1 or tfacp200.tpay = 4)		|temp.o
@@ -847,12 +869,17 @@ function read.main.table()
 				endselect
 			endif							|#ISGEC01199.en
 			
-			write.data()			|ISGEC001214.n
+			if show.only.non.finalised() then			|GH331CR625.a.ifelse
+				write.data()
+			endif
 			pay.mode = "" 			|#ISGEC01199.n
 | 			rprt_send()				|#sujeet29112014	|ISGEC001214.o
 		selectempty
+			tfacp200.btno = 0					|GH331CR625.a
+			if show.only.non.finalised() then			|GH331CR625.a.ifelse
+				write.data()
+			endif
 			
-			write.data()			|ISGEC001214.n
 | 			pay.mode = "" 			|#ISGEC01199.n
 
 | 			rprt_send()			|ISGEC001214.o
@@ -1428,4 +1455,38 @@ function header.INR.type()					|GH310CR610.a.s
 		
 }
 								|GH310CR610.a.e
+function boolean show.only.non.finalised()			|GH331CR625.a.s
+{
+	domain	tcncmp	fin.comp
+	
+| 	fin.comp = get.compnr()
+	
+	select	tppdm600.ncmp:fin.comp
+	from	tppdm600
+	where	tppdm600._index1 = {:tfisg001.cprj}
+	selectdo
+	selectempty
+		fin.comp = 0
+	endselect
+	
+	if show.nonfin = tcyesno.yes then
+| 		select	tcemm030.fcmp
+| 		from	tcemm030
+| 		where	tcemm030.lcmp = {:fin.comp}
+| 		selectdo
+		select	tfgld102.ttyp,
+			tfgld102.docn
+		from	tfgld102
+		where	tfgld102._index2 = {:fin.comp, :tfacp100.ctyp, :tfacp100.cinv}
+		as set with 1 rows
+		selectdo
+			return(true)
+		endselect
+| 		endselect
+	else
+		return(true)
+	endif
+	
+	return(false)
+}								|GH331CR625.a.e
 
