@@ -66,12 +66,16 @@
 	domain	tfgld.date	curr.date
 	domain	tfgld.user	curr.user
 	long	dd, mm, yy
+	domain	tcorno		irno.rcno			|GH319CR616.a
 	
 function extern long ue.before.before.save.object(long mode)
 {
 	
 	domain	tcamnt		o.total.amnt
 	domain	tfgld.sess	calling.prog	|#ISGEC001082.sn
+	
+	irno.rcno = ""						|GH319CR616.a
+	get.var(pid,"prog.name$",calling.prog)			|GH319CR616.a
 	on case mode
 	case DAL_NEW:
 		if	isspace(tdpur406.dino)	then
@@ -103,7 +107,13 @@ function extern long ue.before.before.save.object(long mode)
 | 			dal.set.error.message("titrps01042")
 | 			return(DALHOOKERROR)
 | 		endif
-						|#ISGEC00165.en						
+						|#ISGEC00165.en		
+		if calling.prog = "tdpur4106m000" then								|GH319CR616.a.s
+			if check.irno.exist(tdpur406.dino, irno.rcno) then								
+				dal.set.error.message("@IR " & trim$(tdpur406.dino) & " already linked with Receipt " & trim$(irno.rcno))
+				return(DALHOOKERROR)
+			endif	
+		endif												|GH319CR616.a.e
 		break
 	case DAL_UPDATE:
 					|#SD01112017.sn
@@ -147,6 +157,14 @@ function extern long ue.before.before.save.object(long mode)
 			endselect
 		endif
 														|GH294CR597.a.e
+														
+		if calling.prog = "tdpur4106m000" then									|GH319CR616.a.s
+			if check.irno.exist(tdpur406.dino, irno.rcno) then								
+				dal.set.error.message("@IR " & trim$(tdpur406.dino) & " already linked with Receipt " & trim$(irno.rcno))
+				return(DALHOOKERROR)
+			endif	
+		endif													|GH319CR616.a.e
+		
 		if	isspace(tdpur406.dino)	then
 			dal.set.error.message("@ IR Mandatory !!!")
 			return(DALHOOKERROR)
@@ -610,3 +628,30 @@ function boolean check.reciept.linked()
 	return(true)
 }
 							|#ISGEC016050.en
+							
+function boolean check.irno.exist(	domain	whinh.pksp	dino.i,					|GH319CR616.a.s
+				ref	domain	tcorno		rno.irno)
+{
+	select	whinh310.rcno:rno.irno
+	from	whinh310
+	where	whinh310.dino = :dino.i
+	and	whinh310._index1 <> :tdpur406.rcno
+	as set with 1 rows
+	selectdo
+		return(true)
+	selectempty
+		select	tdpur406.rcno:rno.irno
+		from	tdpur406
+		where	tdpur406.dino = :dino.i
+		and	tdpur406._index2 <> :tdpur406.rcno
+		as set with 1 rows
+		selectdo
+			return(true)
+		selectempty
+			return(false)
+		endselect
+	endselect
+	return(false)
+}
+													|GH319CR616.a.e
+
