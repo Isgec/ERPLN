@@ -33,6 +33,9 @@
 |*
 |* ID: GH334CR629, RAvi Kumar, 04-06-2020
 |* Display IR extension for Purchase Order Invoice Processing
+|* 
+|* ID GH336CR627, RAvi Kumar, 05-06-2020
+|* FInalisation option in  Purchase Order Invoice Processing
 |*
 |* ID GH342CR632, RAvi Kumar, 13-06-2020
 |* Auto print of batch from Purchase Order Invoice Processing
@@ -65,6 +68,7 @@ declaration:
 	table	ttfgld011
 	table	ttfgld102	|#ISGEC016014.n
 	table	ttfgld107	|#ISGEC016014.n
+	table	ttfgld109	|GH336CR627.a
 	
 |****************************** form fields ************************************
 	extern	domain	tfgld.amnt	v.amnt, v.pric, v.tdsa
@@ -135,7 +139,7 @@ before.program:
 	tcmcs.dll0095.read.parm("tfisg000")
 before.display.object:
 	handle.enable.disable()
-	disable.commands("finalize.process")	|#ISGECFIN009.n	
+| 	disable.commands("finalize.process")	|#ISGECFIN009.n			|GH336CR627.com		
 |****************************** group section **********************************
 
 group.1:
@@ -862,31 +866,39 @@ function	extern	finalize.process()
 	long		get_error
 	get_error = 0
 	
-	select	tfgld100.user
-	from	tfgld100
-	where	tfgld100._index1 = {:c.year,:c.btno}
-	and	tfgld100.user = :v.logn
+| 	select	tfgld100.user										|GH336CR627.a.s				
+| 	from	tfgld100
+| 	where	tfgld100._index1 = {:c.year,:c.btno}
+| 	and	tfgld100.user = :v.logn
+| 	selectdo
+| 	selectempty
+| 		select	tfgld025.susr
+| 		from	tfgld025
+| 		where	tfgld025._index1 = {:v.logn}
+| 		selectdo
+| 		selectempty
+| 			message("Batch %d not belongs to user %s",c.btno,v.logn)
+| 			get_error = 1
+| 		endselect
+| 	endselect
+| 	
+| 	if get_error = 0 then
+| 		get.document.details()
+| 		afs.process(
+| 				5,
+| 				c.year,
+| 				c.btno
+| 				)	
+| 		handle.enable.disable()	
+| 	endif	
+	select	tfgld025.susr
+	from	tfgld025
+	where	tfgld025._index1 = {:v.logn}
 	selectdo
+		afs.finalization(c.year, c.btno)
 	selectempty
-		select	tfgld025.susr
-		from	tfgld025
-		where	tfgld025._index1 = {:v.logn}
-		selectdo
-		selectempty
-			message("Batch %d not belongs to user %s",c.btno,v.logn)
-			get_error = 1
-		endselect
-	endselect
-	
-	if get_error = 0 then
-		get.document.details()
-		afs.process(
-				5,
-				c.year,
-				c.btno
-				)	
-		handle.enable.disable()	
-	endif		
+		message("User not authorised for Finalization.")
+	endselect										|GH336CR627.a.e
 }
 
 
@@ -1866,7 +1878,7 @@ function	handle.enable.disable()
 		disable.commands("approve.process")
 	else
 		disable.commands("unapprove.process")
-		disable.commands("finalize.process")
+| 		disable.commands("finalize.process")						|GH336CR627.com						
 	endif
 	
 	if	tfgld100.stat	=	tfgld.bstt.term	then
@@ -1881,7 +1893,7 @@ function	handle.enable.disable()
 		disable.commands("unmatch.process")
 		disable.commands("approve.process")
 		disable.commands("unapprove.process")
-		disable.commands("finalize.process")
+| 		disable.commands("finalize.process")						|GH336CR627.com					
 	endif
 	
 	if	c.btno	=	0	then
@@ -1894,6 +1906,21 @@ function	handle.enable.disable()
 		enable.commands("print.voucher")
 		enable.commands("print.accounting.entry")
 	endif
+	
+	select	tfgld100.stat,									|GH336CR627.a.s		
+		tfgld018.trun
+	from	tfgld100, tfgld018
+	where	tfgld100._index1 = {:c.year,:c.btno}
+	and	tfgld100.stat = tfgld.bstt.ready
+	and	tfgld018.year = tfgld100.year
+	and	tfgld018.btno = tfgld100.btno
+	and	tfgld018.trun = 0
+	as set with 1 rows
+	selectdo
+		enable.commands("finalize.process")
+	selectempty
+		disable.commands("finalize.process")
+	endselect										|GH336CR627.a.e
 }
 
 
@@ -2776,4 +2803,80 @@ function extern	print.batchr()					|GH342CR632.a.s
 	start.session(MODAL,"tfisg1402m100","","")
 }								|GH342CR632.a.e
 
+function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
+				domain	tfgld.btno	i.btno)
+{
+	domain	tfgld.trun	o.trun
+	domain	tcmcs.str50	v.turn
+	o.trun = 0
+	
+	select	tfgld100.stat
+	from	tfgld100
+	where	tfgld100._index1 = {:i.year, :i.btno}
+	as set with 1 rows
+	selectdo
+	selectempty
+		message("Batch not Ready")
+	endselect
+	
+	select	tfgld109.trun:o.trun
+	from	tfgld109
+	where	tfgld109._index1 = {:i.year}
+	order by tfgld109.trun desc
+	as set with 1 rows
+	selectdo
+	selectempty
+		o.trun = 0
+	endselect
+	if dal.new.object("tfgld109") = 0 then
+		dal.set.field("tfgld109.year", i.year)
+		dal.set.field("tfgld109.trun", o.trun + 1)
+		dal.set.field("tfgld109.trst", tfgld.trst.free)
+		dal.set.field("tfgld109.crus", logname$)
+		dal.set.field("tfgld109.crdt", date.num())
+		dal.set.field("tfgld109.crtm", time.num())
+		if dal.save.object("tfgld109") = 0 then
+			commit.transaction()
+			tfgld109.trun = tfgld109.trun
+		else
+			abort.transaction()
+		endif
+	endif
+ 	
+	stpapi.put.field("tfgld1519m000", "tfgld109.year", str$(i.year))
+	stpapi.put.field("tfgld1519m000", "tfgld109.trun", str$(o.trun + 1))
+	ret_val	=	stpapi.find("tfgld1519m000", i.erro)
+	if	ret_val	=	1	then
+| 		stpapi.synchronize.dialog("tfgld1519m000", "modify", i.erro)
+		stpapi.handle.subproc("tfgld1519m000", "tfgld1110m000", "modify")
+| 		stpapi.continue.process("tfgld1110m000", i.erro)
+		
+		
+		stpapi.handle.subproc("tfgld1110m000", "tfgld1111s000", "modify")
+		stpapi.form.command("tfgld1110m000", 5, "exec.cont.process", i.erro)
+		
+		stpapi.put.field("tfgld1111s000", "tfgld100.year", str$(i.year))
+		stpapi.put.field("tfgld1111s000", "tfgld100.btno", str$(i.btno))
+		ret_val	=	stpapi.find("tfgld1111s000", i.erro)
+		if	ret_val	= 1	then
+			stpapi.put.field("tfgld1111s000","tfgld100.selt", str$(etol(tcyesno.yes)))
+			stpapi.mark("tfgld1111s000",i.erro)
+			ret_val	=	stpapi.update("tfgld1111s000", true, i.erro)
+			stpapi.form.command("tfgld1111s000", 5, "exec.cont.process", i.erro)
+		else
+			message("No Batch found for run finalization")
+		endif
+	endif
+	
+	if strip$(i.erro) <> "" then
+		message(i.erro)
+		stpapi.recover("tfgld1110m000", i.erro)
+	endif
+	stpapi.end.session("tfgld1111s000")
+	stpapi.end.session("tfgld1110s000")
+	stpapi.end.session("tfgld1110m000")
+	stpapi.end.session("tfgld1519m000")
+	
+	handle.enable.disable()
+}												|GH336CR627.a.e
 
