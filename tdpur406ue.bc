@@ -61,6 +61,7 @@
 	table	ttfisg000
 	table	ttfisg407
 	table	ttdisg832
+	table	ttccom001
 	
 	domain	tfgld.docn	o.irno
 	domain	tfgld.date	curr.date
@@ -127,15 +128,15 @@ function extern long ue.before.before.save.object(long mode)
 		
 		num.to.date(curr.date, yy, mm, dd)
 
-| 		if dd >= 26 and tdpur406.conf = tcyesno.yes then
-| 			if 	curr.user = "9583" or		|* Pankaj Sir
-| 				curr.user = "merino1" or	|* Merino 1
-| 				curr.user = "0330"  then	|* Veena Mam
-| 			else
-| 				dal.set.error.message("@Receipt Can't be Confirmed....")
-| 				return(DALHOOKERROR)
-| 			endif
-| 		endif
+		if dd >= 26 and tdpur406.conf = tcyesno.yes then
+			if 	curr.user = "9583" or		|* Pankaj Sir
+				curr.user = "merino1" or	|* Merino 1
+				curr.user = "0330"  then	|* Veena Mam
+			else
+				dal.set.error.message("@Receipt Can't be Confirmed....")
+				return(DALHOOKERROR)
+			endif
+		endif
 					|#SD01112017.en
 					
 		get.var(pid,"prog.name$",calling.prog)								|GH294CR597.a.s
@@ -146,14 +147,20 @@ function extern long ue.before.before.save.object(long mode)
 | 				dal.set.error.message("@Receipt Correction are not allowed..")
 | 				return(DALHOOKERROR)
 | 			endif												|GH294CR597.a.e
-			select	tdisg015.emno
-			from	tdisg015
-			where	tdisg015._index1 = {:curr.user}
+			select	tccom001.emno
+			from	tccom001
+			where	tccom001._index4 = {:curr.user}
 			as set with 1 rows
 			selectdo
-			selectempty
-				dal.set.error.message("@Receipt Correction are not allowed..")
-				return(DALHOOKERROR)
+				select	tdisg015.emno
+				from	tdisg015
+				where	tdisg015._index1 = {:tccom001.emno}
+				as set with 1 rows
+				selectdo
+				selectempty
+					dal.set.error.message("@Receipt Correction are not allowed..")
+					return(DALHOOKERROR)
+				endselect
 			endselect
 		endif
 														|GH294CR597.a.e
