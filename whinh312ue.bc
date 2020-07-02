@@ -631,9 +631,9 @@ function extern long ue.after.before.save.object(long mode)
 					recp_date = utc.num()
 					return_value = check.header.date()
  					if return_value = 1 then
-|   						dal.set.error.message("@ Receipt date should not be less than current date")	|GH304CR000.com.s
-|   						show.dal.messages(MSG.ALL)
-|   						return(DALHOOKERROR)								|GH304CR000.com.e
+  						dal.set.error.message("@ Receipt date should not be less than current date")	|GH304CR000.com.s
+  						show.dal.messages(MSG.ALL)
+  						return(DALHOOKERROR)								|GH304CR000.com.e
  					endif
 					whinh312.ardt = whinh310.crdt
 					
@@ -657,9 +657,9 @@ function extern long ue.after.before.save.object(long mode)
 					recp_date = utc.num()
 					return_value = check.header.date() 
  					if return_value = 1 then
-|   						dal.set.error.message("@Receipt date should not be less than current date")		|GH304CR000.com.s
-|   						show.dal.messages(MSG.ALL)
-|   						return(DALHOOKERROR)									|GH304CR000.com.e
+  						dal.set.error.message("@Receipt date should not be less than current date")		|GH304CR000.com.s
+  						show.dal.messages(MSG.ALL)
+  						return(DALHOOKERROR)									|GH304CR000.com.e
  					endif
 				else
 | 					recp_date = tdisg831.ivdt				|ISGEC01087.O
