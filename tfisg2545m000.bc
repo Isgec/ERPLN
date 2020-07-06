@@ -20,15 +20,18 @@ declaration:
 	table	ttdpur406 | Purchase Actual Receipts
 	table	ttcibd001 | Items-General
 	table	twhinh312	|GH339CR630.a
+	table	ttcemm030	|GH339CR630.a
 
 	extern	domain	tcmcs.str10	i.rtyp
 	
 	domain	tfgld.docn	i.docn
 	domain	whinh.pksp	i.shpm
+	domain	tcncmp		curr.comp	|GH339CR630.a
 	
 	#pragma used dll ottstpapihand 		|GH339CR630.a
 |****************************** program section ********************************
 before.program:
+	curr.comp = get.compnr()		|GH339CR630.a
 	import("v.docn",i.docn)
 	if	i.docn	<>	0	then
 		i.shpm	=	str$(i.docn)
@@ -72,6 +75,13 @@ function print.report()
 	string	i.erro(1000)
 	
 	i.erro = ""
+	select	tcemm030.lcmp
+	from	tcemm030
+	where	tcemm030.fcmp = :curr.comp
+	as set with 1 rows
+	selectdo
+		switch.to.company(tcemm030.lcmp)
+	endselect
 	
 	select	whinh312.rcno
 	from	whinh312
@@ -106,6 +116,7 @@ function print.report()
 	if not isspace(i.erro) then
 		message(i.erro)
 	endif
+	switch.to.company(curr.comp)
 }
 											|GH339CR630.a.e
 
