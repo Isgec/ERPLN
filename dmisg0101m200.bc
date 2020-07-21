@@ -31,6 +31,12 @@
 |*
 |* Adarsh Pal, 06-06-2019
 |* Additional logic for updating missing item in revised Document
+|+
+|+ ID GH350CR541, RAvi Kumar, 25-06-2020
+|* Handling of AS BUILT Drawing Release
+|*
+|* ID: GH360CR657, RAvi Kumar, 08-07-2020
+|* Blocking Items in Drawing having unit LOT
 |****************************** declaration section ***************************
 declaration:
 
@@ -49,6 +55,7 @@ declaration:
   table         tbpmdm001
   table		tdmisg140
   table		ttpisg063		|#sujeet20150513.n
+  table		ttcibd002		|GH360CR657.a
   #include <bic_dam>
 					|#ISGEC004003.en
   #include <bic_cmf>			
@@ -62,10 +69,11 @@ declaration:
 	extern	domain	tclogn		logon.code
 		domain	tcpono		get.stnd.error	|#ISGEC004003.sn
 		domain	tcsern		selected.records, first.time
-	string unlock.path(100), query.string(100)			|#ISGEC004003.en		
+	string unlock.path(100), query.string(100), str.mess(1000)			|GH360CR657.a			
 	
 	long global.variable
 	extern domain tcorno reviewer.approvar        |PATCH002030.n
+	extern	domain	tcmcs.str50m	str.citg, str.cuni				|GH360CR657.a
 |****************************** program section ********************************
 before.program:
 	if not dmisgdll0100.approval.rule.document.master(logname$,o.emno) then
@@ -200,8 +208,32 @@ choice.cont.generate:
 before.choice:							|#ISGEC004003.sn
 	selected.records = 0
 	do.selection(false,update.missing.item)			|Adarsh.06.06.19.n
-	do.selection(false, before_new_function_for_generate)
+		
+	if update.dcras.built() then				|GH350CR541.a.s
+		if ask.enum("dmisg.dcr.as", tcyesno.no, trim$(dmisg001.docn), trim$(dmisg001.revn)) = tcyesno.no then
+			choice.again()
+		endif
+	endif							|GH350CR541.a.e
 	
+	do.selection(false, before_new_function_for_generate)
+		
+	if check.sinal() > 0 then										|GH360CR657.a.s
+		str.mess = "Further processing cannot be done. Item Groups " & trim$(str.citg) & " etc "
+		str.mess = str.mess & "used in document " & trim$(dmisg001.docn) & " blocked for Engineering use. "
+		str.mess = str.mess & "Please update with correct Item Group and resubmit"
+		message(str.mess)
+		choice.again()
+	else
+	endif
+	
+	if check.cuni() > 0 then
+		str.mess = "Further processing cannot be done. Item Groups " & trim$(str.cuni) & " etc "
+		str.mess = str.mess & "used in document " & trim$(dmisg001.docn) & "  has unit of measure LOT "
+		str.mess = str.mess & "Please update item group for correct unit and resubmit"
+		message(str.mess)
+		choice.again()
+	else
+	endif													|GH360CR657.a.e
 
 on.choice:
 	if selected.records = 0 then
@@ -1053,3 +1085,101 @@ function domain	tcpono get.max.serial.no(
 	return(0)
 }
 						|Adarsh.06.06.19.en
+						
+function domain	tcbool update.dcras.built()						|GH350CR541.a.s
+{
+	domain	dmdoc.revv	dom.revn
+	dom.revn = "00"
+	
+	if val(dmisg001.revn) > 0 then
+		dom.revn = str$(val(dmisg001.revn) - 1)
+		if dom.revn <= "9" then
+			dom.revn = "0" & dom.revn
+		endif
+		
+		select	dmisg115.catg
+		from	dmisg115
+		where	dmisg115._index2 = {:dmisg001.docn, :dom.revn}
+		and	dmisg115.catg = "001"
+		as set with 1 rows
+		selectdo
+			select	dmisg001.asbt
+			from	dmisg001 for update
+			where	dmisg001._index1 = {:dmisg001.docn, :dmisg001.revn}
+			as set with 1 rows
+			selectdo
+				dmisg001.asbt = tcyesno.yes
+				db.update(tdmisg001, db.retry)
+				commit.transaction()
+				return(true)
+			endselect
+		endselect
+		
+	endif
+	return(false)
+}											|GH350CR541.a.e
+
+											|GH360CR657.a.s
+function long	check.sinal()
+{
+	long flag.signal
+	
+	flag.signal = 0
+	str.citg = ""
+	
+	select	dmisg002.citg
+	from	dmisg002
+	where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
+	group by dmisg002.citg
+	selectdo
+		select	tcibd002.csig
+		from	tcibd002
+		where	tcibd002.citg = {:dmisg002.citg}
+		as set with 1 rows
+		selectdo
+			if tcibd002.csig = "006" then
+				flag.signal = flag.signal + 1
+				if flag.signal = 1 then
+					str.citg = trim$(dmisg002.citg)
+				else
+					str.citg = str.citg & ", " & trim$(dmisg002.citg)
+				endif
+			endif
+		endselect
+	endselect
+	
+	return(flag.signal)
+}
+
+function long check.cuni()
+{
+	long flag.cuni, count.flag
+	
+	flag.cuni = 0
+	str.cuni = ""
+	select	dmisg002.citg
+	from	dmisg002
+	where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
+	group by dmisg002.citg
+	selectdo
+		select	tcibd002.cuni
+		from	tcibd002
+		where	tcibd002.citg = {:dmisg002.citg}
+		as set with 1 rows
+		selectdo			
+			if toupper$(tcibd002.cuni) = "LOT" then
+				flag.cuni = flag.cuni + 1
+				if flag.cuni = 1 then
+					str.cuni = trim$(dmisg002.citg)
+				else
+					str.cuni = str.cuni & ", " & trim$(dmisg002.citg)
+				endif
+			endif
+		endselect
+	endselect
+	
+	return(flag.cuni)
+}													|GH360CR657.a.e
+
+
+

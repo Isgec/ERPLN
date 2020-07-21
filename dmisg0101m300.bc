@@ -25,6 +25,9 @@
 |*
 |* ID: ISGEC01175,Bharti Garg, 15-03-2019, B61U a7 isg
 |* Chnages condition for zoom.
+|+
+|+ ID GH350CR541, RAvi Kumar, 25-06-2020
+|* Handling of AS BUILT Drawing Release
 |****************************** declaration section ***************************
 declaration:
 
@@ -59,6 +62,11 @@ choice.cont.generate:
 before.choice:
 	selected.records = 0
 	do.selection(false, before_new_function_for_generate)
+	if dmisg001.asbt = tcyesno.yes then						|GH350CR541.a.s
+		if ask.enum("dmisg.dcr.as", tcyesno.no, trim$(dmisg001.docn), trim$(dmisg001.revn)) = tcyesno.no then
+			choice.again()
+		endif
+	endif									|GH350CR541.a.s
 
 on.choice:
 	if selected.records = 0 then
