@@ -39,6 +39,9 @@
 |*
 |* ID GH342CR632, RAvi Kumar, 13-06-2020
 |* Auto print of batch from Purchase Order Invoice Processing
+|* 
+|* ID GH376CR000, RAvi Kumar, 22-07-2020
+|* Issue after finalisation through Quick PTR
 |****************************** declaration section ***************************
 declaration:
 
@@ -2838,7 +2841,24 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 		if dal.save.object("tfgld109") = 0 then
 			commit.transaction()
 			tfgld109.trun = tfgld109.trun
+			select	tfgld014.*						|GH376CR000.a.s
+			from	tfgld014 for update
+			where	tfgld014._index1 = {:i.year}
+			as set with 1 rows
+			selectdo
+				if dal.change.object("tfgld014") = 0 then
+					dal.set.field("tfgld014.lbno", i.btno)
+					dal.set.field("tfgld014.prun", o.trun + 1)
+					if dal.save.object("tfgld014") = 0 then
+						commit.transaction()
+					else
+						dal.get.error.message(i.erro)
+						abort.transaction()
+					endif
+				endif
+			endselect
 		else
+			dal.get.error.message(i.erro)					|GH376CR000.a.e
 			abort.transaction()
 		endif
 	endif
