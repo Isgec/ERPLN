@@ -26,6 +26,9 @@
 |* 
 |* ID: GH291CR590, RAvi Kumar, 24-03-2020
 |* Additional Field require in Payment Request
+|*
+|* ID GH374CR685, RAvi Kumar, 21-07-2020
+|* Open entries should open automatically from Payment request
 | ****************************** declaration section ***************************
 declaration:
 #include <bic_dam>		|#ISGECFIN013.n
@@ -196,4 +199,15 @@ before.display:
 		buyer.name = ""
 	endselect
 									|GH291CR590.a.e
+
+
+functions:									|GH374CR685.a.s
+function extern open.entry()
+{
+	session.zoomindex = 2	
+	start.synchronized.child.with(FIND.DATA)			
+	start.synchronized.child ("tfacp2520m000",
+		"tfmsl020.bpid", "tfacp200.ifbp")
+}
+										|GH374CR685.a.e
 
