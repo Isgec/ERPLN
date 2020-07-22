@@ -204,10 +204,15 @@ before.display:
 functions:									|GH374CR685.a.s
 function extern open.entry()
 {
+	domain	tcncmp	curr_comp
+	
+	curr_comp = get.compnr()
+	switch.to.company(tfmsl020.fcom)
 	session.zoomindex = 2	
 	start.synchronized.child.with(FIND.DATA)			
 	start.synchronized.child ("tfacp2520m000",
 		"tfmsl020.bpid", "tfacp200.ifbp")
+	switch.to.company(curr_comp)
 }
 										|GH374CR685.a.e
 
