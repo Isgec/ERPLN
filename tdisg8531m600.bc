@@ -20,6 +20,9 @@
 |*
 |* ID: GH328CR622, RAvi Kumar, 01-06-2020
 |* New filters in Billing Advice Accounts
+|*
+|* ID GH369CR670, RAvi Kumar, 17-07-2020
+|* Add notes in Billing Advice
 |****************************** declaration section ***************************
 declaration:
 
@@ -41,6 +44,7 @@ declaration:
 	string		str_query(500)
 	
 #include <bic_dam>	
+#include<bic_desktop>
 |****************************** program section ********************************
 before.program:
 | 	str_query = "tdisg831.stat <> tdisg.stat.created and ((tdisg831.type = tdisg.type.domestic) or ((tdisg831.type = tdisg.type.export) and (tdisg831.bill = tcyesno.no)"	|#ISGEC015079.o
@@ -71,6 +75,14 @@ init.form:
 	set.checked.command("processed", 0)
 	set.checked.command("all.data", 0)
 								|GH328CR622.a.e	
+								
+								
+group.2:							|GH369CR670.a.s
+init.group:
+ret_val = create.extra.toolbar(
+		"notes",	"tcgen:activate")
+								|GH369CR670.a.e
+								
 |****************************** field section **********************************
 field.tcmcs052.dsca:
 before.display:
@@ -198,3 +210,39 @@ function extern all.data()
 	set.checked.command("all.data", 1)
 }											|GH328CR622.a.e
 
+function extern notes()
+{
+	domain	tcncmp			curr.comp
+	domain	tcmcs.str1		p.char, c.char
+	domain	tcmcs.str30		i.host	
+	domain	tclogn			o.user
+	domain	tcmcs.str50		pass.string, handle.string
+		string			open.link(200),sess.code(30)
+		
+	o.user = logname$
+	
+	i.host = hostname$()
+	i.host =  toupper$(i.host)
+	i.host = trim$(i.host)
+	
+	curr.comp = get.compnr()
+	p.char = ""
+	c.char = ""
+	handle.string = ""
+	handle.string =  "P_BA_" & str$(curr.comp)
+	
+	pass.string = trim$(tdisg831.edrn) 
+	
+	p.char = "n"
+
+	open.link = "chrome.exe --app=http://192.9.200.146/Attachment/Notes.aspx?handle=" & 			
+		trim$(handle.string) & "&Index=" & pass.string & "&user=" & trim$(o.user) &	
+		"&Em=" & "&Hd=" & pass.string & "&Tl=" & "Billing_Advice_No:" & pass.string &		
+		"_Project_Code:" & trim$(tdisg831.cprj)
+				
+	open.link = trim$(open.link)
+	
+	app_start(open.link, "", "", "", "")
+}
+
+												|GH369CR670.a.e
