@@ -13,6 +13,9 @@
 |*
 |* ID: GH290CR000, RAvi Kumar, 19-03-2016
 | Issue in SAR MIS tpisg0474m100
+|*
+|* GH378CR000, RAvi Kumar, 01-08-2020
+|* SAR MIS Report not shows full problem description
 
 |****************************** declaration section ***************************
 declaration:
@@ -29,7 +32,7 @@ declaration:
    extern  domain  tcmcs.long       sarn.t
    extern	domain	tcemm.grid	devi.f, devi.t		|# PATCH001010.sn
    extern	domain	tidate		date.f, date.t		|# PATCH001010.en
-   string err.file(100), file.name(100), line1(5000), text1(1000, 100)		|GH290CR000.cng.size
+   string err.file(100), file.name(100), line1(5000), text1(2000, 100)		|GH378CR000.a
    long 	stat.fp, ret1, ret2
 #include<bic_desktop>
 #include<bic_text>
