@@ -39,6 +39,9 @@
 |*
 |* ID GH342CR632, RAvi Kumar, 13-06-2020
 |* Auto print of batch from Purchase Order Invoice Processing
+|*
+|* ID GH370CR678, RAvi Kumar, 17-07-2020
+|* Freeze quick payment session after Matching
 |* 
 |* ID GH376CR000, RAvi Kumar, 22-07-2020
 |* Issue after finalisation through Quick PTR
@@ -1924,6 +1927,8 @@ function	handle.enable.disable()
 	selectempty
 		disable.commands("finalize.process")
 	endselect										|GH336CR627.a.e
+	
+	enable.disable.fields()					|GH370CR678.a
 }
 
 
@@ -2899,4 +2904,19 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 	
 	handle.enable.disable()
 }												|GH336CR627.a.e
+
+
+function enable.disable.fields()								|GH370CR678.a.s
+{
+	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+	
+	select	tfacp200.stap
+	from	tfacp200
+	where	tfacp200._index1 = {:i.ttyp, :i.ninv}
+	and	(tfacp200.stap = tfacp.stap.linked or tfacp200.stap = tfacp.stap.approved)
+	as set with 1 rows
+	selectdo
+		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+	endselect
+}												|GH370CR678.a.e
 
