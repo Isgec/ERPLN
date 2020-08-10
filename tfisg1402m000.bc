@@ -45,8 +45,8 @@
 |* ID GH279CR578_000, Paras Kukreti, 2020-02-25
 |* Modification in existing report
 |*
-|* ID: GH326CR620, RAvi Kumar, 30-05-2020
-|* Auto set of values while printing voucher from transactions
+|* ID: GH355CR646, RAvi Kumar, 30-05-2020
+|* Display Remittance letter from Quick Payment
 
 |****************************** declaration section ***************************
 declaration:
@@ -203,7 +203,7 @@ before.program:
 		import("tfgld100.btno", btno.f)
 		import("tfgld100.btno", btno.t)
 	else							|GH326CR620.a.e
-						|#ISGECFIN013.sn
+					|#ISGECFIN013.sn
 	| 	import("tfisg185.pyad",tfisg185.pyad)
 		import("v.btno",tfisg185.pyad)
 		pyad = val(tfisg185.pyad)
@@ -282,7 +282,9 @@ choice.print.data:
 on.choice:
 	if print.direct then
 		spool.preview = true
-		spool.device = "P"
+| 		spool.device = "P"
+		import("spool.device", spool.device)				|GH355CR646.a
+		
 		brp_open = brp.open("rtfisg140201300", spool.device, 0)		
 		read.main.table()
 		read.main.table1()
@@ -298,6 +300,7 @@ on.choice:
 		endselect
 		
 		if count.orno > 0 then
+			export("spool.device", spool.device)			|GH355CR646.a
 			start.session(MODAL,"tfisg2400m100","","")
 		endif	
 		end()

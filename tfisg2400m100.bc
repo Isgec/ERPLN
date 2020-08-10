@@ -76,6 +76,9 @@
 |*
 |* #GH220, Adarsh Pal, 10-12-2019, VRC B61U a7 isg
 |* Modifications for 651 company
+|*
+|* ID: GH326CR620, RAvi Kumar, 30-05-2020
+|* Display Remittance letter from Quick Payment
 |****************************** declaration section ***************************
 declaration:
 
@@ -2196,7 +2199,8 @@ function Print.purchase.order.for.cost.invoice()
 function 	print_po()
 {
 	spool.preview = true
-	spool.device = "PL"
+| 	spool.device = "PL"
+	import("spool.device", spool.device)			|GH326CR620.a.s
 	spool.paper.type = "A4L"			|#ISGEC016005.n
 	brp_open = brp.open("rtfisg240110012", spool.device, 0)	
 	
