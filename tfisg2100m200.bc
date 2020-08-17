@@ -1,0 +1,86 @@
+|******************************************************************************
+|* tfisg2100m200  0  VRC B61U a7 isg 
+|* Update Project PO in tfacp200
+|* Ravi Kumar                    
+|* 2020-08-05
+|******************************************************************************
+|* Main table tfacp200 Open Items (Purchase Invoices &amp; Payments), Form Type 4
+|******************************************************************************
+                                                                                
+|****************************** declaration section ***************************
+declaration:
+
+  table   ttfacp200 | Open Items (Purchase Invoices &amp; Payments)
+  table	ttfacp251
+  table	ttdpur401
+  
+   extern  domain  tfgld.docn       ninv.f, ninv.t
+   extern  domain  tfgld.ttyp       ttyp
+|    extern domain	tcorno	cdf.orno
+|    extern	domain	tccprj	cdf.cprj
+
+|****************************** program section ********************************
+before.program:
+	ttyp = "PTR"
+
+field.ninv.f:
+when.field.changes:
+	ninv.t = ninv.f
+	
+before.zoom:
+	query.extend.where.in.zoom("tfgld018.ttyp = " & quoted.string(ttyp))
+
+field.ninv.t:
+before.zoom:
+	query.extend.where.in.zoom("tfgld018.ttyp = " & quoted.string(ttyp))
+
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+
+
+functions:
+function extern process()
+{
+	select	tfacp200.ttyp,
+		tfacp200.ninv,
+		tfacp200.cdf_prno,
+		tfacp200.cdf_cprj
+	from	tfacp200 for update
+	where	tfacp200.ttyp = "PTR"
+	and	tfacp200.tpay = tfacp.tpay.invoice
+	and	tfacp200.ttyp = :ttyp
+	and	tfacp200.ninv inrange :ninv.f and :ninv.t
+	and	(tfacp200.cdf_prno = "" or tfacp200.cdf_cprj = "" or tfacp200.cdf_prno = "0")
+	selectdo
+| 		get.var(pid, "tfacp200.cdf_prno", cdf.orno)
+| 		get.var(pid, "tfacp200.cdf_cprj", cdf.cprj)
+| 		if isspace(cdf.orno) or isspace(cdf.cprj) then
+			select	tfacp251.orno,
+				tfacp251.pono,
+				tfacp251.sqnb
+			from	tfacp251
+			where	tfacp251.ityp = :tfacp200.ttyp
+			and	tfacp251.idoc = :tfacp200.ninv
+			selectdo
+				select	tdpur401.cprj
+				from	tdpur401
+				where	tdpur401._index1 = {:tfacp251.orno, :tfacp251.pono, :tfacp251.sqnb}
+				as set with 1 rows
+				selectdo
+				endselect
+			endselect
+			
+	| 		tfacp200.cdf_prno = tfacp251.orno
+	| 		tfacp200.cdf_cprj = tdpur401.cprj
+			put.var(pid, "tfacp200.cdf_prno", tfacp251.orno)
+			put.var(pid, "tfacp200.cdf_cprj", tdpur401.cprj)
+			db.update(ttfacp200, db.retry)
+			commit.transaction()
+| 		endif
+	endselect
+	
+	message("Process Completed")
+}
