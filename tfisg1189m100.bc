@@ -1075,28 +1075,28 @@ function	extern	calculate()
 }
 									|#ISGEC016007.en
 
-| function extern device.open()						|GH355CR646.a.s
-| {
-	|extern	domain	tcpono	mode.device
-	|mode.device = 0
-| 	spool.device = "D"
-| 	spool.preview = false
-| 	
+function extern device.open()						|GH355CR646.a.s
+{
+| 	|extern	domain	tcpono	mode.device
+| 	|mode.device = 0
+	spool.device = "D"
+	spool.preview = false
+	
 | 	export("spool.device", spool.device)
-	|export("mode.device", mode.device)
-| 	start.session(MODAL, "tfisg2400m009", "", "")
-| }
+| 	|export("mode.device", mode.device)
+	start.session(MODAL, "tfisg2400m009", "", "")
+}
 
-| function extern device.without.open()
-| {
-	|extern	domain	tcpono	mode.device
-	|mode.device = 0
-| 	spool.device = "P"
-| 	spool.preview = true
-| 	
+function extern device.without.open()
+{
+| 	|extern	domain	tcpono	mode.device
+| 	|mode.device = 0
+	spool.device = "P"
+	spool.preview = true
+	
 | 	export("spool.device", spool.device)
-	|export("mode.device", mode.device)
-| 	start.session(MODAL, "tfisg2400m009", "", "")	
-| }
+| 	|export("mode.device", mode.device)
+	start.session(MODAL, "tfisg2400m009", "", "")	
+}
 									|GH355CR646.a.e
 

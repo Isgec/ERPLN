@@ -285,7 +285,7 @@ choice.print.data:
 on.choice:
 	if print.direct then
 		spool.preview = true
-		spool.device = "P"
+| 		spool.device = "P"
 | 		import("spool.device", spool.device)				|GH355CR646.a
 		
 		brp_open = brp.open("rtfisg140201300", spool.device, 0)		

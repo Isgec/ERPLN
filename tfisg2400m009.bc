@@ -143,8 +143,8 @@ on.choice:
 choice.print.data:
 on.choice:
 | 	if session.code = "tfisg1185m000" then			|#ISGEC016005.o
-	if session.code = "tfisg1185m000" or session.code = "tfisg1189m100" then			||#ISGEC016005.n
-| 	if session.code = "tfisg1185m000"  then			||#ISGEC016005.n			|GH355CR646.com
+| 	if session.code = "tfisg1185m000" or session.code = "tfisg1189m100" then			||#ISGEC016005.n
+	if session.code = "tfisg1185m000"  then			||#ISGEC016005.n			|GH355CR646.com
 		spool.preview = true
 		spool.device = "P"
 		on case reportno
@@ -162,32 +162,32 @@ on.choice:
 		read.main.table()
 		brp.close(brp_open)
 	| 	if session.code = "tfisg1185m000" then			|#ISGEC016005.o
-		if session.code = "tfisg1185m000" or session.code = "tfisg1189m100" then			||#ISGEC016005.n
-| 		if session.code = "tfisg1185m000" then			||#ISGEC016005.n
+| 		if session.code = "tfisg1185m000" or session.code = "tfisg1189m100" then			||#ISGEC016005.n
+		if session.code = "tfisg1185m000" then			||#ISGEC016005.n
 			start.session(MODAL,"tfisg1402m000","","")
 			end()
 		endif
-| 	else	
-| 		if session.code = "tfisg1189m100" then								|GH355CR646.a.s
-| 			on case reportno
-| 			case 2:	
-| 				brp_open = brp.open("rtfcmg127013002", spool.device, 0)	
-| 				break
-| 			case 3:	
-| 				brp_open = brp.open("rtfcmg127013003", spool.device, 0)	
-| 				break	
-| 			case 4:	
+	else	
+		if session.code = "tfisg1189m100" then								|GH355CR646.a.s
+			on case reportno
+			case 2:	
+				brp_open = brp.open("rtfcmg127013002", spool.device, 0)	
+				break
+			case 3:	
+				brp_open = brp.open("rtfcmg127013003", spool.device, 0)	
+				break	
+			case 4:	
 
-| 				brp_open = brp.open("rtfcmg127013004", spool.device, 0)	
-| 				break
-| 			endcase		
-| 			read.main.table()
-| 			brp.close(brp_open)
-| 			if session.code = "tfisg1189m100" then
+				brp_open = brp.open("rtfcmg127013004", spool.device, 0)	
+				break
+			endcase		
+			read.main.table()
+			brp.close(brp_open)
+			if session.code = "tfisg1189m100" then
 | 				export("spool.device", spool.device)
-| 				start.session(MODAL,"tfisg1402m000","","")
-| 				end()
-| 			endif											|GH355CR646.a.e
+				start.session(MODAL,"tfisg1402m000","","")
+				end()
+			endif											|GH355CR646.a.e
 		else
 			if rprt_open() then
 				read.main.table()
@@ -196,7 +196,7 @@ on.choice:
 				choice.again()
 			endif
 		endif
-| 	endif
+	endif
 |****************************** field section ***************************
 field.btno:
 before.zoom:
