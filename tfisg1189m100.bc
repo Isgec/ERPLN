@@ -116,7 +116,7 @@ before.program:
 
 before.display.object:
 | 	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize")		|#ISGEC016007.o
-	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize","calculate")	|#ISGEC016007.n
+	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize","calculate", "device.open", "device.without.open")	|#ISGEC016007.n
 	advice.no = val(strip$(shiftl$(tfisg189.pyad)))
 	select tfcmg109.stpp
 	from 	tfcmg109
@@ -137,12 +137,12 @@ before.display.object:
 	endselect
 	
 	if tfisg189.proc = tcyesno.no and tfisg185.sele = tcyesno.no then
-		disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize")
+		disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize", "device.open", "device.without.open")
 	else
 		enable.commands("paym.adv","process","tfisg1402m000","finalize")
 	endif
 	if etol(tfcmg109.stpp) = 6 then
-		enable.commands("tfisg2400m009")
+		enable.commands("tfisg2400m009", "device.open", "device.without.open")
 	endif
 	
 	if tfisg185.proc = tcyesno.yes then
@@ -1082,7 +1082,7 @@ function extern device.open()						|GH355CR646.a.s
 	spool.device = "D"
 	spool.preview = false
 	
-| 	export("spool.device", spool.device)
+| 	|export("spool.device", spool.device)
 | 	|export("mode.device", mode.device)
 	start.session(MODAL, "tfisg2400m009", "", "")
 }
@@ -1094,7 +1094,7 @@ function extern device.without.open()
 	spool.device = "P"
 	spool.preview = true
 	
-| 	export("spool.device", spool.device)
+| 	|export("spool.device", spool.device)
 | 	|export("mode.device", mode.device)
 	start.session(MODAL, "tfisg2400m009", "", "")	
 }

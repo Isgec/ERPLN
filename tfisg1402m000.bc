@@ -285,8 +285,7 @@ choice.print.data:
 on.choice:
 	if print.direct then
 		spool.preview = true
-| 		spool.device = "P"
-| 		import("spool.device", spool.device)				|GH355CR646.a
+| 		spool.device = "P"				|GH355CR646.com
 		
 		brp_open = brp.open("rtfisg140201300", spool.device, 0)		
 		read.main.table()
@@ -303,7 +302,6 @@ on.choice:
 		endselect
 		
 		if count.orno > 0 then
-| 			export("spool.device", spool.device)			|GH355CR646.a
 			start.session(MODAL,"tfisg2400m100","","")
 		endif	
 		end()

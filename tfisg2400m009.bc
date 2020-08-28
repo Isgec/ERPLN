@@ -184,7 +184,6 @@ on.choice:
 			read.main.table()
 			brp.close(brp_open)
 			if session.code = "tfisg1189m100" then
-| 				export("spool.device", spool.device)
 				start.session(MODAL,"tfisg1402m000","","")
 				end()
 			endif											|GH355CR646.a.e
