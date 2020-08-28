@@ -14,14 +14,29 @@ declaration:
   table	ttfacp251
   table	ttdpur401
   
-   extern  domain  tfgld.docn       ninv.f, ninv.t
-   extern  domain  tfgld.ttyp       ttyp
+	extern  domain  tfgld.docn       ninv.f, ninv.t, ninv.imp
+	extern  domain  tfgld.ttyp       ttyp, ttyp.imp
+	extern	domain	tcsess	calling.session
 |    extern domain	tcorno	cdf.orno
 |    extern	domain	tccprj	cdf.cprj
 
 |****************************** program section ********************************
 before.program:
 	ttyp = "PTR"
+	import("prog.name$",calling.session)
+	import("tfacp200.ttyp", ttyp.imp)
+	import("tfacp200.ninv", ninv.imp)
+	
+	if calling.session = "tfacp2520m000" then
+		if ttyp.imp = "PTR" then
+			ttyp = ttyp.imp
+			ninv.f = ninv.imp
+			ninv.t = ninv.imp
+		else
+			message("Updation in Transaction Type " & ttyp.imp & " is not allowed.")
+			exit()
+		endif
+	endif
 
 field.ninv.f:
 when.field.changes:
