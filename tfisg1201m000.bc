@@ -2853,7 +2853,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 			as set with 1 rows
 			selectdo
 				if dal.change.object("tfgld014") = 0 then
-					dal.set.field("tfgld014.lbno", i.btno)
+| 					dal.set.field("tfgld014.lbno", i.btno)
 					dal.set.field("tfgld014.prun", o.trun + 1)
 					if dal.save.object("tfgld014") = 0 then
 						commit.transaction()
