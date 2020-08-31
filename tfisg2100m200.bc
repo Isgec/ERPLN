@@ -33,7 +33,7 @@ before.program:
 			ninv.f = ninv.imp
 			ninv.t = ninv.imp
 		else
-			message("Updation in Transaction Type " & ttyp.imp & " is not allowed.")
+			message("This is not a PTR Document")
 			exit()
 		endif
 	endif
@@ -59,6 +59,17 @@ init.group:
 functions:
 function extern process()
 {
+	domain	tcncmp	curr_comp, log.comp
+	
+	curr_comp = get.compnr()
+	
+	select	tcemm030.lcmp:log.comp
+	from	tcemm030
+	where	tcemm030.fcmp = {:curr_comp}
+	as set with 1 rows
+	selectdo
+	endselect
+	
 	select	tfacp200.ttyp,
 		tfacp200.ninv,
 		tfacp200.cdf_prno,
@@ -83,6 +94,7 @@ function extern process()
 				select	tdpur401.cprj
 				from	tdpur401
 				where	tdpur401._index1 = {:tfacp251.orno, :tfacp251.pono, :tfacp251.sqnb}
+				and	tdpur401._compnr = :log.comp
 				as set with 1 rows
 				selectdo
 				endselect
