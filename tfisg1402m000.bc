@@ -205,44 +205,50 @@ before.program:
 		import("tfgld100.year", year.f)
 		import("tfgld100.btno", btno.f)
 		import("tfgld100.btno", btno.t)
-	else							|GH326CR620.a.e
+	else				
+		if session.code = "tfgld1101m100" then
+			import("tfgld101.year", year.f)
+			import("tfgld101.btno", btno.f)
+			import("tfgld101.btno", btno.t)
+		else						|GH326CR620.a.e
 						|#ISGECFIN013.sn
-	| 	import("tfisg185.pyad",tfisg185.pyad)
-		import("v.btno",tfisg185.pyad)
-		pyad = val(tfisg185.pyad)
-		select tfcmg103.ttyp,tfcmg103.docn from  tfcmg103
-		where tfcmg103._index1 = {:pyad}
-		as set with 1 rows
-		selectdo
-			ttyp.f = tfcmg103.ttyp
-			docn.f = tfcmg103.docn
-			select tfgld102.year from tfgld102
-			where tfgld102._index2 = {:comp.f,:ttyp.f,:docn.f}
+		| 	import("tfisg185.pyad",tfisg185.pyad)
+			import("v.btno",tfisg185.pyad)
+			pyad = val(tfisg185.pyad)
+			select tfcmg103.ttyp,tfcmg103.docn from  tfcmg103
+			where tfcmg103._index1 = {:pyad}
 			as set with 1 rows
 			selectdo
-				year.f = tfgld102.year
-			selectempty
-				select tfgld106.oyer from tfgld106
-				where tfgld106._index1 = {:ttyp.f,:docn.f}
+				ttyp.f = tfcmg103.ttyp
+				docn.f = tfcmg103.docn
+				select tfgld102.year from tfgld102
+				where tfgld102._index2 = {:comp.f,:ttyp.f,:docn.f}
 				as set with 1 rows
 				selectdo
-					year.f = tfgld106.oyer
+					year.f = tfgld102.year
+				selectempty
+					select tfgld106.oyer from tfgld106
+					where tfgld106._index1 = {:ttyp.f,:docn.f}
+					as set with 1 rows
+					selectdo
+						year.f = tfgld106.oyer
+					endselect
 				endselect
+				ttyp.t = ttyp.f
+				docn.t = docn.f
+				btno.f = 0
+				btno.t = 999999
 			endselect
-			ttyp.t = ttyp.f
-			docn.t = docn.f
-			btno.f = 0
-			btno.t = 999999
-		endselect
-						|#ISGECFIN013.sn
-		print.direct = false				
-		import("prog.name$",session.code)
-		if session.code = "tfisg2400m009" then
-			import("v.type",i.tran.type)
-			import("v.iprq",i.iprq)
-			print.direct = true	
-			execute(cont.process)	
-		endif	
+							|#ISGECFIN013.sn
+			print.direct = false				
+			import("prog.name$",session.code)
+			if session.code = "tfisg2400m009" then
+				import("v.type",i.tran.type)
+				import("v.iprq",i.iprq)
+				print.direct = true	
+				execute(cont.process)	
+			endif	
+		endif
 	endif
 |****************************** group section **********************************
 
