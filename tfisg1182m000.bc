@@ -38,6 +38,9 @@
 |* 
 |* ID: GH300CR602, RAvi Kumar, 07-04-2020
 |* Attachment facility in Receipt, Billing advice and document tracking
+|*
+|* GH389CR713, RAvi Kumar, 29-08-2020
+|* Change in Email alert configuration of Discrepant documents
 
 |****************************** declaration section ***************************
 declaration:
@@ -1864,17 +1867,36 @@ function send.email.alert(									|#ISGEC01141.sn
 	ret = cmf.setRecipientType(to.ID, "SMTP")
  
 	mail.to(old.user)										
-	
-	if	tfisg182.rcno(1;4)	=	"R201"	then
-		mail.to("0479")
-		else if	tfisg182.rcno(1;4)	=	"R301"	then
-			mail.to("9451")
-			else if	tfisg182.rcno(1;4)	<>	"R201" and tfisg182.rcno(1;4)	<>	"R301"	then
+		
+| 	if	tfisg182.rcno(1;4)	=	"R201"	then									|GH389CR713.com.s					
+| 		mail.to("0479")
+| 		else if	tfisg182.rcno(1;4)	=	"R301"	then
+| 			mail.to("9451")
+| 			else if	tfisg182.rcno(1;4)	<>	"R201" and tfisg182.rcno(1;4)	<>	"R301"	then
+| 				mail.to("5105")
+| 				mail.to("9353")
+| 			endif
+| 		endif
+| 	endif															|GH389CR713.com.e
+
+	if tfisg182.rcno(1;4) =	"R101" then											|GH389CR713.a.s
+		mail.to("9803")
+		mail.to("0760")
+	else
+		if	tfisg182.rcno(1;4) = "R201" then														
+			mail.to("0479")
+		else 
+			if	tfisg182.rcno(1;4) = "R301" then
+				mail.to("9451")
 				mail.to("5105")
-				mail.to("9353")
+			else 
+				if	tfisg182.rcno(1;4) <> "R201" and tfisg182.rcno(1;4) <> "R301" and tfisg182.rcno(1;4) <> "R101"	then
+					mail.to("5105")
+					mail.to("9353")
+				endif
 			endif
-		endif
-	endif
+		endif	
+	endif															|GH389CR713.a.e
 			
 	|********* Mail Body
 	attachment.ID = cmf.createAttachment(message.ID)
@@ -1961,7 +1983,7 @@ function	check_in_history_user_and_get_logincode(
 function extern get_attachment()									|GH300CR602.a.s
 {
 
-	domain	tcncmp			curr.comp
+	domain	tcncmp			curr.comp, curr.comp.o
 	domain	tcmcs.str1		p.char, c.char
 	domain	tcmcs.str30		i.host	
 	domain	tclogn			o.user
@@ -1977,7 +1999,17 @@ function extern get_attachment()									|GH300CR602.a.s
 	i.host =  toupper$(i.host)
 	i.host = trim$(i.host)
 	
-	curr.comp = get.compnr()
+	curr.comp.o = get.compnr()
+	
+	select	tcemm030.lcmp:curr.comp
+	from	tcemm030
+	where	tcemm030.fcmp = :curr.comp.o
+	as set with 1 rows
+	selectdo
+	selectempty
+		curr.comp = 0
+	endselect
+	
 	p.char = ""
 	c.char = ""
 	handle.string = ""
