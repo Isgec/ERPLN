@@ -78,6 +78,7 @@ declaration:
 	extern	domain	tcqiv1		rep.uwgt		|11
 	extern	domain	tcqiv1		rep.twgt		|12
 	extern	domain	tcrqno		rep.rqno		|13
+	extern	domain	tcpono		rep.rqln, rep.pono		|13.1
 	extern	domain	tcmcs.str10	rep.indt		|14
 	extern	domain	tcorno		rep.orno		|15
 	extern	domain	tcpono		rep.vrsn		|16
@@ -176,11 +177,11 @@ function read.main.table()
 		rep.stat	=	tcisg004.stat			|#ISGEC016009.n
 		
 		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
-				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.vrsn,
+				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.pono, rep.vrsn,
 				rep.odat, rep.crqt)
 		
 		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
-				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.indt)
+				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.rqln, rep.indt)
 				
 		Get_Dates(rep.orno, rep.vrsn, rep.rqno, rep.trtd, rep.podt)		|GH301CR601.a	
 		
@@ -234,6 +235,7 @@ function Get_PO_BOM_Detail(
 		ref	domain	tccom.bpid	ot.bpid,	|Supplier
 		ref	domain	tcnama		ot.bpnm,	|Supplier Name
 		ref	domain	tcorno		ot.orno,	|PO No.
+		ref	domain	tcpono		ot.pono,	|PO Line.
 		ref	domain	tcpono		ot.vrsn,	|Latest PO Version
 		ref	domain	tcmcs.str10	ot.odat,	|PO Date
 		ref	domain	tcqiv1		ot.crqt		|Child Receipt Quantity
@@ -256,6 +258,7 @@ function Get_PO_BOM_Detail(
 		and	tdpur400.otbp refers to tccom100 Unref Clear
 		selectdo
 			ot.orno = tdpur401.orno
+			ot.pono = tdpur401.pono
 			ot.bpid = tdpur400.otbp
 			ot.bpnm = tccom100.nama
 			select	max(tdmsl400.vrsn):ot.vrsn, min(tdmsl400.apdt):tmp.apdt
@@ -304,6 +307,7 @@ function Get_Indent(
 	ref	domain	tccuni		ot.cuni,	|Unit
 	ref	domain	tcqiv1		ot.twgt,	|Total Weight
 	ref	domain	tcrqno		ot.rqno,	|Indent No.
+	ref	domain	tcpono		ot.rqln,	|Indent line.
 	ref	domain	tcmcs.str10	ot.indt		|Indent Date
 			)
 {
@@ -337,6 +341,7 @@ function Get_Indent(
 		ot.twgt = tdisg003.wght
 		ot.qnty = tdisg003.qnty
 		ot.cuni = tdisg003.quom
+		ot.rqln = tcisg005.pono
 	endselect
 }
 
@@ -527,9 +532,11 @@ function	generate.header()
 		sprintf$("Unit Weight"),				|11
 		sprintf$("Total Weight"),				|12
 		sprintf$("Indent No."),				|13
+		sprintf$("Indent Line"),				|13.1
 		sprintf$("Indent Date"),				|14
 		sprintf$("Requisition Approval Date"),			|14.1			|GH301CR601.a
 		sprintf$("PO No."),					|15
+		sprintf$("PO Line."),					|15.1
 		sprintf$("Latest PO Revision"),			|16
 		sprintf$("PO Date"),					|17
 		sprintf$("PO Approval Date"),				|17.1			|GH301CR601.a
@@ -574,9 +581,11 @@ function	print.detail()
 		sprintf$("%f", rep.uwgt),				|11
 		sprintf$("%f", rep.twgt),				|12
 		sprintf$("%s", rep.rqno),				|13
+		sprintf$("%s", rep.rqln),				|13.1
 		sprintf$("%s", rep.indt),				|14
 		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.trtd)),	|14.1 		|GH301CR601.a	
 		sprintf$("%s", rep.orno),				|15
+		sprintf$("%s", rep.pono),				|15.1
 		sprintf$("%d", rep.vrsn),				|16
 		sprintf$("%s", rep.odat),				|17
 		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.podt)),	|17.1		|GH301CR601.a	
@@ -616,8 +625,10 @@ function Initialize_Variables()
 	rep.uwgt = 0		|11
 	rep.twgt = 0		|12
 	rep.rqno = ""		|13
+	rep.rqln = 0		|13.1
 	rep.indt = ""		|14
 	rep.orno = ""		|15
+	rep.pono = 0		|15
 	rep.vrsn = 0		|16
 	rep.odat = ""		|17
 	rep.bpid = ""		|18
