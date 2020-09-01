@@ -38,6 +38,9 @@
 |*
 |* ID: GH326CR620, RAvi Kumar, 30-05-2020
 |* Auto set of values while printing voucher from transactions
+|*
+|* ID: GH352CR648, RAvi Kumar, 06-07-2020
+|* Payment due date in print voucher
 
 |****************************** declaration section ***************************
 declaration:
@@ -1131,8 +1134,15 @@ function get.pay.due.date(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, do
 | 		endif								|ISG01020.en
 	endselect
 	
-	utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
-	oird1 = date.to.num(yy2,mm2,dd2)
+| 	utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
+| 	oird1 = date.to.num(yy2,mm2,dd2)
+
+	if oird <> 0 then							|Gh352CR648.a.s
+		utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
+		oird1 = date.to.num(yy2,mm2,dd2)
+	else
+		oird1 = 0
+	endif									|Gh352CR648.a.e
 	
 	select	tcisg001.nods
 	from	tcisg001
@@ -1142,9 +1152,18 @@ function get.pay.due.date(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, do
 	selectdo
 	endselect
 	
-	pay.due.date	= 	oird1	+	tcisg001.nods
-| 	num.to.date(oird,yy,mm,dd)
-	num.to.date(pay.due.date,yy,mm,dd)
+| 	pay.due.date	= 	oird1	+	tcisg001.nods
+	|num.to.date(oird,yy,mm,dd)
+| 	num.to.date(pay.due.date,yy,mm,dd)
+
+	
+	if oird <> 0 then						|Gh352CR648.a.s
+		pay.due.date	= 	oird1	+	tcisg001.nods
+| 		num.to.date(oird,yy,mm,dd)
+		num.to.date(pay.due.date,yy,mm,dd)
+	else
+		pay.due.date = 0
+	endif	
 }
 
 function get_ptr_gross_amnt(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, domain tfgld.lino i.lino)
@@ -1231,7 +1250,8 @@ function paid_amnt_schedule_wise(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.n
 			tfacp200.docn:docn2,
 			tfacp200.tpay,
 			tfacp200.amth,
-			tfacp200.pdoc
+			tfacp200.pdoc,
+			tfacp200.pcom				| TV-#12387 by Sanjeev on 24/06/2020 again
 			|,tfcmg100.chst
 		from	tfacp200|,tfcmg100
 		where	tfacp200._index1 	=	{:tfacp200.ttyp,:tfacp200.ninv}
@@ -1269,6 +1289,7 @@ function paid_amnt_schedule_wise(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.n
 				and 	tfcmg100.doco = :docn1
 | 				and 	tfcmg100.chst = tfcmg.chst.paid or tfcmg100.chst = tfcmg.chst.anticipated
 				and 	tfcmg100.chst in (5,7)
+				and	tfcmg100._compnr = :tfacp200.pcom	| TV-#12387 by Sanjeev on 24/06/2020 again
 				as set with 1 rows
 				selectdo
 | 					if	tfcmg100.typo = tdoc1 and	tfcmg100.doco = docn1	then
