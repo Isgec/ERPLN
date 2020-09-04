@@ -1929,7 +1929,7 @@ function	handle.enable.disable()
 		disable.commands("finalize.process")
 	endselect										|GH336CR627.a.e
 	
-| 	enable.disable.fields()					|GH370CR678.a
+	enable.disable.fields()					|GH370CR678.a
 }
 
 
@@ -2907,17 +2907,17 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 }												|GH336CR627.a.e
 
 
-| function enable.disable.fields()								|GH370CR678.a.s
-| {
-| 	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
-| 	
-| 	select	tfacp200.stap
-| 	from	tfacp200
-| 	where	tfacp200._index1 = {:i.ttyp, :i.ninv}
-| 	and	(tfacp200.stap = tfacp.stap.linked or tfacp200.stap = tfacp.stap.approved)
-| 	as set with 1 rows
-| 	selectdo
-| 		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
-| 	endselect
-| }	
+function enable.disable.fields()								|GH370CR678.a.s
+{
+	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+	
+	select	tfacp200.stap
+	from	tfacp200
+	where	tfacp200._index1 = {:i.ttyp, :i.ninv}
+	and	(tfacp200.stap = tfacp.stap.linked or tfacp200.stap = tfacp.stap.approved)
+	as set with 1 rows
+	selectdo
+		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+	endselect
+}	
 											|GH370CR678.a.e
