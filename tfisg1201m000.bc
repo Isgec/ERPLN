@@ -46,6 +46,9 @@
 |* ID GH370CR678, RAvi Kumar, 17-07-2020
 |* Freeze quick payment session after Matching
 |*
+|* TV13440,Sanjeev Kumar, 09-09-2020 : 09:50
+|* Update tfacp200 with project and purchase order no.
+|*
 |****************************** declaration section ***************************
 declaration:
 
@@ -803,6 +806,7 @@ function	extern	match.process()
 			)
 	handle.enable.disable()	
 	get.document.details()
+	update.tfacp200()			|#TV13440-Sanjeev-09-09-2020
 	display("i.ttyp")
 	display("i.ninv")
 	display("c.btno")	
@@ -1606,6 +1610,7 @@ function	get.document.details()
 	from	tfacp100, tfacp200, tfgld100
 	where	tfacp100._index1	=	{:v.docn}
 	and	tfacp200._index1	=	{tfacp100.ctyp,tfacp100.cinv}
+	and	tfacp200.tpay = tfacp.tpay.invoice					|RAvi.a.10092020
 	and	tfgld100._index1	=	{tfacp200.year,tfacp200.btno}
 	selectdo
 	selectempty
@@ -2921,3 +2926,21 @@ function enable.disable.fields()								|GH370CR678.a.s
 	endselect
 }	
 											|GH370CR678.a.e
+function update.tfacp200()			|#TV13440-Sanjeev-09-09-2020-SN
+{
+	
+	select	tfacp200.*
+	from	tfacp200 for update
+	where	tfacp200._index1 = {:i.ttyp,:i.ninv}
+	selectdo
+		put.var(pid, "tfacp200.cdf_cprj", v.cprj)
+		put.var(pid, "tfacp200.cdf_prno", v.orno)
+		db.update(ttfacp200, db.retry, e)
+		if	not	e	then
+			commit.transaction()
+		else
+			abort.transaction()
+		endif
+	endselect	
+
+}						|#TV13440-Sanjeev-09-09-2020-EN
