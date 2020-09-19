@@ -91,6 +91,9 @@
 |* 
 |* ID: GH261CR000, RAvi Kumar, 06-02-2020
 |* IR136997-Error msg not displayed when own reg no. in PO line and extension not match
+|*
+|* GH388CR709, RAvi Kumar, 26/08/2020
+|* Series check on Purchase Order creation-modification
 
 |******************************************************************************
 	table	ttdmsl400
@@ -191,12 +194,14 @@ function extern long ue.before.before.save.object(long mode)
 	domain tcpono 		max_version
 	domain	tdmsl.work	work_flow_status
 	long ret
+	domain		tclogn	user.auto			|GH388CR709.a
 	
-	
-	
-
 	on case mode
 	case DAL_NEW:
+		if not check.series.auth(tdpur400.orno(1;4), user.auto) then			|GH388CR709.a.s
+			dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+			return(DALHOOKERROR)
+		endif										|GH388CR709.a.e
 								|# PATCH001047.sn
 		select	tccom100.txta
 		from	tccom100
@@ -217,6 +222,10 @@ function extern long ue.before.before.save.object(long mode)
 						|#ISGEC017006.en
 		break
 	case DAL_UPDATE:
+		if not check.series.auth(tdpur400.orno(1;4), user.auto) then			|GH388CR709.a.s
+			dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+			return(DALHOOKERROR)
+		endif										|GH388CR709.a.e
 		tdisgdll0400.Purchase_Order_ION_Tracking(tdpur400.orno,max_version,work_flow_status)
 		max_version1= max_version		|temp1
 		if work_flow_status = tdmsl.work.yes then				
@@ -1848,3 +1857,23 @@ function get.exchage.rate()			|CR-485-S
 	
 	
 }						|CR-485-E
+
+function domain	tcbool	check.series.auth(domain	tcorno	seri,
+				ref	domain		tclogn	user.auto)		|GH388CR709.a.s
+{
+	domain	tclogn	curr_comp
+	
+	curr_comp = logname$
+	user.auto = curr_comp
+	select	tdisg024.*
+	from	tdisg024
+	where	tdisg024._index1 = {:seri, :curr_comp}
+	as set with 1 rows
+	selectdo
+		return(true)
+	selectempty
+		return(false)
+	endselect
+	
+	return(false)
+}										|GH388CR709.a.e
