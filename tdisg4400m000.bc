@@ -144,6 +144,9 @@
 |*
 |* ID: GH335CR639, RAvi Kumar, 04-06-2020
 |* Display TCS on PO Print
+|*
+|* GH402CR701, RAvi Kumar, 22-09-2020
+|* Display Purchase order Information from Quick Payment Process
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -340,7 +343,17 @@ before.program:								|ISG001030.sn
 			selectdo
 				i.vrsn = tdmsl400.vrsn	
 			endselect							
-			break					|ISGEC01050.en					
+			break					|ISGEC01050.en	
+		case "tfisg1185m000":				|GH402CR701.a.s
+			import("tfisg185.orno", i.orno)
+			
+			select tdmsl400.vrsn from tdmsl400
+			where tdmsl400._index1 = {:i.orno}
+			order by tdmsl400.vrsn desc
+			as set with 1 rows
+			selectdo
+				i.vrsn = tdmsl400.vrsn	
+			endselect				|GH402CR701.a.e				
 	ENDCASE		
 								
 | 	endif					|#ISGECDV001198.o
