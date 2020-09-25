@@ -195,13 +195,20 @@ function extern long ue.before.before.save.object(long mode)
 	domain	tdmsl.work	work_flow_status
 	long ret
 	domain		tclogn	user.auto			|GH388CR709.a
-	
+	get.var(pid,"prog.name$",calling.prog)			|GH388CR709.a
 	on case mode
 	case DAL_NEW:
-		if not check.series.auth(tdpur400.orno(1;4), user.auto) then			|GH388CR709.a.s
-			dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
-			return(DALHOOKERROR)
-		endif										|GH388CR709.a.e
+		if	calling.prog = "whinh3512m000" or 		|GH388CR709.a.s
+			calling.prog = "tdpur4106m000" or 
+			calling.prog = "whinh3112s000" or
+			calling.prog = "tdpur4534m000" or
+			calling.prog = "tdpur4501m140" then
+		else
+			if not check.series.auth(tdpur400.orno(1;4), user.auto) then		
+				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+				return(DALHOOKERROR)
+			endif
+		endif							|GH388CR709.a.e
 								|# PATCH001047.sn
 		select	tccom100.txta
 		from	tccom100
@@ -222,10 +229,18 @@ function extern long ue.before.before.save.object(long mode)
 						|#ISGEC017006.en
 		break
 	case DAL_UPDATE:
-		if not check.series.auth(tdpur400.orno(1;4), user.auto) then			|GH388CR709.a.s
-			dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
-			return(DALHOOKERROR)
-		endif										|GH388CR709.a.e
+		if	calling.prog = "whinh3512m000" or 		|GH388CR709.a.s
+			calling.prog = "tdpur4106m000" or 
+			calling.prog = "whinh3112s000" or
+			calling.prog = "tdpur4534m000" or
+			calling.prog = "tdpur4501m140" then
+		else
+			if not check.series.auth(tdpur400.orno(1;4), user.auto) then	
+				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+				return(DALHOOKERROR)
+			endif
+		endif							|GH388CR709.a.e
+		
 		tdisgdll0400.Purchase_Order_ION_Tracking(tdpur400.orno,max_version,work_flow_status)
 		max_version1= max_version		|temp1
 		if work_flow_status = tdmsl.work.yes then				
