@@ -8,6 +8,9 @@
 |******************************************************************************
 |* ID GH368CR666, RAvi Kumar, 14-07-2020
 |* Payable, retention report from Payment Request
+|* 
+|* GH403CR730, RAvi Kumar, 23-09-2020
+|* Modification in Payable Retention report
                                                                                 
 |****************************** declaration section ***************************
 declaration:
@@ -20,6 +23,8 @@ declaration:
   table	ttfgld100
   table	ttfacp200
   table	ttcemm030
+  table	ttfisg001		|GH403CR730.a
+  table	ttcisg001		|GH403CR730.a
   
 
    extern  domain  tccom.bpid	bpid.f, bpid.t
@@ -27,6 +32,8 @@ declaration:
    extern	domain	tcorno	orno.f, orno.t	
    extern	domain	tccprj	cprj.f, cprj.t
    extern	domain	tcmcs.str60	label.format, label.format.2
+   extern	domain	tcncmp	fcom.f, fcom.t								|GH403CR730.a
+   extern	domain	tfgld.date	ptrdocdate.f, ptrdocdate.t					|GH403CR730.a
 	
 	domain	tcncmp	curr_comp
 
@@ -106,7 +113,15 @@ when.field.changes:
 field.cprj.f:
 when.field.changes:
    cprj.t = cprj.f
-
+   
+field.fcom.f:									|GH403CR730.a.s
+when.field.changes:
+   fcom.t = fcom.f
+   
+field.ptrdocdate.f:
+when.field.changes:
+   ptrdocdate.t = ptrdocdate.f
+										|GH403CR730.a.e
 
 |****************************** function section ******************************
 
@@ -146,6 +161,7 @@ function read.main.table()
 			tcemm030.lcmp
 		from	tcemm030
 		where	tcemm030.lcmp = :curr_comp
+		and	tcemm030.fcmp inrange :fcom.f and :fcom.t					|GH368CR666.a
 		selectdo
 			switch.to.company(tcemm030.fcmp)
 			select	tfacp201.ttyp,
@@ -174,7 +190,8 @@ function read.main.table()
 	| 		where	tfacp201._index3 inrange {:bpid.f} and {:bpid.t}
 			where	tfacp201.ifbp inrange {:bpid.f} and {:bpid.t}
 			and	tfacp201.cdf_bloc inrange :bloc.f and :bloc.t
-			and	tfacp201.docd >= :after.doc.date
+			and	tfacp201.docd >= :after.doc.date					
+			and	tfacp201.docd inrange :ptrdocdate.f and :ptrdocdate.t			|GH368CR666.a
 			and	tfacp251.ityp = tfacp201.ttyp
 			and	tfacp251.idoc = tfacp201.ninv
 			and	tfacp251.orno inrange {:orno.f} and {:orno.t}	
@@ -206,7 +223,8 @@ function read.main.table()
 					rep.bpid.nama = tccom100.nama
 					rep.purbook = tfacp201.ttyp & " " & str$(tfacp201.ninv)
 					rep.docdate = tfacp201.docd
-					rep.duedate = tfacp201.payd
+| 					rep.duedate = tfacp201.payd
+					rep.duedate = get.pay.due.date(tcemm030.lcmp, tcemm030.fcmp, tfacp201.ttyp, tfacp201.ninv, tfacp251.orno)
 					rep.ccur = tfacp201.icur
 					rep.cprj = tdpur401.cprj
 					rep.dsca = tcmcs052.dsca
@@ -299,6 +317,7 @@ function read.main.table()
 		where	tfacp201.ifbp inrange {:bpid.f} and {:bpid.t}
 		and	tfacp201.cdf_bloc inrange :bloc.f and :bloc.t
 		and	tfacp201.docd >= :after.doc.date
+		and	tfacp201.docd inrange :ptrdocdate.f and :ptrdocdate.t			|GH368CR666.a
 		and	tfacp251.ityp = tfacp201.ttyp
 		and	tfacp251.idoc = tfacp201.ninv
 		and	tfacp251.orno inrange {:orno.f} and {:orno.t}	
@@ -330,7 +349,8 @@ function read.main.table()
 				rep.bpid.nama = tccom100.nama
 				rep.purbook = tfacp201.ttyp & " " & str$(tfacp201.ninv)
 				rep.docdate = tfacp201.docd
-				rep.duedate = tfacp201.payd
+| 				rep.duedate = tfacp201.payd
+				rep.duedate = get.pay.due.date(tcemm030.lcmp, tcemm030.fcmp, tfacp201.ttyp, tfacp201.ninv, tfacp251.orno)
 				rep.ccur = tfacp201.icur
 				rep.cprj = tdpur401.cprj
 				rep.dsca = tcmcs052.dsca
@@ -416,5 +436,82 @@ function intialize()
 	rep.nonfinal.amnt = 0
 	rep.bloc = ""
 	rep.cloc.dsca = ""
+}
+
+function domain	tfgld.date get.pay.due.date(	domain	tcncmp		o.log.comp, 
+						domain	tcncmp		o.fin.comp,
+						domain	tfgld.ttyp	i.ttyp, 
+						domain	tfgld.docn 	i.ninv,
+						domain	tcorno		o.orno)
+{
+	domain	tcdate		oird, oird1
+	long	yy2,mm2,dd2,hh2,mm3,ss2, yy,mm,dd
+	domain	tfgld.date	pay.due.date
+	domain	tfgld.docn	ninv.paydate
+	
+| 	select	tfisg001.irno
+| 	from	tfisg001
+| 	where	tfisg001.invt		=	:i.ttyp
+| 	and	tfisg001.pinv		=	:i.ninv
+| 	and	tfisg001.ncmp 		= 	:o.fin.comp		
+| 	selectdo
+| 	endselect
+| 	
+| 	select	tfacp100.*
+| 	from	tfacp100
+| 	where	tfacp100._index1 = {:tfisg001.irno}
+| 	selectdo
+| 		get.var(pid,"tfacp100.cdf_oird",oird)
+| 	endselect
+
+	select	tfacp251.shpm
+	from	tfacp251
+	where	tfacp251._index1 = {:o.fin.comp, :i.ttyp, :i.ninv}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	ninv.paydate = lval(tfacp251.shpm)
+	
+| 	select	tcemm030.lcmp
+| 	from	tcemm030
+| 	where	tcemm030.fcmp = :o.fin.comp
+| 	as set with 1 rows
+| 	selectdo
+| 	endselect
+
+	select	tfacp100.ninv,
+		tfacp100.cdf_oird
+	from	tfacp100
+	where	tfacp100._index1 = {:ninv.paydate}
+	and	tfacp100._compnr = :o.log.comp
+	as set with 1 rows
+	selectdo
+		get.var(pid,"tfacp100.cdf_oird",oird)
+	endselect								|RAvi.a.e.25092020
+	
+	if oird <> 0 then						
+		utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
+		oird1 = date.to.num(yy2,mm2,dd2)
+	else
+		oird1 = 0
+	endif								
+	
+	select	tcisg001.nods
+	from	tcisg001
+	where	tcisg001._index1 	=	{:o.orno}
+	and 	tcisg001.catg		= 	tcisg.catg.running.payment
+	and 	tcisg001._compnr 	=	:o.log.comp
+	selectdo
+	endselect
+
+	if oird <> 0 then				
+		pay.due.date	= 	oird1	+	tcisg001.nods
+		num.to.date(pay.due.date,yy,mm,dd)
+	else
+		pay.due.date = 0
+	endif	
+
+	return(pay.due.date)
 }
 
