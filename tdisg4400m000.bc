@@ -147,6 +147,9 @@
 |*
 |* GH402CR701, RAvi Kumar, 22-09-2020
 |* Display Purchase order Information from Quick Payment Process
+|*
+|* GH411CR000, RAvi Kumar, 25-09-2020
+|* PO Footer Text Printing
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -2440,26 +2443,50 @@ function get.total.from.history()			|#ISGEC016032.sn (Shilpa)
 										|#ISGEC016048.sn
 function	get.line.text()
 {
-	select	tdmsl502.fdes:v.fdes,
-		tdmsl502.fde2:v.fde2,
-		tdmsl502.fde3:v.fde3
-	from	tdmsl502
-	where	tdmsl502._index1	=	{:tdpur401.orno}
-	as	set with 1 rows
-	selectdo
-		if	isspace(v.fdes(261;40))	then
-			v.fdes(261;40)	=	v.fde2(1;90)
-			v.fde2(1;90)	=	""
-		endif
-		if	isspace(v.fde2(221;80))	then
-			v.fde2(221;80)	=	v.fde3(1;50)
-			v.fde3(1;50)	=	""
-		endif
-	selectempty
-		v.fdes	=	""							
-		v.fde2	=	""
-		v.fde3	=	""
-	endselect
+	if highest.vrsn then									|GH411CR000.a.s
+		select	tdmsl502.fdes:v.fdes,
+			tdmsl502.fde2:v.fde2,
+			tdmsl502.fde3:v.fde3
+		from	tdmsl502
+		where	tdmsl502._index1	=	{:tdpur401.orno}
+		as	set with 1 rows
+		selectdo
+			if	isspace(v.fdes(261;40))	then
+				v.fdes(261;40)	=	v.fde2(1;90)
+				v.fde2(1;90)	=	""
+			endif
+			if	isspace(v.fde2(221;80))	then
+				v.fde2(221;80)	=	v.fde3(1;50)
+				v.fde3(1;50)	=	""
+			endif
+		selectempty
+			v.fdes	=	""							
+			v.fde2	=	""
+			v.fde3	=	""
+		endselect
+	else
+		select	tdmsl500.fdes:v.fdes,
+			tdmsl500.fde2:v.fde2,
+			tdmsl500.fde3:v.fde3
+		from	tdmsl500
+		where	tdmsl500._index1	=	{:tdpur401.orno, :i.vrsn}
+		as	set with 1 rows
+		selectdo
+			if	isspace(v.fdes(261;40))	then
+				v.fdes(261;40)	=	v.fde2(1;90)
+				v.fde2(1;90)	=	""
+			endif
+			if	isspace(v.fde2(221;80))	then
+				v.fde2(221;80)	=	v.fde3(1;50)
+				v.fde3(1;50)	=	""
+			endif
+		selectempty
+			v.fdes	=	""							
+			v.fde2	=	""
+			v.fde3	=	""
+		endselect
+	endif											|GH411CR000.a.e
+	
 	select	tdmsl503.ldes:v.ldes,
 		tdmsl503.lde2:v.lde2,
 		tdmsl503.lde3:v.lde3,

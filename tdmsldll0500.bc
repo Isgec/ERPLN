@@ -246,6 +246,20 @@ function extern tdmsl.dll0500.move.tdpur400.to.tdmsl500()
 	get.var(pid, "tdpur400.cdf_qdat", tdmsl500.qdat.c)
 	get.var(pid, "tdpur400.cdf_refb",tdmsl500.refb.c)
 	get.var(pid, "tdpur400.cdf_reas", tdmsl500.reas)		|#ISGECDV001168.n
+	
+	select	tdmsl502.*						|RAvi.a.s.25092020
+	from	tdmsl502
+	where	tdmsl502._index1	=	{:tdpur401.orno}
+	as	set with 1 rows
+	selectdo
+	selectempty
+		tdmsl502.fdes	=	""
+		tdmsl502.fde2	=	""
+		tdmsl502.fde3	=	""
+	endselect
+	tdmsl500.fdes	=	tdmsl502.fdes
+	tdmsl500.fde2	=	tdmsl502.fde2
+	tdmsl500.fde3	=	tdmsl502.fde3				|RAvi.a.e.25092020
 }
 									|#ISGECDV001080.sn
 function copy.text(domain tcmcs.str17 i.field, domain tcmcs.str17 o.text, domain tctxtn inp.text)
