@@ -58,6 +58,8 @@ declaration:
 	table	ttfisg001				|ISGEC017005.n
 	table	ttfcmg100				|ISGEC017005.n
 	table	ttfacp100			|ISG01020.n
+	table	ttcemm030				|RAvi.a.25092020		
+	table	ttfacp251				|RAvi.a.25092020
 
 |******** Form Field ***********************************************************
 
@@ -1114,29 +1116,57 @@ function ptr.net.payable.computation(	domain	tfgld.ttyp	i.ttyp,			|Transactin Ty
 
 function get.pay.due.date(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, domain	tcorno	o.orno)
 {
+	domain	tfgld.docn	ninv.paydate
 	cur.comp = get.compnr()			|#ISG01020.n
 	
-	select	tfisg001.irno
-	from	tfisg001
-	where	tfisg001.invt		=	:i.ttyp
-	and	tfisg001.pinv		=	:i.ninv
-	and	tfisg001.ncmp 		= 	:cur.comp				|ISG01020.n
-	selectdo
-	endselect
-	
-	select	tfacp100.*
-	from	tfacp100
-	where	tfacp100._index1 = {:tfisg001.irno}
-	selectdo
-		get.var(pid,"tfacp100.cdf_oird",oird)
-| 		if oird = 0 then						|ISG01020.sn
-| 			message("Date Not Filled.")
-| 		endif								|ISG01020.en
-	endselect
+| 	select	tfisg001.irno								|RAvi.a.s25092020
+| 	from	tfisg001
+| 	where	tfisg001.invt		=	:i.ttyp
+| 	and	tfisg001.pinv		=	:i.ninv
+| 	and	tfisg001.ncmp 		= 	:cur.comp				|ISG01020.n
+| 	selectdo
+| 	endselect
+| 	
+| 	select	tfacp100.*
+| 	from	tfacp100
+| 	where	tfacp100._index1 = {:tfisg001.irno}
+| 	selectdo
+| 		get.var(pid,"tfacp100.cdf_oird",oird)
+		|if oird = 0 then						|ISG01020.sn
+		|	message("Date Not Filled.")
+		|endif								|ISG01020.en
+| 	endselect
 	
 | 	utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
 | 	oird1 = date.to.num(yy2,mm2,dd2)
 
+	select	tfacp251.shpm
+	from	tfacp251
+	where	tfacp251._index1 = {:ncmp.f, :i.ttyp, :i.ninv}
+	and	tfacp251._compnr = :ncmp.f
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	ninv.paydate = lval(tfacp251.shpm)
+	
+	select	tcemm030.lcmp
+	from	tcemm030
+	where	tcemm030.fcmp = :cur.comp
+	as set with 1 rows
+	selectdo
+	endselect
+
+	select	tfacp100.ninv,
+		tfacp100.cdf_oird
+	from	tfacp100
+	where	tfacp100._index1 = {:ninv.paydate}
+	and	tfacp100._compnr = :tcemm030.lcmp
+	as set with 1 rows
+	selectdo
+		get.var(pid,"tfacp100.cdf_oird",oird)
+	endselect								|RAvi.a.e.25092020
+	
 	if oird <> 0 then							|Gh352CR648.a.s
 		utc.to.date(oird,yy2,mm2,dd2,hh2,mm3,ss2)
 		oird1 = date.to.num(yy2,mm2,dd2)
