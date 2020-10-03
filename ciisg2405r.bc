@@ -4,6 +4,9 @@
 |* RAvi Kumar
 |* 04-03-2020 [15:29]
 |******************************************************************************
+|* 
+|* GH412CR741, RAvi Kumar, 30092020
+|* TCS on Sale Invoice
 |******************************************************************************
 
 	table	ttctax940
@@ -177,6 +180,9 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 	extern	domain	tcmcs.long	report2.flag
 	domain	tcncmp	curr.comp.file
 
+	
+	extern	domain	tcmcs.str132m	tcs.label1, tcs.label2, tcs.label3			|GH412CR741.a
+	extern			long	tcs.flag						|GH412CR741.a
 #include<bic_desktop>
 #include <bic_text>
 	
@@ -2353,6 +2359,34 @@ function get.tax.data()
 |****************************Create HTML Invoice********************************
 function create.html.invoice.header()
 {
+
+	string		r.siqr.txt(1000)mb,sbuf(959,40)			|Sanjeev - 22/09/2020
+	domain tclang                    system.language
+	r.siqr.txt = ""
+	system.language = language$
+	str.idoc = str$(cisli205.idoc)
+	select	ciisg801.qrst
+	from	ciisg801
+	where	ciisg801._index1 = {:ncmp.code, :cisli205.ityp, :str.idoc}
+	as set with 1 rows
+	selectdo
+	selectempty
+		ciisg801.qrst = 0
+	endselect	
+	select    tttxt010.text
+	from      tttxt010
+	where   tttxt010._index1 = {:ciisg801.qrst,:system.language }
+	selectdo
+		if not isspace(trim$(tttxt010.text)) then
+			if not isspace(r.siqr.txt) then
+				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+			else
+				r.siqr.txt = trim$(tttxt010.text)
+			endif
+		endif     
+	endselect
+	r.siqr.txt = trim$(r.siqr.txt)
+									|Sanjeev - 22/09/2020
 	curr.comp.file = get.compnr()
 	
 	if curr.comp.file = 200 then
@@ -2516,8 +2550,13 @@ function create.html.invoice.header()
 			seq.puts("<strong>Purchase Order:</strong> "&tpisg045.refr&"<br>",fp)
 			seq.puts("Our Agreement Reference",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=2 class="&chr$(34)&"fta"&chr$(34)&">"&
-			"<img src="&chr$(34)&"file://///localhost/111/123.jpg"&chr$(34)&" width=100px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&">",fp)
+| 		seq.puts("<td colspan=2 class="&chr$(34)&"fta"&chr$(34)&">"&							|Sanjeev - 22/09/2020
+| 			"<img src="&chr$(34)&"file://///localhost/111/123.jpg"&chr$(34)&" width=100px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&">",fp)
+		seq.puts("<td colspan=2 class="&chr$(34)&"tal bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|Sanjeev - 22/09/2020
+			&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)					||Sanjeev - 22/09/2020
+			
 		seq.puts("</td>",fp)
 		seq.puts("<td colspan=6 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"fta"&chr$(34)&"> <strong>GSTIN :</strong>"&gstn.c.no&"<br>",fp)
 			seq.puts("<strong>Place of Supply:</strong> "&gstn.c.cste& chr$(32)& gstn.c.cste.desc &" <br>",fp)
@@ -2761,17 +2800,34 @@ function create.final.html.invoice()
 			seq.puts("<td colspan=14><br>"&str$(tpisg045.txt3)&"</td>",fp)
 		seq.puts("</tr>",fp)
 	endif
+	print.tcs.value()						|GH412CR741.a.s
 	
-	seq.puts("<tr>",fp)
-		seq.puts("<td colspan=9 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"fta"&chr$(34)&"><br>Certified that the above particulars are true & correct and the amount indicated represents the price actually",fp)
-			seq.puts("charged and there is no flow of additional consideration directly or indirectly from the buyer. ",fp)
-			seq.puts("If Payment is not made by due date,Interest will be charged @24% p.a.",fp)
-		seq.puts("</td>",fp)
-		seq.puts("<td colspan=5><p class="&chr$(34)&"p2 ft1"&chr$(34)&"><br>For ISGEC HEAVY ENGINEERING LIMITED</p><br>",fp)
-			seq.puts("<br><br><br><br><br>",fp)
-		seq.puts("<p class="&chr$(34)&"p2 ft1"&chr$(34)&">(Authorized Signatory)</p></td>",fp)
-	seq.puts("</tr>",fp)
-	
+	if tcs.flag = 0 then
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=9 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"fta"&chr$(34)&"><br>Certified that the above particulars are true & correct and the amount indicated represents the price actually",fp)
+				seq.puts("charged and there is no flow of additional consideration directly or indirectly from the buyer. ",fp)
+				seq.puts("If Payment is not made by due date,Interest will be charged @24% p.a.",fp)
+			seq.puts("</td>",fp)
+			seq.puts("<td colspan=5><p class="&chr$(34)&"p2 ft1"&chr$(34)&"><br>For ISGEC HEAVY ENGINEERING LIMITED</p><br>",fp)
+				seq.puts("<br><br><br><br><br>",fp)
+			seq.puts("<p class="&chr$(34)&"p2 ft1"&chr$(34)&">(Authorized Signatory)</p></td>",fp)
+		seq.puts("</tr>",fp)
+	else
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=9 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"fta"&chr$(34)&"><br>Certified that the above particulars are true & correct and the amount indicated represents the price actually",fp)
+				seq.puts("charged and there is no flow of additional consideration directly or indirectly from the buyer. ",fp)
+				seq.puts("If Payment is not made by due date,Interest will be charged @24% p.a.",fp)
+				seq.puts("<br><br>",fp)
+				seq.puts(trim$(tcs.label1),fp)
+				seq.puts(trim$(tcs.label2),fp)
+				seq.puts(trim$(tcs.label3),fp)
+			seq.puts("</td>",fp)
+			seq.puts("<td colspan=5><p class="&chr$(34)&"p2 ft1"&chr$(34)&"><br>For ISGEC HEAVY ENGINEERING LIMITED</p><br>",fp)
+				seq.puts("<br><br><br><br>",fp)
+			seq.puts("<p class="&chr$(34)&"p2 ft1"&chr$(34)&">(Authorized Signatory)</p></td>",fp)
+		seq.puts("</tr>",fp)
+	endif
+											|GH412CR741.a.e	
 	seq.puts("</table>",fp)
 	seq.puts("</div>",fp)
 	seq.puts("</td>",fp)
@@ -3431,3 +3487,29 @@ function domain tcdsca	get.description(domain tcccty	i.field)
 	return(tpisg030.dsca)
 }
         
+
+function print.tcs.value()						|GH412CR741.a.s
+{
+	tcs.label1 = ""
+	tcs.label2 = ""
+	tcs.label3 = ""
+	tcs.flag = 0 
+	select	tpisg045.tcsa
+	from	tpisg045
+	where	tpisg045._index1 = {:cisli235.cprj}
+	as set with 1 rows
+	selectdo
+		if tpisg045.tcsa = tcyesno.yes then
+			tcs.label1 = "Please note that as per Section 206C(1H) of the Income Tax Act, 1961, TCS amount @ 0.075% (present applicable"
+			tcs.label2 = "rate w.e.f. 01-October-2020) of above gross invoice amount is payable additionally by you along with the payment"
+			tcs.label3 = "against this invoice."
+			tcs.flag = 1
+		else
+			tcs.label1 = ""
+			tcs.label2 = ""
+			tcs.label3 = ""
+			tcs.flag = 0 
+		endif
+	endselect
+}
+									|GH412CR741.a.e

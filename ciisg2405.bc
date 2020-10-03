@@ -95,6 +95,9 @@
 |*
 |* #GH185CR501, Adarsh Pal, VRC B61U a7 isg, 22-10-2019
 |* Modification in report layout print for Format 001
+|* 
+|* GH412CR741, RAvi Kumar, 30092020
+|* TCS on Sale Invoice
 |******************************************************************************
 
 	table	ttctax940
@@ -210,6 +213,8 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 | 		long		m, n					|#ISGEC001229.o				
 		long		m, n,i.count				|#ISGEC001229.n
 		domain	tcorno	i.edrn	|ISGEC016023
+	extern	domain	tcmcs.str132m	tcs.label1, tcs.label2, tcs.label3
+	extern			long	tcs.flag
 
 	#pragma used dll otcmcsdll0036
 	#pragma used dll otctaxdll9141.l
@@ -1016,7 +1021,7 @@ function extern iciisg2405.print.report
 	if report.code6 = "rciisg24050200d" or report.code6 = "rciisg24050200r" 		|#ISGEC01088.n	|#ISGEC016021.n
 			or report.code8 = "rciisg24050200m" then 
 		print.gr = 1
-		
+		print.tcs.value()							|GH412CR741.a
 		iciisg2405.get.gr.details(cisli235.slcp,cisli205.ityp,cisli205.idoc)
 	endif
 		print.gr = 0
@@ -1585,7 +1590,7 @@ function  iciisg2405.get.gr.details
 			
 			
 			if report.code6 = "rciisg24050200d" or report.code6 = "rciisg24050200r"	  then		|#ISGEC01088.n then
-					
+				print.tcs.value()		
 				brp.ready(brp.report.6)
 					
 			endif	
@@ -1669,6 +1674,7 @@ function  iciisg2405.get.gr.details
 				endif
 				
 				if report.code6 = "rciisg24050200d" or report.code6 = "rciisg24050200r"	  then		|#ISGEC01088.n then
+					print.tcs.value()								|GH412CR741.a
 					brp.ready(brp.report.6)
 					
 				endif	
@@ -2325,3 +2331,30 @@ function get.tax.data()
 }
 
 				|#ISGEC017006.en
+				
+function print.tcs.value()						|GH412CR741.a.s
+{
+	tcs.label1 = ""
+	tcs.label2 = ""
+	tcs.label3 = ""
+	tcs.flag = 0 
+	select	tpisg045.tcsa
+	from	tpisg045
+	where	tpisg045._index1 = {:cisli235.cprj}
+	as set with 1 rows
+	selectdo
+		if tpisg045.tcsa = tcyesno.yes then
+			tcs.label1 = "Please note that as per Section 206C(1H) of the Income Tax Act, 1961, TCS amount @ 0.075% (present applicable"
+			tcs.label2 = "rate w.e.f. 01-October-2020) of above gross invoice amount is payable additionally by you along with the payment"
+			tcs.label3 = "against this invoice."
+			tcs.flag = 1
+		else
+			tcs.label1 = ""
+			tcs.label2 = ""
+			tcs.label3 = ""
+			tcs.flag = 0 
+		endif
+	endselect
+}
+									|GH412CR741.a.e
+
