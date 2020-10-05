@@ -12,6 +12,9 @@
 |*
 |* ID GH217CR000, RAvi Kumar, 26-11-2019
 |* Supplier data change should not be allowed to estimation people
+|*
+|* GH410CR738, RAvi Kumar, 01-10-2020
+|* Flag in session "Business partner-tccom4500m000" for attachment
 |******************************************************************************
        
 	table	ttccom100	| Business Partners
@@ -20,6 +23,7 @@
 	table	ttccom122	| Invoice-from Business Partners
 	table	ttccom124	| Pay-to Business Partners
 
+	domain	tcmcs.str30m	i.aflg
 #include <bic_dal>
 
 
@@ -31,8 +35,24 @@ function extern long ue.before.before.save.object(long mode)
 	
 	on case mode
 	case DAL_NEW:
+		get.var(pid,"tccom100.cdf_aflg", i.aflg) 				|GH410CR738.a.s
+		if not isspace(i.aflg) then
+			if not check.msme.attac() then				
+				dal.set.error.message("@ Provide valid MSME attachment")
+				return(DALHOOKERROR)
+			endif
+		endif
 		break
 	case DAL_UPDATE:
+		get.var(pid,"tccom100.cdf_aflg", i.aflg) 			
+		if not isspace(i.aflg) then
+			if not check.msme.attac() then				
+				dal.set.error.message("@ Provide valid MSME Attachment")
+				return(DALHOOKERROR)
+			endif
+		endif							|GH410CR738.a.e
+		break
+		
 		if tccom100.bpid(1;3) = "SUP" then					|RAvi.a.s.GH217CR000
 			select	tcisg009.*
 			from	tcisg009
@@ -268,3 +288,16 @@ function	domain	tcbool	check.for.general()
 	return(false)
 }
 						|#ISGEC015086.en
+						
+function boolean check.msme.attac()				|GH410CR738.a.s
+{
+	select	tcisg010.*
+	from	tcisg010
+	where	tcisg010.aflg = :i.aflg
+	as set with 1 rows
+	selectdo
+		return(true)
+	endselect
+	
+	return(false)
+}								|GH410CR738.a.e
