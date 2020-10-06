@@ -11,6 +11,9 @@
 |*
 |* ID: GH373CR687, RAvi Kumar, 21-07-2020
 |* Modifications in Print Manhours data report
+|*
+|* GH407CR000, RAvi Kumar, 24-09-2020
+|* 153719 - Issue of Group code filter in Report Print Manhour Data
 |****************************** declaration section ***************************
 declaration:
 
@@ -108,15 +111,17 @@ function read.main.table()
 		tiisg910.hhrs, tiisg906.grcd, tiisg910.opty,
 		tiisg910.dcat, tiisg910.dsno, tiisg910.dsrv,	|#SD04082017.n
 		tiisg911.desc, tccom001.nama, tiisg905.rdes,
-		tiisg908.desc, tcmcs052.dsca, tiisg910.remk,
+		tiisg908.desc, tcmcs052.dsca, tiisg910.remk, tiisg910.grcd,		|GH407CR000.a.grcd
 		tdsmi110.dsca 	|#SD04082017.n
 	from	tiisg910, tiisg906, tiisg911, tccom001, 
 		tiisg905, tiisg908, tcmcs052, tdsmi110
 	where	tiisg910._index2 inrange {:emno.f, :tdat.f}	and {:emno.t, :tdat.t}
 	and	tiisg910.cprj inrange {:cprj.f} and {:cprj.t}
 	and	tiisg910.cmbb refers to tiisg906
-	and	tiisg906.grcd inrange :grcd.f	and	:grcd.t
+| 	and	tiisg906.grcd inrange :grcd.f	and	:grcd.t		|GH407CR000.co.
+	and	tiisg910.grcd inrange :grcd.f	and	:grcd.t		|GH407CR000.a
 |  	and	tiisg906.stat = tcyesno.yes				|GH373CR687.com
+	and	tiisg906.grcd = tiisg910.grcd				|GH407CR000.a
 	and	tiisg906.grcd refers to tiisg911 Unref Clear
 	and	tiisg910.emno refers to tccom001 Unref Clear
 	and	tiisg910.rlid refers to tiisg905 Unref Clear
@@ -137,7 +142,8 @@ function read.main.table()
 		rep.pjdc = tcmcs052.dsca
 		rep.cspa = tiisg910.cspa
 		rep.hhrs = tiisg910.hhrs
-		rep.grcd = tiisg906.grcd
+| 		rep.grcd = tiisg906.grcd				|GH407CR000.com
+		rep.grcd = tiisg910.grcd				|GH407CR000.a
 		rep.grdc = tiisg911.desc
 		rep.remk = tiisg910.remk
 		rep.opty = tiisg910.opty	|#SD04082017.n
