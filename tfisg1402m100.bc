@@ -1583,6 +1583,13 @@ function pint.reasoncode(	domain	tcncmp		i.comp,						|GH413CR739.a.s
 {
 	reason.flag = 0
 	
+	select	tcemm030.lcmp 
+	from	tcemm030
+	where	tcemm030.fcmp = :i.comp
+	as set with 1 rows
+	selectdo
+	endselect
+	
 	select	tfacp251.rcno,
 		tfacp251.rseq
 	from 	tfacp251	
@@ -1594,6 +1601,7 @@ function pint.reasoncode(	domain	tcncmp		i.comp,						|GH413CR739.a.s
 		from	tdisg832
 		where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
 		and	tdisg832.tobi = tcyesno.yes
+		and	tdisg832._compnr = :tcemm030.lcmp
 		as set with 1 rows
 		selectdo
 			reason.flag = 0
@@ -1602,12 +1610,14 @@ function pint.reasoncode(	domain	tcncmp		i.comp,						|GH413CR739.a.s
 				tdisg832.edrn
 			from	tdisg832
 			where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
+			and	tdisg832._compnr = :tcemm030.lcmp
 			as set with 1 rows
 			selectdo
 				select	tdisg831.stat
 				from	tdisg831
 				where	tdisg831._index1 = {:tdisg832.edrn}
 				and	tdisg831.stat = tdisg.stat.process
+				and	tdisg831._compnr = :tcemm030.lcmp
 				as set with 1 rows
 				selectdo
 					reason.flag = 1
