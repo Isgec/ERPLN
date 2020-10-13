@@ -41,6 +41,9 @@
 |*
 |* ID: GH352CR648, RAvi Kumar, 06-07-2020
 |* Payment due date in print voucher
+|*
+|* GH413CR739, RAvi Kumar, 07-10-2020
+|* Display Billing Advice Status against FOC Receipts in PTR Print
 
 |****************************** declaration section ***************************
 declaration:
@@ -60,6 +63,9 @@ declaration:
 	table	ttfacp100			|ISG01020.n
 	table	ttcemm030				|RAvi.a.25092020		
 	table	ttfacp251				|RAvi.a.25092020
+	table	ttpisg039				|GH413CR739.a
+	table	ttdisg831				|GH413CR739.a
+	table	ttdisg832				|GH413CR739.a
 
 |******** Form Field ***********************************************************
 
@@ -171,6 +177,7 @@ declaration:
 	extern	domain	tcmcs.str8	rep.irno.str		|GH315CR613.a
 		string		session.code(13)		|GH326CR620.a
 	extern	domain	tcncmp		comp.curr		|GH326CR620.a
+	extern	domain	tcmcs.long	reason.flag		|GH413CR739.a
 	#include <bic_text>
 	
 	#define	FIX_LEDGER "9500300     "	|#GST001026.n
@@ -373,7 +380,7 @@ function non.finalized.transactions()
 		endif
 		get.irno(tfgld102.ttyp, tfgld102.docn)							|GH315CR613.a
 		rep.ccur = tfgld102.ccur
-		
+		pint.reasoncode(tfgld102.cono, tfgld102.ttyp, tfgld102.docn)						|GH413CR739.a		
 		on case  tfgld102.catg
 		case	tfgld.catg.purchase.inv:
 		case	tfgld.catg.purchase.cred:
@@ -630,7 +637,7 @@ function finalized.transactions()
 		endif
 		
 		get.irno(tfgld106.otyp, tfgld106.odoc)							|GH315CR613.a
-		
+		pint.reasoncode(tfgld106.ocmp, tfgld106.otyp, tfgld106.odoc)						|GH413CR739.a		
 		rep.ccur = tfgld106.ccur
 		
 		on case  tfgld106.catg
@@ -1570,3 +1577,45 @@ function get.irno(	domain	tfgld.ttyp	irno.ttyp,						|GH315CR613.a.s
 }
 													|GH315CR613.e.s
 																
+function pint.reasoncode(	domain	tcncmp		i.comp,						|GH413CR739.a.s
+				domain	tfgld.ttyp	i.ttyp,						
+				domain	tfgld.docn	i.docn)
+{
+	reason.flag = 0
+	
+	select	tfacp251.rcno,
+		tfacp251.rseq
+	from 	tfacp251	
+	where	tfacp251._index1 = {:i.comp, :i.ttyp, :i.docn}
+	and	tfacp251._compnr = :ncmp.f
+	as set with 1 rows
+	selectdo
+		select	tdisg832.tobi
+		from	tdisg832
+		where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
+		and	tdisg832.tobi = tcyesno.yes
+		as set with 1 rows
+		selectdo
+			reason.flag = 0
+		selectempty
+			select	tdisg832.reas,
+				tdisg832.edrn
+			from	tdisg832
+			where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
+			as set with 1 rows
+			selectdo
+				select	tdisg831.stat
+				from	tdisg831
+				where	tdisg831._index1 = {:tdisg832.edrn}
+				and	tdisg831.stat = tdisg.stat.process
+				as set with 1 rows
+				selectdo
+					reason.flag = 1
+				selectempty
+					reason.flag = 0
+				endselect
+| 				reason.flag = 0
+			endselect
+		endselect
+	endselect
+}													|GH413CR739.a.e
