@@ -26,6 +26,9 @@
 |*
 |* ID GH355CR646, RAvi Kumar, 24-07-2020
 |* Display Remittance letter from Quick Payment
+|*
+|* GH409CR737, RAvi Kumar, 14-10-2020
+|* Upgrade Quick Payment session
 |****************************** declaration section ***************************
 declaration:
 	#pragma used dll ottstpapihand
@@ -64,7 +67,7 @@ declaration:
 	extern	domain	tfgld.amnt	v.totl
 	extern	domain	tcncmp	i.ncmp
 	extern	domain	tcorno	hold.orno
-	extern	domain	tcyesno	fld1,fld2,fld3,fld4,fld5,fld6
+	extern	domain	tcyesno	fld1,fld2,fld3,fld4,fld5,fld6, fld7, fld8, fld9				|GH409CR737.a
 	extern	domain	tfgld.user	curr.user
 	extern  domain tcpono		p.data,ret_val
 	extern	domain	tfcmg.tadv	tpay
@@ -105,6 +108,9 @@ declaration:
 	extern	domain	tcyesno		var.stat
 	extern	domain	tclogn		var.apby			|#ISGEC016008.en
 	extern	domain	tcamnt		v.amnt				|#ISGEC016007.n
+	extern  domain  tfgld.btno	i.pbtn
+	extern  domain  tcmcs.str6	i.payd
+	extern  domain  tccom.bpid	i.bpid
 |****************************** program section ********************************
 before.program:
 	i.ncmp	=	get.compnr()
@@ -112,11 +118,36 @@ before.program:
 	curr.user = logname$
 	p.data = 0
 
+import("tfisg500.pbtn",i.pbtn)
+import("tfisg500.ptbp",i.bpid)
+i.payd = str$(i.pbtn)
+
 |****************************** group section **********************************
 
 before.display.object:
+	if i.pbtn <> 0 then
+		
+		
+		select tfisg189.*
+		from tfisg189
+		where tfisg189.pyad =:i.payd
+		and tfisg189.bpid =:i.bpid
+		selectdo
+			tfisg189.iprq =tfisg189.iprq
+			tfisg189.bpid =tfisg189.bpid
+			tfisg189.type =tfisg189.type
+			tfisg189.adrq =tfisg189.adrq
+			tfisg189.pyad =tfisg189.pyad
+		selectempty
+			message("Payment Advice not find , in Quick Payment Process")
+			end()
+			
+		endselect
+		
+	endif
+	
 | 	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize")		|#ISGEC016007.o
-	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize","calculate", "device.open", "device.without.open")	|#ISGEC016007.n
+	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize","calculate", "device.open","device.without.open")	|#ISGEC016007.n
 	advice.no = val(strip$(shiftl$(tfisg189.pyad)))
 	select tfcmg109.stpp
 	from 	tfcmg109
@@ -137,12 +168,12 @@ before.display.object:
 	endselect
 	
 	if tfisg189.proc = tcyesno.no and tfisg185.sele = tcyesno.no then
-		disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize", "device.open", "device.without.open")
+		disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize", "device.open","device.without.open")
 	else
 		enable.commands("paym.adv","process","tfisg1402m000","finalize")
 	endif
 	if etol(tfcmg109.stpp) = 6 then
-		enable.commands("tfisg2400m009", "device.open", "device.without.open")
+		enable.commands("tfisg2400m009", "device.open","device.without.open")
 	endif
 	
 	if tfisg185.proc = tcyesno.yes then
@@ -1075,28 +1106,34 @@ function	extern	calculate()
 }
 									|#ISGEC016007.en
 
-function extern device.open()						|GH355CR646.a.s
+function extern device.open()
 {
-| 	|extern	domain	tcpono	mode.device
-| 	|mode.device = 0
+| 	extern	domain	tcpono	mode.device
+| 	mode.device = 0
 	spool.device = "D"
 	spool.preview = false
 	
-| 	|export("spool.device", spool.device)
-| 	|export("mode.device", mode.device)
+	export("spool.device", spool.device)
+| 	export("mode.device", mode.device)
 	start.session(MODAL, "tfisg2400m009", "", "")
 }
 
 function extern device.without.open()
 {
-| 	|extern	domain	tcpono	mode.device
-| 	|mode.device = 0
+| 	extern	domain	tcpono	mode.device
+| 	mode.device = 0
 	spool.device = "P"
 	spool.preview = true
 	
-| 	|export("spool.device", spool.device)
-| 	|export("mode.device", mode.device)
-	start.session(MODAL, "tfisg2400m009", "", "")	
+	export("spool.device", spool.device)
+| 	export("mode.device", mode.device)
+	start.session(MODAL, "tfisg2400m009", "", "")
 }
-									|GH355CR646.a.e
 
+function extern open.entries()							|GH409CR737.a.s
+{
+	session.zoomindex = 2
+	start.synchronized.child.with(FIND.DATA)
+	start.synchronized.child ("tfacp2520m000",
+		"tfisg189.bpid", "tfacp200.ifbp")
+}										|GH409CR737.a.e

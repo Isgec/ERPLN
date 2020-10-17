@@ -50,6 +50,9 @@
 |*
 |* ID: GH355CR646, RAvi Kumar, 30-05-2020
 |* Display Remittance letter from Quick Payment
+|*
+|* GH409CR737, RAvi Kumar, 15-10-2020
+|* Upgrade Quick Payment session
 
 |****************************** declaration section ***************************
 declaration:
@@ -193,7 +196,8 @@ declaration:
 | 	extern	domain	tcpono		flag1				|ISGEC01092.n
 	
 	long pyad,count.orno		|#ISGECFIN013.n
-
+	
+	extern	domain	tfgld.btno	i.btno
 |****************************** program section ********************************
 before.program:
 	comp.f = get.compnr()
@@ -201,53 +205,90 @@ before.program:
 	
 	import("prog.name$", session.code)			|GH326CR620.a.s
 	
-	if session.code = "tfgld1101m000" then
-		import("tfgld100.year", year.f)
-		import("tfgld100.btno", btno.f)
-		import("tfgld100.btno", btno.t)
-	else				
-		if session.code = "tfgld1101m100" then
-			import("tfgld101.year", year.f)
-			import("tfgld101.btno", btno.f)
-			import("tfgld101.btno", btno.t)
-		else						|GH326CR620.a.e
-						|#ISGECFIN013.sn
-		| 	import("tfisg185.pyad",tfisg185.pyad)
-			import("v.btno",tfisg185.pyad)
-			pyad = val(tfisg185.pyad)
-			select tfcmg103.ttyp,tfcmg103.docn from  tfcmg103
-			where tfcmg103._index1 = {:pyad}
+	if session.code = "tfisg1189m100" then			|GH409CR737.a.s
+		import("tfisg189.pyad", i.btno)
+		select	tfcmg101.comp,
+			tfcmg101.ttyp,
+			tfcmg101.ninv
+		from	tfcmg101
+		where	tfcmg101._index1 = {:i.btno}
+		as set with 1 rows
+		selectdo
+		endselect
+		ttyp.f = tfcmg101.ttyp
+		ttyp.t = tfcmg101.ttyp
+		docn.f = tfcmg101.ninv
+		docn.t = tfcmg101.ninv
+		btno.f = 0
+		btno.t = 999999
+		comp.f = tfcmg101.comp
+		comp.t = tfcmg101.comp
+		select tfgld102.year from tfgld102
+		where tfgld102._index2 = {:tfcmg101.comp,:ttyp.f,:docn.f}
+		as set with 1 rows
+		selectdo
+			year.f = tfgld102.year
+		selectempty
+			select tfgld106.oyer from tfgld106
+			where tfgld106._index1 = {:ttyp.f,:docn.f}
 			as set with 1 rows
 			selectdo
-				ttyp.f = tfcmg103.ttyp
-				docn.f = tfcmg103.docn
-				select tfgld102.year from tfgld102
-				where tfgld102._index2 = {:comp.f,:ttyp.f,:docn.f}
+				year.f = tfgld106.oyer
+			endselect
+		endselect
+| 		spool.device = "P"
+		execute(cont.process)	
+	else
+		if session.code = "tfgld1101m000" then
+			import("tfgld100.year", year.f)
+			import("tfgld100.btno", btno.f)
+			import("tfgld100.btno", btno.t)
+		else				
+			if session.code = "tfgld1101m100" then
+				import("tfgld101.year", year.f)
+				import("tfgld101.btno", btno.f)
+				import("tfgld101.btno", btno.t)
+				import("tfgld101.ttyp", ttyp.f)
+				import("tfgld101.ttyp", ttyp.t)
+			else						|GH326CR620.a.e
+							|#ISGECFIN013.sn
+			| 	import("tfisg185.pyad",tfisg185.pyad)
+				import("v.btno",tfisg185.pyad)
+				pyad = val(tfisg185.pyad)
+				select tfcmg103.ttyp,tfcmg103.docn from  tfcmg103
+				where tfcmg103._index1 = {:pyad}
 				as set with 1 rows
 				selectdo
-					year.f = tfgld102.year
-				selectempty
-					select tfgld106.oyer from tfgld106
-					where tfgld106._index1 = {:ttyp.f,:docn.f}
+					ttyp.f = tfcmg103.ttyp
+					docn.f = tfcmg103.docn
+					select tfgld102.year from tfgld102
+					where tfgld102._index2 = {:comp.f,:ttyp.f,:docn.f}
 					as set with 1 rows
 					selectdo
-						year.f = tfgld106.oyer
+						year.f = tfgld102.year
+					selectempty
+						select tfgld106.oyer from tfgld106
+						where tfgld106._index1 = {:ttyp.f,:docn.f}
+						as set with 1 rows
+						selectdo
+							year.f = tfgld106.oyer
+						endselect
 					endselect
+					ttyp.t = ttyp.f
+					docn.t = docn.f
+					btno.f = 0
+					btno.t = 999999
 				endselect
-				ttyp.t = ttyp.f
-				docn.t = docn.f
-				btno.f = 0
-				btno.t = 999999
-			endselect
-							|#ISGECFIN013.sn
-			print.direct = false				
-			import("prog.name$",session.code)
-			if session.code = "tfisg2400m009" then
-				import("v.type",i.tran.type)
-				import("v.iprq",i.iprq)
-				print.direct = true	
-				execute(cont.process)	
-			endif	
+								|#ISGECFIN013.sn
+				print.direct = false				
+				import("prog.name$",session.code)
+				if session.code = "tfisg2400m009" then
+					import("v.type",i.tran.type)
+					import("v.iprq",i.iprq)
+					print.direct = true	
+					execute(cont.process)	
+				endif	
+			endif
 		endif
 	endif
 |****************************** group section **********************************
@@ -289,47 +330,57 @@ on.choice:
 
 choice.print.data:
 on.choice:
-	if print.direct then
+	if session.code = "tfisg1189m100" then
+		spool.device = "P"
 		spool.preview = true
-| 		spool.device = "P"				|GH355CR646.com
-		
-		brp_open = brp.open("rtfisg140201300", spool.device, 0)		
+		brp_open = brp.open("rtfisg140201300", spool.device, 0)	
 		read.main.table()
 		read.main.table1()
 		brp.close(brp_open)
-		count.orno = 0
-		select	count(tfisg185.orno):count.orno
-		from	tfisg185
-		where	tfisg185._index1 = {:i.iprq}
-		and	tfisg185.orno <> "         "
-		and	tfisg185.sele = tcyesno.yes
-		and	tfisg185.proc = tcyesno.yes
-		selectdo
-		endselect
-		
-		if count.orno > 0 then
-			start.session(MODAL,"tfisg2400m100","","")
-		endif	
 		end()
-	else	
-   if rprt_open() then
-		   if prnt.cash = tcyesno.yes then
-				brp_open = brp.open("rtfmsl140211022", spool.device, 0)		|PATCH001073.n
-				read.prnt.cash()
-				brp.close(brp_open)
-				brp_open = 0
-		   endif
-       read.main.table()
-       read.main.table1()
-       	if prnt.rprt = tcyesno.yes then						|#ISGECDV001083.sn
-		brp_id = brp.open("rtfisg140201011", "D", 1)
-			read.prnt.integration()
-		brp.close(brp_id)
-	endif										|#ISGECDV001083.en
-       rprt_close()
-   else
-       choice.again()
-   endif
+	else
+		if print.direct then
+			spool.preview = true
+	| 		spool.device = "P"				|GH355CR646.com
+			
+			brp_open = brp.open("rtfisg140201300", spool.device, 0)		
+			read.main.table()
+			read.main.table1()
+			brp.close(brp_open)
+			count.orno = 0
+			select	count(tfisg185.orno):count.orno
+			from	tfisg185
+			where	tfisg185._index1 = {:i.iprq}
+			and	tfisg185.orno <> "         "
+			and	tfisg185.sele = tcyesno.yes
+			and	tfisg185.proc = tcyesno.yes
+			selectdo
+			endselect
+			
+			if count.orno > 0 then
+				start.session(MODAL,"tfisg2400m100","","")
+			endif	
+			end()
+		else	
+	   if rprt_open() then
+			   if prnt.cash = tcyesno.yes then
+					brp_open = brp.open("rtfmsl140211022", spool.device, 0)		|PATCH001073.n
+					read.prnt.cash()
+					brp.close(brp_open)
+					brp_open = 0
+			   endif
+	       read.main.table()
+	       read.main.table1()
+		if prnt.rprt = tcyesno.yes then						|#ISGECDV001083.sn
+			brp_id = brp.open("rtfisg140201011", "D", 1)
+				read.prnt.integration()
+			brp.close(brp_id)
+		endif										|#ISGECDV001083.en
+	       rprt_close()
+	   else
+	       choice.again()
+	   endif
+	endif
 	endif
 
 |****************************** field section *********************************

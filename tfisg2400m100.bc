@@ -79,6 +79,9 @@
 |*
 |* ID: GH326CR620, RAvi Kumar, 30-05-2020
 |* Display Remittance letter from Quick Payment
+|*
+|* GH409CR737, RAvi Kumar, 15-10-2020
+|* Upgrade Quick Payment Session
 |****************************** declaration section ***************************
 declaration:
 
@@ -272,6 +275,13 @@ before.program:
 				orno.t = orno.f
 				curr.type = ltoe(1)
 | 				execute(cont.process)
+			else
+				if calling.session = "tfisg1185m000" then		|GH409CR737.a.s
+					import("tfisg185.orno", orno.f)
+					import("tfisg185.cprj", proj.f)
+					orno.t = orno.f		
+					proj.t = proj.f		
+				endif							|GH409CR737.a.e
 			endif						|ISGEC01050.en
 		endif	
 	endif
