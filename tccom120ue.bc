@@ -10,10 +10,13 @@
 #include <bic_dal>
 
 table	ttccom120
+	string	session.code(13)
 
 function extern long ue.before.before.save.object(long mode)
 {
 	domain	tclogn	curr.name
+	
+	import("prog.name$", session.code)
 	
 	curr.name = logname$
 	
@@ -21,17 +24,19 @@ function extern long ue.before.before.save.object(long mode)
 	case DAL_NEW:
 		break
 	case DAL_UPDATE:
-		if tccom120.otbp(1;3) = "SUP" then
-			select	tcisg009.*
-			from	tcisg009
-			where	tcisg009._index1 = {:curr.name}
-			as set with 1 rows
-			selectdo
-			selectempty
-				dal.set.error.message("@** Changes in BP not allowed")
-				return(DALHOOKERROR)
-			endselect
-		endif			
+		if session.code <> "tcisg1120m000" then
+			if tccom120.otbp(1;3) = "SUP" then
+				select	tcisg009.*
+				from	tcisg009
+				where	tcisg009._index1 = {:curr.name}
+				as set with 1 rows
+				selectdo
+				selectempty
+					dal.set.error.message("@** Changes in BP not allowed")
+					return(DALHOOKERROR)
+				endselect
+			endif
+		endif
 		break
 	endcase
 	return(0)

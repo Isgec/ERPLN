@@ -17,7 +17,7 @@ declaration:
 	domain	tclogn			o.user
 	domain	tcmcs.str50		pass.string, handle.string
 		string			open.link(200),sess.code(30)
-| 	extern	domain	tcmcs.str16	prog.sess
+	extern	domain	tcmcs.str16	prog.sess
 	extern	domain	tccom.bpid	i.bpid
 	
 	
@@ -27,8 +27,12 @@ declaration:
 |****************************** program section ********************************
 
 before.program:
-| 	import("prog.name$", prog.sess)
-	import("tccom100.bpid", i.bpid)
+	import("prog.name$", prog.sess)
+	if prog.sess = "tcisg1120m000" then
+		import("tccom120.otbp", i.bpid)
+	else
+		import("tccom100.bpid", i.bpid)
+	endif
 	
 	o.user = logname$
 	curr.comp = get.compnr()
