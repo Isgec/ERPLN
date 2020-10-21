@@ -1955,6 +1955,8 @@ function get.tax.from.whinh936()
 				rep.ot.amnt = rep.ot.amnt + amount			|RAvi.a.17102020
 				break
 			case 41:			|CGST
+				rep.st.amnt = rep.st.amnt + amount
+				break
 			endcase
 		endselect
 	endselect
