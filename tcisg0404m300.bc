@@ -20,7 +20,9 @@
 |*
 |* ID: GH301CR601, RAvi Kumar, 12-04-2020
 |* New col added - PO approval Date and Indent Approval Date
-
+|*
+|* GH421CR76, RAvi Kumar, 17-10-2020
+|* Delivery date on Child Item Tracking History
 |****************************** declaration section ***************************
 declaration:
 
@@ -104,6 +106,7 @@ declaration:
 	extern	domain	tcdate		rep.drdt		|36			|GH293CR596.a
 	extern	domain	tcdate		rep.trtd		|37			|GH301CR601.a
 	extern	domain	tcdate		rep.podt		|38			|GH301CR601.a
+	extern	domain	tcdate		rep.ddta		|33			|GH421CR76.a
 	
 |*************** Include **************
 #include<bic_desktop>	
@@ -176,9 +179,13 @@ function read.main.table()
 		rep.idsc = tcisg004.desc
 		rep.stat	=	tcisg004.stat			|#ISGEC016009.n
 		
+| 		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
+| 				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.pono, rep.vrsn,
+| 				rep.odat, rep.crqt)
+				
 		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
 				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.pono, rep.vrsn,
-				rep.odat, rep.crqt)
+				rep.odat, rep.crqt, rep.ddta)						|GH421CR76.a.rep.ddta
 		
 		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
 				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.rqln, rep.indt)
@@ -238,7 +245,8 @@ function Get_PO_BOM_Detail(
 		ref	domain	tcpono		ot.pono,	|PO Line.
 		ref	domain	tcpono		ot.vrsn,	|Latest PO Version
 		ref	domain	tcmcs.str10	ot.odat,	|PO Date
-		ref	domain	tcqiv1		ot.crqt		|Child Receipt Quantity
+		ref	domain	tcqiv1		ot.crqt,	|Child Receipt Quantity
+		ref	domain	tcdate		ot.ddta		|PO Deliery Date		|GH421CR76.a
 			)
 {
 	domain	tcdate	tmp.apdt
@@ -250,7 +258,7 @@ function Get_PO_BOM_Detail(
 	where	tcisg005._index1 = {:in.proj, :in.elmt, :in.loti, :in.item, tdisg.item.order}
 	selectdo
 		select	tdpur401.orno, tdpur401.pono, tdpur400.otbp, tdpur400.odat,
-			tccom100.nama
+			tccom100.nama, tdpur401.ddta						|GH421CR76.a
 		from	tdpur401, tdpur400, tccom100
 		where	tdpur401._index1 = {:tcisg005.orno, :tcisg005.pono}
 		and	tdpur401.oltp in (tdgen.oltp.orderline, tdgen.oltp.total)
@@ -261,6 +269,7 @@ function Get_PO_BOM_Detail(
 			ot.pono = tdpur401.pono
 			ot.bpid = tdpur400.otbp
 			ot.bpnm = tccom100.nama
+			ot.ddta = tdpur401.ddta							|GH421CR76.a
 			select	max(tdmsl400.vrsn):ot.vrsn, min(tdmsl400.apdt):tmp.apdt
 			from	tdmsl400
 			where	tdmsl400._index1 = {:tdpur401.orno}
@@ -540,6 +549,7 @@ function	generate.header()
 		sprintf$("Latest PO Revision"),			|16
 		sprintf$("PO Date"),					|17
 		sprintf$("PO Approval Date"),				|17.1			|GH301CR601.a
+		sprintf$("PO Delivery Date"),				|17.2			|GH421CR76.a
 		sprintf$("Supplier"),					|18		
 		sprintf$("Supplier Name"),				|19		
 		sprintf$("Child Receipt Qnty."),			|20		
@@ -588,7 +598,8 @@ function	print.detail()
 		sprintf$("%s", rep.pono),				|15.1
 		sprintf$("%d", rep.vrsn),				|16
 		sprintf$("%s", rep.odat),				|17
-		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.podt)),	|17.1		|GH301CR601.a	
+		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.podt)),	|17.1		|GH301CR601.a		
+		sprintf$("%s", sprintf$("%u(%02d/%02m/%04Y)", rep.ddta)),	|17.2	|GH421CR76.a
 		sprintf$("%s", rep.bpid),				|18				
 		sprintf$("%s", rep.bpnm),				|19
 		sprintf$("%f", rep.crqt),				|20
@@ -652,6 +663,7 @@ function Initialize_Variables()
 	rep.drdt = 0						|GH293CR596.a.e
 	rep.trtd = 0						|GH301CR601.a
 	rep.podt = 0 						|GH301CR601.a
+	rep.ddta = 0
 }
 
 
