@@ -48,6 +48,9 @@
 |+
 |+ ID GH350CR541, RAvi Kumar, 25-06-2020
 |* Handling of AS BUILT Drawing Release
+|*
+|* GH420CR772, RAvi Kumar, 26-10-2020
+|* Modifications in ERP Indenting Process for New codified Raw Material Items
 |****************************** declaration section ***************************
 |
 |
@@ -97,6 +100,9 @@ declaration:
 	table	tdmisg152			|#GSTLIVE01010.en
 	table	ttpisg243			|#ISGEC01145.n
 	table	ttpisg239			|#veena.10-01-2019
+	table		ttcibd001		|GH420CR772.a
+	table		ttpptc120		|GH420CR772.a
+	table		ttppdm740		|GH420CR772.a
   
   
   
@@ -297,6 +303,13 @@ function InsertRecord_dmisg005()
 {
 	domain	tcitem		o.loti
 	domain	dmdoc.revv	o.revn
+	domain	tppdm.serd	last.sern.ptc			|GH420CR772.a
+			string	error.msg(500)			|GH420CR772.a
+	domain	tcdate		budget.date			|GH420CR772.a
+	
+	last.sern.ptc = 0					|GH420CR772.a		
+	error.msg = ""						|GH420CR772.a		
+	budget.date = date.to.utc(2014, 08, 20, 0, 0, 0) 	|GH420CR772.a		
 	
 	select 	dmisg002.*
 	from	dmisg002
@@ -316,6 +329,61 @@ function InsertRecord_dmisg005()
 		selectempty
 			o.loti = ""
 		endselect
+		
+		select	tcibd001.ctyp,						|GH420CR772.a.s
+			tcibd001.cuni,
+			tcibd001.cpcp
+		from	tcibd001
+		where	tcibd001._index1 = {:dmisg002.oitm}
+		as set with 1 rows
+		selectdo
+			if tcibd001.ctyp = "091" then
+				o.loti = dmisg002.oitm
+				
+				select	tpptc120.*
+				from	tpptc120
+				where	tpptc120._index3 = {:o.loti, :dmisg001.cprj, :dmisg001.cspa}
+				as set with 1 rows
+				selectdo
+				selectempty
+					select	tpptc120.sern
+					from	tpptc120
+					where	tpptc120._index1 = {:dmisg001.cprj, :dmisg001.cspa}
+					order by tpptc120.sern desc
+					as set with 1 rows
+					selectdo
+						last.sern.ptc = tpptc120.sern + 1
+					selectempty
+						last.sern.ptc = 1
+					endselect
+					
+					select	tppdm740.ccur
+					from	tppdm740
+					where	tppdm740._index1 = {:dmisg001.cprj}
+					as set with 1 rows
+					selectdo
+					endselect
+					
+					if dal.new.object("tpptc120") = 0 then
+						dal.set.field("tpptc120.cprj", dmisg001.cprj)
+						dal.set.field("tpptc120.cspa", dmisg001.cspa)
+						dal.set.field("tpptc120.sern", last.sern.ptc)
+						dal.set.field("tpptc120.item", o.loti)
+						dal.set.field("tpptc120.sacu", tppdm740.ccur)
+						dal.set.field("tpptc120.cocu", tppdm740.ccur)
+						dal.set.field("tpptc120.cuni", tcibd001.cuni)
+						dal.set.field("tpptc120.ccco", tcibd001.cpcp)
+						dal.set.field("tpptc120.btdt", budget.date)
+						if dal.save.object("tpptc120") = 0 then
+| 							commit.transaction()
+						else
+							dal.get.error.message(error.msg)
+							abort.transaction()
+						endif
+					endif
+				endselect
+			endif
+		endselect							|GH420CR772.a.e
 		
 		dmisg005.cprj = dmisg001.cprj
 		dmisg005.cspa = dmisg001.cspa
