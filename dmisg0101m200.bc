@@ -34,6 +34,9 @@
 |+
 |+ ID GH350CR541, RAvi Kumar, 25-06-2020
 |* Handling of AS BUILT Drawing Release
+|* 
+|* ID GH346CR000, RAvi Kumar, 26-06-2020
+|* IR142819-If blocked item is present in drawing with zero quantity then system should not stop Drawing approval
 |*
 |* ID: GH360CR657, RAvi Kumar, 08-07-2020
 |* Blocking Items in Drawing having unit LOT
@@ -390,7 +393,9 @@ function extern domain tcpono Get_Standard_Item_Updated()
 			where	tcmcs018._index1 = {:tcibd001.csig}
 			and	tcmcs018.blcp = tcblst.blocked
 			selectdo
-				found = 1
+				if dmisg002.qnty > 0 then				|GH346CR000.a
+					found = 1
+				endif
 			endselect
 			
 			dal.change.object("dmisg002")
@@ -578,9 +583,10 @@ function before_new_function_for_generate()
 				choice.again()
 				break
 			case	tpengs.complete:
-				message("%s Element of Project %s is C L O S E D for Engineering!!! Can't Proceed..",dmisg001.cspa,dmisg001.cprj)
-				choice.again()
-
+				if dmisg001.asbt = tcyesno.no then				
+					message("%s Element of Project %s is C L O S E D for Engineering!!! Can't Proceed..",dmisg001.cspa,dmisg001.cprj)
+					choice.again()
+				endif
 				break
 			endcase
 		endif							|ISGEC002019.n
@@ -1043,6 +1049,14 @@ function update.missing.item()
 			and	a_dmisg002.item = :dmisg002.item
 			selectdo
 			selectempty
+				select	tttxt001.*					|GH346CR000.a.s
+				from	tttxt001
+				where	tttxt001._index1 = {:dmisg002.txta}
+				as set with 1 rows
+				selectdo
+				selectempty
+					dmisg002.txta = 0
+				endselect						|GH346CR000.a.e
 				dmisg002.docn = dmisg002.docn
 				dmisg002.revn = curr.revn.str
 				dmisg002.srno = max.srno.val + 1  
@@ -1123,26 +1137,39 @@ function domain	tcbool update.dcras.built()						|GH350CR541.a.s
 function long	check.sinal()
 {
 	long flag.signal
+	domain	tcqsl1	qnty.sicun
 	
 	flag.signal = 0
 	str.citg = ""
+	qnty.sicun = 0
 	
 	select	dmisg002.citg
 	from	dmisg002
 	where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
 	group by dmisg002.citg
 	selectdo
+		select	sum(dmisg002.qnty):qnty.sicun				|GH346CR000.a.s
+		from	dmisg002
+		where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
+		and	dmisg002.citg = :dmisg002.citg
+		as set with 1 rows
+		selectdo
+		selectempty
+		endselect
+										|GH346CR000.a.e
 		select	tcibd002.csig
 		from	tcibd002
 		where	tcibd002.citg = {:dmisg002.citg}
 		as set with 1 rows
 		selectdo
-			if tcibd002.csig = "006" then
-				flag.signal = flag.signal + 1
-				if flag.signal = 1 then
-					str.citg = trim$(dmisg002.citg)
-				else
-					str.citg = str.citg & ", " & trim$(dmisg002.citg)
+			if qnty.sicun > 0 then					|GH346CR000.a
+				if tcibd002.csig = "006" then
+					flag.signal = flag.signal + 1
+					if flag.signal = 1 then
+						str.citg = trim$(dmisg002.citg)
+					else
+						str.citg = str.citg & ", " & trim$(dmisg002.citg)
+					endif
 				endif
 			endif
 		endselect
@@ -1154,25 +1181,39 @@ function long	check.sinal()
 function long check.cuni()
 {
 	long flag.cuni, count.flag
+	domain	tcqsl1	qnty.sicun
 	
 	flag.cuni = 0
 	str.cuni = ""
+	qnty.sicun = 0
+	
 	select	dmisg002.citg
 	from	dmisg002
 	where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
 	group by dmisg002.citg
 	selectdo
+		select	sum(dmisg002.qnty):qnty.sicun					|GH346CR000.a.s
+		from	dmisg002
+		where	dmisg002._index1 = {:dmisg001.docn,:dmisg001.revn}
+		and	dmisg002.citg = :dmisg002.citg
+		as set with 1 rows
+		selectdo
+		selectempty
+		endselect								|GH346CR000.a.e
+		
 		select	tcibd002.cuni
 		from	tcibd002
 		where	tcibd002.citg = {:dmisg002.citg}
 		as set with 1 rows
-		selectdo			
-			if toupper$(tcibd002.cuni) = "LOT" then
-				flag.cuni = flag.cuni + 1
-				if flag.cuni = 1 then
-					str.cuni = trim$(dmisg002.citg)
-				else
-					str.cuni = str.cuni & ", " & trim$(dmisg002.citg)
+		selectdo	
+			if qnty.sicun > 0 then						|GH346CR000.a
+				if toupper$(tcibd002.cuni) = "LOT" then
+					flag.cuni = flag.cuni + 1
+					if flag.cuni = 1 then
+						str.cuni = trim$(dmisg002.citg)
+					else
+						str.cuni = str.cuni & ", " & trim$(dmisg002.citg)
+					endif
 				endif
 			endif
 		endselect
