@@ -31,6 +31,9 @@
 |*
 |* ID GH355CR646, RAvi Kumar, 30-06-2020
 |* Display Remittance letter from Quick Payment
+|*
+|* GH430CR781, RAvi Kumar, 02-11-2020
+|* Correction in Remittance Letter Report
 |****************************** declaration section ***************************
 declaration:
 
@@ -67,6 +70,7 @@ declaration:
 	table	ttccom124
 	table	ttfcmg118
 	table	ttfgld008
+	table	ttcemm030							|GH430CR781.a
 	
 	extern	domain	tfgld.btno	btno
 	extern  domain tcmcs.str6	v.btno
@@ -243,6 +247,13 @@ function read.details()
 	and 	tfcmg101.ccur refers to tcmcs002		
 	order by tfcmg101._index4
 	selectdo
+		select	tcemm030.lcmp						|GH430CR781.a.s
+		from	tcemm030
+		where	tcemm030.fcmp = :v.comp
+		as set with 1 rows
+		selectdo
+		endselect							|GH430CR781.a.e
+		
 		get.lines.details()
 		tfacp200.orno = ""	
 		suno.key = tfcmg101.ifbp &
@@ -268,7 +279,8 @@ function read.details()
 		from	tfacp100
 		where	tfacp100.isup = :tfacp200.isup
 		and	tfacp100.refr = :tfacp200.refr
-		and	tfacp100._compnr = :tfcmg103.icmp			|#PATCH001045.n
+| 		and	tfacp100._compnr = :tfcmg103.icmp			|#PATCH001045.n
+		and	tfacp100._compnr = :tcemm030.lcmp			|GH430CR781.a
 		selectdo
 		endselect
 		
@@ -363,7 +375,8 @@ function get.lines.details()
 			where	tfisg001.invt = :tfcmg101.ttyp
 			and	tfisg001.pinv = :tfcmg101.ninv
 | 			and	tfisg001.ncmp = :tfcmg103.icmp				|#PATCH001045.n |ISGEC015037.o  
-			and	tfisg001.ncmp = :tfcmg101.comp				|ISGEC015037.n  
+| 			and	tfisg001.ncmp = :tfcmg101.comp				|ISGEC015037.n  
+			and	tfisg001.ncmp = :tcemm030.lcmp				|GH430CR781.a 
 			selectdo
 				v.irno = tfisg001.irno
 				v.docn = tfisg001.pinv
@@ -375,7 +388,8 @@ function get.lines.details()
 				where	tfacp100.ctyp = :tfcmg101.ttyp
 				and	tfacp100.cinv = :tfcmg101.ninv
 | 				and	tfacp100._compnr = :tfcmg103.icmp		|#PATCH001045.n |ISGEC015037.o  
-				and	tfacp100._compnr = :tfcmg101.comp		|ISGEC015037.n  
+| 				and	tfacp100._compnr = :tfcmg101.comp		|ISGEC015037.n   
+				and	tfacp100._compnr = :tcemm030.lcmp		|GH430CR781.a 
 				selectdo
 					v.irno = tfacp100.ninv
 					v.docn = tfacp100.cinv
@@ -398,6 +412,7 @@ function get.lines.details()
 			from	tfmsl020
 			where	tfmsl020.btno = :tfcmg101.btno
 			and	tfmsl020.paym = tfpaym.advice
+| 			and	tfmsl020._compnr = :tcemm030.lcmp		|GH430CR781.a 
 			selectdo
 				v.cprj = tfmsl020.cprj
 				v.orno = tfmsl020.orno
@@ -417,6 +432,7 @@ function get.lines.details()
 			from	tfmsl020
 			where	tfmsl020.btno = :tfcmg101.btno
 			and	tfmsl020.paym = tfpaym.advice
+| 			and	tfmsl020._compnr = :tcemm030.lcmp		|GH430CR781.a 
 			selectdo
 				v.cprj = tfmsl020.cprj
 				v.orno = tfmsl020.orno
@@ -489,6 +505,7 @@ function get.project.from.CashFlow(domain	tfgld.btno	i.btno)
 	and	tfmsl037.mode = tfmode.advice.paym
 	and	tfmsl037.ttyp	=	:tfcmg101.ttyp		|#ISGEC002041.sn
 	and	tfmsl037.docn	=	:tfcmg101.ninv		
+| 	and	tfmsl037._compnr = :tcemm030.lcmp		|GH430CR781.a 
 	as	set with 1 rows				|#ISGEC002041.en
 	selectdo
 		v.cprj = tfmsl037.cprj
