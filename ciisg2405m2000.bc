@@ -99,6 +99,8 @@ declaration:
 		domain	tchsnc.l	hsn.code.man
 		domain	tcqsl1		qnty.man
 		domain	tccuni		cuni.man
+		domain	tfacp.isup	Ref_PrecInvNo				
+		domain	tfgld.date	Ref_PrecInvDt
 		domain	tccom.bpid	cprj.bpid.man				|GH426CR749.a.e
 	
 	string	err.file(100), file.name(100), line(2500)
@@ -1379,6 +1381,8 @@ function get.data.for.manual.str()
 	invoice.flag = 0
 	sfcp.f = 200
 	sfcp.t = 250
+	Ref_PrecInvNo = ""			|GH426CR749.a
+	Ref_PrecInvDt = 0			|GH426CR749.a
 	
 	if curr.comp = LOG.COMP_2 then
 		sfcp.f = curr.comp
@@ -1503,6 +1507,8 @@ function get.data.for.manual.ccn()
 {
 	sfcp.f = 200
 	sfcp.t = 250
+	Ref_PrecInvNo = ""			|GH426CR749.a
+	Ref_PrecInvDt = 0			|GH426CR749.a
 	
 	if curr.comp = LOG.COMP_2 then
 		sfcp.f = curr.comp
@@ -1600,7 +1606,24 @@ function get.data.for.manual.ccn()
 				selectempty
 					cprj.bpid.man = ""
 				endselect
-				
+												|GH426CR749.a.s
+				select	tfacr200.ttyp,
+					tfacr200.ninv,
+					tfacr200.docd
+				from	tfacr200
+				where	tfacr200.tdoc = :ciisg805.tran
+				and	tfacr200.docn = :ciisg805.docn
+				and	tfacr200.ttyp <> :ciisg805.tran
+				and	tfacr200.ninv <> :ciisg805.docn
+				and	tfacr200._compnr = :ciisg805.comp
+				as set with 1 rows
+				selectdo
+					Ref_PrecInvNo = tfacr200.ttyp & str$(tfacr200.ninv)
+| 					num.to.date(tfacr200.docd, yy, mm, dd)
+| 					Ref_PrecInvDt = date.to.utc(yy, mm, dd, 0, 0, 0)
+					Ref_PrecInvDt = tfacr200.docd
+				endselect
+												|GH426CR749.a.e				
 				insert.data.tfisg417.manual()
 			endselect
 			endselect
@@ -1612,6 +1635,8 @@ function get.data.for.manual.cdn()
 {
 	sfcp.f = 200
 	sfcp.t = 250
+	Ref_PrecInvNo = ""			|GH426CR749.a
+	Ref_PrecInvDt = 0			|GH426CR749.a
 	
 	if curr.comp = LOG.COMP_2 then
 		sfcp.f = curr.comp
@@ -1782,8 +1807,8 @@ function insert.data.tfisg417.manual()
 		tfisg417.bosu = "N"
 		tfisg417.rcma = "N"
 		tfisg417.ngst = ""		
-		tfisg417.oidt = 0		|Wait	
-		tfisg417.oinv = ""		|Wait
+		tfisg417.oidt = Ref_PrecInvDt		|GH426CR749.a	
+		tfisg417.oinv = Ref_PrecInvNo		|GH426CR749.a
 		tfisg417.ogst = ""		|Wait
 		tfisg417.gste = ""
 		tfisg417.adat = 0
