@@ -126,6 +126,7 @@ declaration:
 	extern	domain	tcdate		curr.date		|ISGEC001217.n	
 	
 			long	brp.id				|GH434CR748.a
+	extern	domain	tfgld.date	date.f, date.t
 		
 		#define LOG.COMP1 200
 		#define LOG.COMP2 700		|#SD06122017.en
@@ -159,16 +160,20 @@ on.choice:
 choice.print.data:
 on.choice:
 	if	rprt_open()	then
-		print.composed.invoice()		|#ISGEC001097.n
-		read.main.table()
+		if reportno = 4 then
+			credit.debit.manual.data()
+		else
+			print.composed.invoice()		|#ISGEC001097.n
+			read.main.table()
+		endif
 		rprt_close()
 	else
 		choice.again()
 	endif
 	
-choice.print.crdb:
-on.choice:
-	credit.debit.manual.data()
+| choice.print.crdb:
+| on.choice:
+| 	credit.debit.manual.data()
 
 
 |****************************** field section *********************************
@@ -681,7 +686,23 @@ function	project.zoom.filter()
 
 function credit.debit.manual.data()
 {	
-	brp.id = brp.open("rtpisg640001105", "D", 1)
+| 	brp.id = brp.open("rtpisg640001105", "D", 1)
+	long dd, mm, yy, hh, min1, ss, dd2, mm2, yy2, hh2, min2, ss2
+	dd = 0
+	mm = 0
+	yy = 0
+	hh = 0
+	min1 = 0
+	ss = 0
+	
+| 	get.date.utc(indt.f, 00, 00, 00, v.indt.f)
+| 	get.date.utc(indt.t, 23, 59, 59, v.indt.t)
+	utc.to.date(indt.f, yy, mm , dd, hh, min1, ss)
+	utc.to.date(indt.t, yy2, mm2 , dd2, hh2, min2, ss2)
+	
+	date.f = date.to.num(yy, mm, dd)
+	date.t = date.to.num(yy2, mm2, dd2)
+	
 	select	ciisg804.comp,
 		ciisg804.tran,
 		ciisg804.docn
@@ -696,7 +717,7 @@ function credit.debit.manual.data()
 		from	tfacr200, tccom100
 		where	tfacr200._index1 = {:ciisg804.tran, :ciisg804.docn}
 | 		and	tfacr200.proj = :ciisg804.cprj
-		and	tfacr200.docd inrange :indt.f and :indt.t
+		and	tfacr200.docd inrange :date.f and :date.t
 		and	tfacr200.itbp inrange :bpid.f and :bpid.t
 		and	tfacr200.docn = 0
 		and	tfacr200._compnr = :ciisg804.comp
@@ -746,11 +767,12 @@ function credit.debit.manual.data()
 				endselect
 				
 				rep.nt.inmt = rep.gross.val - (rep.advn + rep.retn)
-				brp.ready(brp.id)
+| 				brp.ready(brp.id)
+				rprt_send()
 			endselect
 		endselect
 	endselect
-	brp.close(brp.id)
+| 	brp.close(brp.id)
 }
 
 
