@@ -57,6 +57,9 @@
 |*
 |* ID: GH288CR000, RAvi Kumar, 13-03-2020,
 |* Add logic in comp 651
+|* 
+|* GH434CR748, RAvi Kumar, 04-11-2020
+|* Manual Invoice, Debit Note, Credit Note in Report Invoice Register
 |****************************** declaration section ***************************
 declaration:
 
@@ -74,6 +77,8 @@ declaration:
 	table	ttccom130
 							|#ISGEC001167.en
 	table	tcisli936		|#ISGEC001193.n
+	table	tciisg804		|GH434CR748.a
+	table	tciisg805		|GH434CR748.a
 
 	|***************** Form Variable ****************
 	extern	domain	tccprj		cprj.f    fixed
@@ -119,6 +124,8 @@ declaration:
 						|#SD06122017.sn
 		domain	tcncmp		get_from_company
 	extern	domain	tcdate		curr.date		|ISGEC001217.n	
+	
+			long	brp.id				|GH434CR748.a
 		
 		#define LOG.COMP1 200
 		#define LOG.COMP2 700		|#SD06122017.en
@@ -158,6 +165,11 @@ on.choice:
 	else
 		choice.again()
 	endif
+	
+choice.print.crdb:
+on.choice:
+	credit.debit.manual.data()
+
 
 |****************************** field section *********************************
 field.cprj.f:
@@ -664,3 +676,84 @@ function	project.zoom.filter()
 	query.extend.where.in.zoom(v.strn)
 }
 											|#ISGEC016028.en
+											
+|----------------------------------------------------------GH434CR748 -----------------------------------------------------------------
+
+function credit.debit.manual.data()
+{	
+	brp.id = brp.open("rtpisg640001105", "D", 1)
+	select	ciisg804.comp,
+		ciisg804.tran,
+		ciisg804.docn
+	from	ciisg804
+	where	ciisg804._index1 inrange {:ncmp.f} and {:ncmp.t}
+	and	ciisg804.cprj inrange :cprj.f and :cprj.t
+	group by ciisg804.comp, ciisg804.tran, ciisg804.docn
+	selectdo
+		select	tfacr200.docd,
+			tfacr200.itbp,
+			tccom100.nama
+		from	tfacr200, tccom100
+		where	tfacr200._index1 = {:ciisg804.tran, :ciisg804.docn}
+| 		and	tfacr200.proj = :ciisg804.cprj
+		and	tfacr200.docd inrange :indt.f and :indt.t
+		and	tfacr200.itbp inrange :bpid.f and :bpid.t
+		and	tfacr200.docn = 0
+		and	tfacr200._compnr = :ciisg804.comp
+		and	tfacr200.itbp refers to tccom100
+		selectdo
+			select	ciisg805.*
+			from	ciisg805
+			where	ciisg805._index1 = {:ciisg804.comp, :ciisg804.tran, :ciisg804.docn}
+			selectdo
+				initialize.variable()
+								
+				select	sum(ciisg804.amnt):rep.bamt,
+					sum(ciisg804.cgsa):rep.cgst.amnt,
+					sum(ciisg804.sgsa):rep.sgst.amnt,
+					sum(ciisg804.igsa):rep.igst.amnt,
+					sum(ciisg804.totl):rep.gross.val
+| 					sum(ciisg804.lsad):rep.advn,
+| 					sum(ciisg804.lsrt):rep.retn
+				from	ciisg804
+				where	ciisg804._index1 = {:ciisg805.comp, :ciisg805.tran, :ciisg805.docn, :ciisg805.dbcr}
+				selectdo
+					select	ciisg804.cprj
+					from	ciisg804
+					where	ciisg804._index1 = {:ciisg805.comp, :ciisg805.tran, :ciisg805.docn, :ciisg805.dbcr}
+					as set with 1 rows
+					selectdo
+					endselect
+					
+					select	tcmcs052.dsca
+					from	tcmcs052
+					where	tcmcs052._index1 = {:ciisg804.cprj}
+					as set with 1 rows
+					selectdo
+					selectempty
+						tcmcs052.dsca = ""
+					endselect
+					
+					get.advance.retention(ciisg805.tran, ciisg805.docn, rep.advn, rep.retn)
+				selectempty
+					rep.bamt = 0 
+					rep.cgst.amnt = 0
+					rep.sgst.amnt = 0
+					rep.igst.amnt = 0
+					rep.gross.val = 0
+					rep.advn = 0
+					rep.retn = 0
+				endselect
+				
+				rep.nt.inmt = rep.gross.val - (rep.advn + rep.retn)
+				brp.ready(brp.id)
+			endselect
+		endselect
+	endselect
+	brp.close(brp.id)
+}
+
+
+
+
+
