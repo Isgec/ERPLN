@@ -55,6 +55,9 @@
 |*
 |* ID: GH288CR000, RAvi Kumar, 13-03-2020
 |* Add logic for company 651
+|* 
+|* GH434CR748, RAvi Kumar, 04-11-2020
+|* Manual Invoice, Debit Note, Credit Note in Report Invoice Register
 |****************************** declaration section ***************************
 declaration:
 
@@ -79,6 +82,10 @@ declaration:
 					|#ISGEC001170.en
 	table	tcisli936		|#ISGEC001193.n
 	table	ttfgld001				|#ISGEC015032.n
+
+|----------------------------------------------------------GH434CR748 -----------------------------------------------------------------
+	table	tciisg804		
+	table	tciisg805		
 					
 	extern	domain	tccprj		cprj.f    fixed
 	extern 	domain 	tccprj        	cprj.t    fixed
@@ -126,6 +133,12 @@ declaration:
 	
 	extern	domain	tdisg.type	type.f		|#ISGEC001170.n
 	extern	domain	tcdate		curr.date	|ISGEC001217.n
+	
+
+|----------------------------------------------------------GH434CR748 -----------------------------------------------------------------
+	
+	long	brp.id
+	extern	domain	tccprj	cprj.ciisg
 
 |****************************** program section ********************************
 before.program:
@@ -155,6 +168,10 @@ on.choice:
    else
        choice.again()
    endif
+
+choice.print.crdb:
+on.choice:
+	credit.debit.manual.data()
 
 
 |****************************** field section *********************************
@@ -535,7 +552,9 @@ function get.advance.retention(
 			endif						|#ISGEC01055.n
 				break
 			case tfacr.trec.credit:
+				if tfacr200.tdoc = "SRN"	then		|#tv.rss.30072020.sunil|tv13646
 				o.retn = o.retn + abs(tfacr200.amth(1))
+				endif
 				break
 		EndCAsE
 	endselect	
@@ -722,3 +741,82 @@ function	project.zoom.filter()
 	query.extend.where.in.zoom(v.strn)
 }
 											|#ISGEC016028.en
+
+|----------------------------------------------------------GH434CR748 -----------------------------------------------------------------
+
+function credit.debit.manual.data()
+{	
+	cprj.ciisg = ""
+	brp.id = brp.open("rtfisg240015005", "D", 1)
+	select	ciisg804.comp,
+		ciisg804.tran,
+		ciisg804.docn
+	from	ciisg804
+	where	ciisg804._index1 inrange {:i.comp, :ityp.f, :docn.f} and {:i.comp.t, :ityp.t, :docn.t}
+	and	ciisg804.cprj inrange :cprj.f and :cprj.t
+	group by ciisg804.comp, ciisg804.tran, ciisg804.docn
+	selectdo
+		select	tfacr200.docd,
+			tfacr200.itbp,
+			tccom100.nama
+		from	tfacr200, tccom100
+		where	tfacr200._index1 = {:ciisg804.tran, :ciisg804.docn}
+| 		and	tfacr200.proj = :ciisg804.cprj
+		and	tfacr200.docd inrange :date.f and :date.t
+		and	tfacr200.itbp inrange :bpid.f and :bpid.t
+		and	tfacr200.docn = 0
+		and	tfacr200._compnr = :ciisg804.comp
+		and	tfacr200.itbp refers to tccom100
+		selectdo
+			select	ciisg805.*
+			from	ciisg805
+			where	ciisg805._index1 = {:ciisg804.comp, :ciisg804.tran, :ciisg804.docn}
+			selectdo
+				initialize.variable()
+								
+				select	sum(ciisg804.amnt):rep.bamt,
+					sum(ciisg804.cgsa):rep.cgst.amnt,
+					sum(ciisg804.sgsa):rep.sgst.amnt,
+					sum(ciisg804.igsa):rep.igst.amnt,
+					sum(ciisg804.totl):rep.gross.val
+| 					sum(ciisg804.lsad):rep.advn,
+| 					sum(ciisg804.lsrt):rep.retn
+				from	ciisg804
+				where	ciisg804._index1 = {:ciisg805.comp, :ciisg805.tran, :ciisg805.docn, :ciisg805.dbcr}
+				selectdo
+					select	ciisg804.cprj
+					from	ciisg804
+					where	ciisg804._index1 = {:ciisg805.comp, :ciisg805.tran, :ciisg805.docn, :ciisg805.dbcr}
+					as set with 1 rows
+					selectdo
+					endselect
+					
+					select	tcmcs052.dsca
+					from	tcmcs052
+					where	tcmcs052._index1 = {:ciisg804.cprj}
+					as set with 1 rows
+					selectdo
+					selectempty
+						tcmcs052.dsca = ""
+					endselect
+					
+					get.advance.retention(ciisg805.tran, ciisg805.docn, rep.advn, rep.retn)
+				selectempty
+					rep.bamt = 0 
+					rep.cgst.amnt = 0
+					rep.sgst.amnt = 0
+					rep.igst.amnt = 0
+					rep.gross.val = 0
+					rep.advn = 0
+					rep.retn = 0
+				endselect
+				
+				rep.nt.inmt = rep.gross.val - (rep.advn + rep.retn)
+				brp.ready(brp.id)
+			endselect
+		endselect
+	endselect
+	brp.close(brp.id)
+}
+
+
