@@ -160,18 +160,22 @@ on.choice:
 
 choice.print.data:
 on.choice:
-   if rprt_open() then
-|        read.main.table.old()			|#ISGEC001062.o
-	print.composed.invoice()		|#ISGEC001092.n
-       read.main.table()			|#ISGEC001062.n
-       rprt_close()
-   else
-       choice.again()
-   endif
+	if rprt_open() then
+		if reportno = 5 then
+			credit.debit.manual.data()
+		else
+| 			read.main.table.old()			|#ISGEC001062.o
+			print.composed.invoice()		|#ISGEC001092.n
+			read.main.table()			|#ISGEC001062.n
+		endif
+		rprt_close()
+	else
+		choice.again()
+	endif
 
-choice.print.crdb:
-on.choice:
-	credit.debit.manual.data()
+| choice.print.crdb:
+| on.choice:
+| 	credit.debit.manual.data()
 
 
 |****************************** field section *********************************
@@ -747,7 +751,7 @@ function	project.zoom.filter()
 function credit.debit.manual.data()
 {	
 	cprj.ciisg = ""
-	brp.id = brp.open("rtfisg240015005", "D", 1)
+| 	brp.id = brp.open("rtfisg240015005", "D", 1)
 	select	ciisg804.comp,
 		ciisg804.tran,
 		ciisg804.docn
@@ -812,11 +816,12 @@ function credit.debit.manual.data()
 				endselect
 				
 				rep.nt.inmt = rep.gross.val - (rep.advn + rep.retn)
-				brp.ready(brp.id)
+| 				brp.ready(brp.id)
+				rprt_send()
 			endselect
 		endselect
 	endselect
-	brp.close(brp.id)
+| 	brp.close(brp.id)
 }
 
 
