@@ -20,6 +20,9 @@
 |* 
 |* ID GH372CR000, RAvi Kumar, 18-07-2020
 |* IR147016-Remove check from Reviewer session of PLM
+|*
+|* GH436CR775, RAvi Kumar, 19-11-2020
+|* Engineering-Manual selection of Approver/Reviewer to be restricted if person is not authorized for the same
 |******************************************************************************
                                                                                 
 #include <bic_dal2>
@@ -184,6 +187,14 @@ function extern boolean dmisg001.rusr.is.valid()
 			where	dmisg101.emno = :dmisg001.rusr
 			and	dmisg101.cact = dmisg.cact.reviewer
 			selectdo
+				select	tiisg906.emno 						|GH436CR775.a.s
+				from	tiisg906 
+				where	tiisg906._index1 = {:dmisg101.emno}
+				and	tiisg906.stat = tcyesno.yes
+				selectdo
+				selectempty
+					return(false)
+				endselect							|GH436CR775.a.e
 			selectempty
 				return(false)
 			endselect
@@ -195,6 +206,14 @@ function extern boolean dmisg001.rusr.is.valid()
 			and	dmisg101.emno = :dmisg001.rusr							|GH372CR000.a
 			and	dmisg101.cact = dmisg.cact.reviewer						|GH372CR000.a
 			selectdo
+				select	tiisg906.emno 								|GH436CR775.a.s
+				from	tiisg906 
+				where	tiisg906._index1 = {:dmisg101.emno}
+				and	tiisg906.stat = tcyesno.yes
+				selectdo
+				selectempty
+					return(false)
+				endselect									|GH436CR775.a.s
 			selectempty
 				return(false)
 			endselect
@@ -239,7 +258,7 @@ function extern boolean dmisg001.ausr.is.valid()
 	division = ""
 	grouped = ""
 	
-	if calling.prog = "dmisg0101m300" then
+	if calling.prog = "dmisg0101m300" or calling.prog = "dmisg0101m200" then
 		select 	dmisg101.*
 		from	dmisg101
 		where	dmisg101._index2 = {:o.emno, dmisg.cact.reviewer}
@@ -256,6 +275,14 @@ function extern boolean dmisg001.ausr.is.valid()
 			where	dmisg101.emno = :dmisg001.ausr
 			and	dmisg101.cact = dmisg.cact.approver
 			selectdo
+				select	tiisg906.emno 						|GH436CR775.a.s
+				from	tiisg906 
+				where	tiisg906._index1 = {:dmisg101.emno}
+				and	tiisg906.stat = tcyesno.yes
+				selectdo
+				selectempty
+					return(false)
+				endselect							|GH436CR775.a.e
 			selectempty
 				return(false)
 			endselect
@@ -267,6 +294,14 @@ function extern boolean dmisg001.ausr.is.valid()
 			and	dmisg101.emno = :dmisg001.ausr							|GH372CR000.a
 			and	dmisg101.cact = dmisg.cact.approver						|GH372CR000.a
 			selectdo
+				select	tiisg906.emno 						|GH436CR775.a.s
+				from	tiisg906 
+				where	tiisg906._index1 = {:dmisg101.emno}
+				and	tiisg906.stat = tcyesno.yes
+				selectdo
+				selectempty
+					return(false)
+				endselect							|GH436CR775.a.e
 			selectempty
 				return(false)
 			endselect
