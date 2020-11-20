@@ -71,6 +71,8 @@ declaration:
 	table	ttfcmg118
 	table	ttfgld008
 	table	ttcemm030							|GH430CR781.a
+	table	ttfacp251							|GH430CR781.a
+	table	ttfgld112							|GH430CR781.a
 	
 	extern	domain	tfgld.btno	btno
 	extern  domain tcmcs.str6	v.btno
@@ -252,9 +254,48 @@ function read.details()
 		where	tcemm030.fcmp = :v.comp
 		as set with 1 rows
 		selectdo
-		endselect							|GH430CR781.a.e
-		
-		get.lines.details()
+		endselect						
+		if tfcmg101.tadv = tfcmg.tadv.advance then
+			if v.comp = tfcmg103.icmp then
+				select	tfacp200.cdf_cprj:v.cprj,
+					tfacp200.cdf_prno:v.orno
+				from	tfacp200
+				where	tfacp200._index1 = {:tfcmg101.ptyp, :tfcmg101.pdoc}
+				and	tfacp200.docn = 0
+				and	tfacp200._compnr = :tfcmg103.icmp	
+				as set with 1 rows
+				selectdo
+				selectempty
+					v.cprj = ""
+					v.orno = ""
+				endselect
+			else
+				select	tfgld112.typt,
+					tfgld112.doct
+				from	tfgld112
+				where	tfgld112._index1 = {:v.comp, :tfcmg101.ptyp, :tfcmg101.pdoc, :tfcmg103.icmp}
+				as set with 1 rows
+				selectdo
+					select	tfacp200.cdf_cprj:v.cprj,
+						tfacp200.cdf_prno:v.orno
+					from	tfacp200
+					where	tfacp200._index1 = {:tfgld112.typt, :tfgld112.doct}
+					and	tfacp200.docn = 0
+					and	tfacp200._compnr = :tfcmg103.icmp	
+					as set with 1 rows
+					selectdo
+					selectempty
+						v.cprj = ""
+						v.orno = ""
+					endselect
+				selectempty
+					v.cprj = ""
+					v.orno = ""
+				endselect
+			endif
+		else								|GH430CR781.a.e
+			get.lines.details()
+		endif
 		tfacp200.orno = ""	
 		suno.key = tfcmg101.ifbp &
 				   edit$(etol(tfcmg101.tadv),"99") &
@@ -448,7 +489,29 @@ function get.lines.details()
 | 			tfcmg101.refr = "Stand-alone"
 			tfacp100.ninv = 0	
 			break
-	endcase	
+		endcase	
+		
+	select	tfacp251.shpm:v.irno,							|GH430CR781.a.s
+		tfacp251.orno:v.orno,
+		tfacp251.loco
+	from	tfacp251
+	where	tfacp251._index1 = {:tfcmg101.comp, :tfcmg101.ttyp, :tfcmg101.ninv}
+	and	tfacp251._compnr = :tfcmg101.comp
+	as set with 1 rows
+	selectdo
+		select	tdpur401.cprj:v.cprj
+		from	tdpur401
+		where	tdpur401._index1 = {:v.orno}
+		and	tdpur401._compnr = :tfacp251.loco
+		as set with 1 rows
+		selectdo
+		selectempty
+			v.cprj = ""
+		endselect
+	selectempty
+		v.irno = 0
+		v.orno = ""
+	endselect									|GH430CR781.a.e
 }
 
 function get.project.description(domain	tccprj	i.cprj)
