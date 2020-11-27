@@ -41,6 +41,9 @@
 |*
 |* ID: GH202CR000, RAvi Kumar, 05/11/2019
 |* Error in IR entry in 651 company
+|* 
+|* GH433CR797, RAvi Kumar, 27-11-2020
+|* Add Packing List No. in IRN Session
 |******************************************************************************
 #include <bic_dal>
 	
@@ -64,6 +67,7 @@
 	extern domain tcyesno		o.gstr				|#ISGEC01039.sn
 	extern domain tcpono		o.rcod				|#ISGEC01039.en
 	 	domain	tcncmp		g.comp
+		domain	tcmcs.long	c.pkgn				|GH433CR797.a
 
 function extern long ue.before.before.save.object(long mode)
 {
@@ -257,6 +261,16 @@ function extern long ue.before.before.save.object(long mode)
 		return(DALHOOKERROR)
 	endif
 				|#GSTLIVE01014.en
+	get.var(pid, "tfacp100.cdf_list", c.pkgn)
+	select	tdisg017.pkgn
+	from	tdisg017
+	where	tdisg017.pkgn = {:c.pkgn}
+	as set with 1 rows
+	selectdo
+	selectempty
+		dal.set.error.message("@ Invalid Packing List No.")
+		return(DALHOOKERROR)
+	endselect
 	
 	return(0)
 }
