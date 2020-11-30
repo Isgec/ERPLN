@@ -374,11 +374,15 @@ function InsertRecord_dmisg005()
 						dal.set.field("tpptc120.cuni", tcibd001.cuni)
 						dal.set.field("tpptc120.ccco", tcibd001.cpcp)
 						dal.set.field("tpptc120.btdt", budget.date)
+						dal.set.field("tpptc120.stat", ltoe(2))
 						if dal.save.object("tpptc120") = 0 then
 | 							commit.transaction()
 						else
-							dal.get.error.message(error.msg)
 							abort.transaction()
+							dal.get.error.message(error.msg)
+							message(error.msg)
+							choice.again()
+| 												|#merino1 - 75843-commented
 						endif
 					endif
 				endselect
