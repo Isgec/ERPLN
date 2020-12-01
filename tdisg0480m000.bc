@@ -24,6 +24,9 @@
 |*
 |* GH408CR000, RAvi Kumar, 25-09-2020
 |* PO Entry Filters issue in Report Print Audit Purchase Orders Register
+|*
+|* GH438CR778, RAvi Kumar, 13-11-2020
+|* Correction in PO Register for Audit
 |****************************** declaration section ***************************
 declaration:
 
@@ -73,6 +76,9 @@ declaration:
 	extern	domain	tcamnt		rep.bval
 	extern	domain	tcamnt		rep.bval.HC
 	extern	domain	tcamnt		rep.bval.lakhs
+	extern	domain	tcamnt		rep.inc.dec.value		|GH438CR778.a
+	extern	domain	tcamnt		last.cal.value			|GH438CR778.a
+	extern	domain	tcamnt		last.cal.value.lakhs		|GH438CR778.a
 	extern	domain	tcamnt		rep.bdmt
 	extern	domain	tccprj		rep.cprj
 	extern	domain	tcdsca		rep.pjdc 
@@ -277,6 +283,7 @@ function read.main.table()
 		rep.bval = tdisg080.bval					|11
 		rep.bval.HC = rep.bval * tdpur400.ratp(1)			|11.A	|#GSTLIVE01012.n
 		rep.bval.lakhs = rep.bval.HC / 100000				|11.B	|#GSTLIVE01012.n
+		rep.bval.lakhs = round(rep.bval.lakhs, 2, 1)				|GH438CR778.a
 		rep.bdmt = tdisg080.bdmt					|12
 		rep.cprj = tdpur401.cprj					|13
 		rep.pjdc = tcmcs052.dsca					|14
@@ -295,6 +302,12 @@ function read.main.table()
 			rep.prty = trim$(rep.prty) & ", Higher by Rs. " & edit$(tdisg080.hbrs, "ZZZZZZZ9VD99")
 		endif
 		
+		last.cal.value = cal.in.dec.value(tdisg086.orno, tdisg080.revi, tdpur400.ratp(1))		|GH438CR778.a.s
+		last.cal.value.lakhs = last.cal.value / 100000
+		rep.inc.dec.value = rep.bval.lakhs - last.cal.value.lakhs
+| 		rep.inc.dec.value = last.cal.value.lakhs - rep.bval.lakhs
+		rep.inc.dec.value = round(rep.inc.dec.value, 2, 1)
+														|GH438CR778.a.e		
 		print.details()
 	endselect	
 }
@@ -315,6 +328,7 @@ function	generate.header()
 		sprintf$("Total PO Value"),				|11
 		sprintf$("Total PO Value(in Rs.)"),			|11.A	|#GSTLIVE01012.n
 		sprintf$("Total PO Value(in Lakhs)"),			|11.B	|#GSTLIVE01012.n
+		sprintf$("Order Value to Report (Rs. in Lakh)"),	|11.C		|GH438CR778.a
 		sprintf$("Budget as per Indent"),		        |12
 		sprintf$("Project"),					|13
 | 		sprintf$("Project Name"),				|14	|#GSTLIVE01012.o
@@ -351,6 +365,7 @@ function print.details()
 		sprintf$("%f", rep.bval),				|11
 		sprintf$("%f", rep.bval.HC),				|11.A	|#GSTLIVE01012.n
 		sprintf$("%f", rep.bval.lakhs),			|11.B	|#GSTLIVE01012.n
+		sprintf$("%f", rep.inc.dec.value),				|11.C	|GH438CR778.a
 		sprintf$("%f", rep.bdmt),				|12
 		sprintf$("%s", trim$(rep.cprj & " - " & rep.pjdc)),	|13
 | 		sprintf$("%s", rep.pjdc),				|14	|#GSTLIVE01012.o
@@ -387,6 +402,7 @@ function Initialize_Variables()
 	rep.bval = 0				|11
 	rep.bval.HC = 0				|11.A
 	rep.bval.lakhs = 0			|11.B
+	rep.inc.dec.value = 0			|11.C			|GH438CR778.a
 	rep.bdmt = 0				|12
 	rep.cprj = ""				|13
 	rep.pjdc = ""				|14
@@ -493,3 +509,42 @@ function close.file()
 	ret2 = server2client(err.file,file.name,1)
 	ret2 = app_start(file.name,"c:","","","")
 }
+
+function domain	tcamnt	cal.in.dec.value(	domain	tcorno	i.orno,		|GH438CR778.a.s		
+						domain	tcpono	i.revn,
+						domain	tcratc	i.ratp)
+{
+	domain	tcamnt	last.rev.value, last.rev.value.hc
+
+	last.rev.value = 0 
+	last.rev.value.hc = 0 
+	
+	
+| 	select	tdmsl400.orno,
+| 		tdmsl400.vrsn
+| 	from	tdmsl400
+| 	where	tdmsl400._index1 = {:i.orno}
+| 	and	tdmsl400.work = tdmsl.work.completed
+| 	order by tdmsl400.vrsn desc
+| 	as set with 1 rows
+| 	selectdo
+| 	selectempty
+| 		tdmsl400.vrsn = 0
+| 	endselect
+		
+	select	tdisg080.bval:last.rev.value.hc,
+		tdisg080.revi
+	from	tdisg080
+| 	where	tdisg080._index2 = {:i.orno, :tdmsl400.vrsn}
+	where	tdisg080._index2 = {:i.orno}
+	and	tdisg080.revi < :i.revn
+	order by tdisg080.revi desc
+	as set with 1 rows
+	selectdo
+	selectempty
+		last.rev.value.hc = 0
+	endselect
+	
+	last.rev.value = last.rev.value.hc * i.ratp
+	return(last.rev.value)
+}										|GH438CR778.a.e
