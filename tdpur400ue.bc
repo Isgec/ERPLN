@@ -94,6 +94,9 @@
 |*
 |* GH388CR709, RAvi Kumar, 26/08/2020
 |* Series check on Purchase Order creation-modification
+|* 
+|* GH447CR757, RAvi Kumar, 26-11-2020
+|* Blacklisting of vendor should not affect Bill booking and amendments of existing POs
 
 |******************************************************************************
 	table	ttdmsl400
@@ -184,6 +187,7 @@
 		string str.vrsn(10),check.var.pono(10)
 		domain	tcamnt		var.perc, v.count1, var.perc1, tot.wght
 		string	error.msg(512)		|CR-485
+		extern	domain	tccom.bpid	block.bpid		|GH447CR757.a
 #include <bic_dal>
 #include "itdisgdll0003"
 
@@ -227,6 +231,11 @@ function extern long ue.before.before.save.object(long mode)
 			dal.set.error.message("@Please Maintain Supplier GSTIN Category and Corresponding GSTIN Registration No.")
 		endif
 						|#ISGEC017006.en
+						
+		if check.BP.block(block.bpid) then					|GH447CR757.a.s
+			dal.set.error.message("@Purchase Order generation not allowed for Supplier " & block.bpid)
+			return(DALHOOKERROR)
+		endif									|GH447CR757.a.e
 		break
 	case DAL_UPDATE:
 		if	calling.prog = "whinh3512m000" or 		|GH388CR709.a.s
@@ -1892,3 +1901,43 @@ function domain	tcbool	check.series.auth(domain	tcorno	seri,
 	
 	return(false)
 }										|GH388CR709.a.e
+
+function boolean check.BP.block(ref domain	tccom.bpid o.bpid)		|GH447CR757.a.s
+{
+	if bp.block.for.PO(tdpur400.otbp) then
+		o.bpid = tdpur400.otbp
+		return(true)
+	endif
+	
+	if bp.block.for.PO(tdpur400.sfbp) then
+		o.bpid = tdpur400.sfbp
+		return(true)
+	endif
+	
+	if bp.block.for.PO(tdpur400.ifbp) then
+		o.bpid = tdpur400.ifbp
+		return(true)
+	endif
+	
+	if bp.block.for.PO(tdpur400.ptbp) then
+		o.bpid = tdpur400.ptbp
+		return(true)
+	endif
+	
+	return(false)
+}
+
+function boolean bp.block.for.PO(domain	tccom.bpid	i.bpid)
+{
+	select	tccom100.cdf_pblk
+	from	tccom100
+	where	tccom100._index1 = {:i.bpid}
+	and	tccom100.cdf_pblk = tcyesno.yes
+	as set with 1 rows
+	selectdo
+		return(true)
+	endselect
+	
+	return(false)
+}										|GH447CR757.a.e
+
