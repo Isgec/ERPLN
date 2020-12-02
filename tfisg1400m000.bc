@@ -27,6 +27,9 @@
 |*
 |* ID: GH358CR672, RAvi Kumar, 02-07-2020
 |* Show financial company in GST2 RCM data
+|*
+|* GH449CR784, RAvi Kumar, 01-12-2020
+|* PO, Project, Buyer required in GSTR2 data generation
 |****************************** declaration section ***************************
 declaration:
 
@@ -93,6 +96,10 @@ declaration:
 		domain	tccprj		temp.cprj
 		domain	tcmcs.str30	get.reas
 		 	boolean		update.flag
+			
+	extern	domain	tccprj		i.cprj			|GH449CR784.a
+	extern	domain	tcorno		i.orno			|GH449CR784.a
+	extern	domain	tcemno		i.ccon			|GH449CR784.a
 		
 	
 	string	err.file(100), file.name(100), line(2500)
@@ -317,7 +324,7 @@ function get.ERPLN.IRs()
 		tfacp100.ctyp, tfacp100.cinv, tfacp100.rate,
 		tfacp100.cdf_cprj, tfacp100.cdf_irdt, 
 		tfacp100.cdf_oird, tfacp100.cdf_resn,
-		tfacp100.cdf_user, tccom100.nama:supp.nama,
+		tfacp100.cdf_user, tccom100.nama:supp.nama, tfacp100.cdf_pono,	|GH449CR784.a
 		tfisg405.*
 	from	tfacp100, tfisg405, tccom100
 	where	tfacp100.invd inrange :invd.f and :invd.t
@@ -441,10 +448,31 @@ function get.ERPLN.IRs()
 			tfisg002.grno = ""	|* GR Blanked as not Required
 			tfisg002.grdt = 0
 			ir.update.comp(tfacp100.ninv)					|GH358CR672.a
+			
+			i.cprj = temp.cprj						|GH449CR784.a.s
+			get.var(pid, "tfacp100.cdf_pono", i.orno)
+			select	tdpur400.ccon:i.ccon
+			from	tdpur400
+			where	tdpur400._index1 = {:i.orno}
+			as set with 1 rows
+			selectdo
+			selectempty
+				i.ccon = ""
+			endselect							|GH449CR784.a.e
 			insert.update.the.data()
 		selectempty
 			assign.data.where.IR.Ext.not.maintained()
 			ir.update.comp(tfacp100.ninv)					|GH358CR672.a
+			i.cprj = temp.cprj						|GH449CR784.a.s
+			get.var(pid, "tfacp100.cdf_pono", i.orno)
+			select	tdpur400.ccon:i.ccon
+			from	tdpur400
+			where	tdpur400._index1 = {:i.orno}
+			as set with 1 rows
+			selectdo
+			selectempty
+				i.ccon = ""
+			endselect							|GH449CR784.a.e
 			insert.update.the.data()
 		endselect
 	endselect
@@ -571,6 +599,10 @@ function get.NON.ERPLN.IRs()
 				import.sez = (ccty.b = "IN ") ? "":"Import of Services"
 			endif
 		endif
+		
+		i.cprj = ""						|GH449CR784.a.s
+		i.orno = ""
+		i.ccon = ""						|GH449CR784.a.e
 		insert.update.the.data()
 	endselect
 }
@@ -867,6 +899,9 @@ function insert.update.the.data()
 					tfisg415.unam = g.user.name
 					tfisg415.frez = tcyesno.no
 					tfisg415.appr = tcyesno.no
+					tfisg415.orno = i.orno			|GH449CR784.a.s
+					tfisg415.ccon = i.ccon
+					tfisg415.cprj = i.cprj			|GH449CR784.a.e
 				endselect
 			else
 				tfisg415.year = year.f
@@ -938,6 +973,9 @@ function insert.update.the.data()
 				tfisg415.unam = g.user.name
 				tfisg415.frez = tcyesno.no
 				tfisg415.appr = tcyesno.no
+				tfisg415.orno = i.orno			|GH449CR784.a.s
+				tfisg415.ccon = i.ccon
+				tfisg415.cprj = i.cprj			|GH449CR784.a.e
 			endif	
 			
 			db.insert(ttfisg415, db.skip.dupl, e)
