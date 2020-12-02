@@ -130,7 +130,7 @@ function extern long ue.before.before.save.object(long mode)
 
 		if dd >= 26 and tdpur406.conf = tcyesno.yes then
 			if 	curr.user = "9583" or		|* Pankaj Sir
-				curr.user = "merino1" or	|* Merino 1
+				curr.user = "3776" or		|* RAvi Kumar
 				curr.user = "0330"  then	|* Veena Mam
 			else
 				dal.set.error.message("@Receipt Can't be Confirmed....")
@@ -639,23 +639,33 @@ function boolean check.reciept.linked()
 function boolean check.irno.exist(	domain	whinh.pksp	dino.i,					|GH319CR616.a.s
 				ref	domain	tcorno		rno.irno)
 {
-	select	whinh310.rcno:rno.irno
-	from	whinh310
-	where	whinh310.dino = :dino.i
-	and	whinh310._index1 <> :tdpur406.rcno
-	as set with 1 rows
+	domain	tclogn	logn.id
+	
+	logn.id = logname$
+	
+	select	whisg000.*
+	from	whisg000
+	where	whisg000._index1 = {:logn.id}
 	selectdo
-		return(true)
 	selectempty
-		select	tdpur406.rcno:rno.irno
-		from	tdpur406
-		where	tdpur406.dino = :dino.i
-		and	tdpur406._index2 <> :tdpur406.rcno
+		select	whinh310.rcno:rno.irno
+		from	whinh310
+		where	whinh310.dino = :dino.i
+		and	whinh310._index1 <> :tdpur406.rcno
 		as set with 1 rows
 		selectdo
 			return(true)
 		selectempty
-			return(false)
+			select	tdpur406.rcno:rno.irno
+			from	tdpur406
+			where	tdpur406.dino = :dino.i
+			and	tdpur406._index2 <> :tdpur406.rcno
+			as set with 1 rows
+			selectdo
+				return(true)
+			selectempty
+				return(false)
+			endselect
 		endselect
 	endselect
 	return(false)
