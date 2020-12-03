@@ -73,6 +73,10 @@ function extern long ue.before.before.save.object(long mode)
 {
 
 	domain	tccprj			o.cprj
+	
+	domain	tcsess	g.sess
+	
+	get.var(pid, "prog.name$", g.sess)
 	g.comp = get.compnr()
 
 	on case mode
@@ -261,17 +265,21 @@ function extern long ue.before.before.save.object(long mode)
 		return(DALHOOKERROR)
 	endif
 				|#GSTLIVE01014.en
-	get.var(pid, "tfacp100.cdf_list", c.pkgn)
-	select	tdisg017.pkgn
-	from	tdisg017
-	where	tdisg017.pkgn = {:c.pkgn}
-	as set with 1 rows
-	selectdo
-	selectempty
-		dal.set.error.message("@ Invalid Packing List No.")
-		return(DALHOOKERROR)
-	endselect
-	
+	if g.sess = "tfacp1500m000" then
+		get.var(pid, "tfacp100.cdf_list", c.pkgn)
+		if c.pkgn <> 0 then
+			select	tdisg017.pkgn
+			from	tdisg017
+			where	tdisg017.pkgn = {:c.pkgn}
+			as set with 1 rows
+			selectdo
+			selectempty
+				dal.set.error.message("@ Invalid Packing List No.")
+				return(DALHOOKERROR)
+			endselect
+		endif
+	endif
+		
 	return(0)
 }
 
