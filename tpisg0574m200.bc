@@ -53,6 +53,7 @@ before.display:
 	select	dmisg140.pcod:pcod
 	from	dmisg140
 	where	dmisg140._index2 = {:tpisg074.cprj}
+	as set with 1 rows
 	selectdo
 	selectempty
 		pcod = ""
