@@ -141,18 +141,18 @@ function extern long before.save.object(long type)
 | 		update_tfisg182()			|ISGEC002026.n
 		update.tfisg182.billing.advice.detail(1)			|#ISGEC016020.n
 		
-		if check.decimal.price() then
-			dal.set.error.message("@ Price ("
-			& str$(price.cal) & ")cannot have more than 3 decimals (Billing Value/Packing List Qty), Please change Billing Value or Packing List Qty")
-			return(DALHOOKERROR)
-		endif
+| 		if check.decimal.price() then					|GH454CR000.com
+| 			dal.set.error.message("@ Price ("
+| 			& str$(price.cal) & ")cannot have more than 3 decimals (Billing Value/Packing List Qty), Please change Billing Value or Packing List Qty")
+| 			return(DALHOOKERROR)
+| 		endif
 		break
 	case 	DAL_UPDATE :
-		if check.decimal.price() then
-			dal.set.error.message("@ Price ("
-			& str$(price.cal) & ")cannot have more than 3 decimals (Billing Value/Packing List Qty), Please change Billing Value or Packing List Qty")
-			return(DALHOOKERROR)
-		endif
+| 		if check.decimal.price() then					|GH454CR000.com
+| 			dal.set.error.message("@ Price ("
+| 			& str$(price.cal) & ")cannot have more than 3 decimals (Billing Value/Packing List Qty), Please change Billing Value or Packing List Qty")
+| 			return(DALHOOKERROR)
+| 		endif
 		
 		select	tdisg831.bill				|#ISGEC015079.sn
 		from	tdisg831
@@ -2395,12 +2395,13 @@ function boolean check.decimal.price()					|RAvi.a.s.29102020
 {
 	domain tcmcs.str100	diff.cal, diff.cal1, diff.cal2
 	string	third.place(1), forth.place(1)
-	domain tcamnt	diff.cal.int
+	domain tcamnt	diff.cal.int, diff.price, amnt.af.round
 	long	dec.af, len.value
 	price.cal = 0.00
 	diff.cal.int = 0
 	diff.cal = ""
 	dec.af = 0
+	diff.price = 0
 	
 	if tdisg832.pqty = 0 then
 		return(false)
@@ -2417,36 +2418,45 @@ function boolean check.decimal.price()					|RAvi.a.s.29102020
 | 		return(true)
 | 	endif
 	
-	diff.cal = str$(price.cal)
-	dec.af = rpos(diff.cal, ".")
-	len.value = len(diff.cal)
-	if dec.af = 0 then
-		diff.cal2 = "0"
-	else
-		if len.value > (dec.af + 4) then
-			third.place = diff.cal((dec.af + 4); 1)
-			forth.place = diff.cal((dec.af + 4); 1)
-			if third.place = "0" and forth.place = "0" then
-				diff.cal2 = "0"
-			else
-				diff.cal1 = diff.cal(1; (dec.af + 3))
-				price.cal.dec = val(diff.cal1)
-				diff.cal.int = price.cal - price.cal.dec
-				diff.cal2 = str$(diff.cal.int)
-			endif
-		else
-			diff.cal1 = diff.cal(1; (dec.af + 3))
-			price.cal.dec = val(diff.cal1)
-			diff.cal.int = price.cal - price.cal.dec
-			diff.cal2 = str$(diff.cal.int)
-		endif
-	endif
+| 	diff.cal = str$(price.cal)
+| 	dec.af = rpos(diff.cal, ".")
+| 	len.value = len(diff.cal)
+| 	if dec.af = 0 then
+| 		diff.cal2 = "0"
+| 	else
+| 		if len.value > (dec.af + 4) then
+| 			third.place = diff.cal((dec.af + 4); 1)
+| 			forth.place = diff.cal((dec.af + 4); 1)
+| 			if third.place = "0" and forth.place = "0" then
+| 				diff.cal2 = "0"
+| 			else
+| 				diff.cal1 = diff.cal(1; (dec.af + 3))
+| 				price.cal.dec = val(diff.cal1)
+| 				diff.cal.int = price.cal - price.cal.dec
+| 				diff.cal2 = str$(diff.cal.int)
+| 			endif
+| 		else
+| 			diff.cal1 = diff.cal(1; (dec.af + 3))
+| 			price.cal.dec = val(diff.cal1)
+| 			diff.cal.int = price.cal - price.cal.dec
+| 			diff.cal2 = str$(diff.cal.int)
+| 		endif
+| 	endif
+| 	
+| 	if diff.cal2 = "0" then
+| 		return(false)
+| 	else
+| 		return(true)
+| 	endif
+
+	diff.cal.int = round(price.cal, 3, 2)
+	amnt.af.round = diff.cal.int * tdisg832.pqty
+	diff.price = amnt.af.round - tdisg832.bivl
 	
-	if diff.cal2 = "0" then
+	if diff.price > -1 and  diff.price < 1 then
 		return(false)
 	else
 		return(true)
-	endif
-	
+	endif	
 	return(false)
 }								|RAvi.a.e.29102020
