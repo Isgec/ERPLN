@@ -76,7 +76,7 @@ function extern boolean method.is.allowed(long type)
 function field.depend()
 {
 	dal.field.depends.on("tdisg045.note", HOOK_UPDATE, "tdisg045.rqno")
-| 	dal.field.depends.on("tdisg045.cvat", HOOK_UPDATE, "tdisg045.invn")
+	dal.field.depends.on("tdisg045.cvat", HOOK_UPDATE, "tdisg045.invn")
 }
 
 function extern tdisg045.note.update()
@@ -88,19 +88,19 @@ function extern tdisg045.note.update()
 	endif
 }
 
-| function extern tdisg045.cvat.update()
-| {
-| 	select	tdisg831.cvat
-| 	from	tdisg831
-| 	where	tdisg831._index2 = {:tdisg045.invn}
-| 	as set with 1 rows
-| 	selectdo
-| 	selectempty
-| 		tdisg831.cvat = ""
-| 	endselect
-| 	
-| 	tdisg045.cvat = tdisg831.cvat
-| }
+function extern tdisg045.cvat.update()
+{
+	select	tdisg831.cvat
+	from	tdisg831
+	where	tdisg831._index2 = {:tdisg045.invn}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tdisg831.cvat = ""
+	endselect
+	
+	tdisg045.cvat = tdisg831.cvat
+}
 
 function extern boolean tdisg045.invn.is.valid(long type)
 {
@@ -172,7 +172,7 @@ function extern boolean tdisg045.invn.is.valid(long type)
 		select	tdisg831.invn
 		from	tdisg831
 		where	tdisg831._index2 = {:tdisg045.invn}
-		and	tdisg831.cirb = ""
+		and	tdisg831.stat = tdisg.stat.freeze
 		as set with 1 rows
 		selectdo
 		selectempty
