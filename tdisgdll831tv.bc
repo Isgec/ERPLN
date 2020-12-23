@@ -35,6 +35,8 @@
 	table		ttdisg860
 	table		twhinh312		|
 	table		ttdisg865
+	table		tciisg800
+	table		ttcisg132
 
 |************************* Commercial Invoice Report Tables ***********************************
 table	twhisg312
@@ -174,7 +176,7 @@ extern	domain	tcdsca		label1,label2,label3,label4,label5,report_desc,
 				port_discharge,port_loading
 extern	domain	tcwght		gross_weight
 extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2
-extern domain	tcmcs.str100 	dbk_des6,dbk_des7	|ISGEC01158.n
+extern domain	tcmcs.str100 	dbk_des6,dbk_des7, dbk_des8, dbk_des9	|ISGEC01158.n
 extern	domain	tcamnt		amnt.inr
 extern	domain	tcmcs.str5	i.rev
 |***************** Custom Invoice Report Variable End *****************************
@@ -401,6 +403,11 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 	extern	domain	tcamnt	cgst.amnt, sgst.amnt, igst.amnt, assv.val, tax.amnt, total.amnt.r
 	extern	domain	tcpvat		cgst.rate, sgst.rate, igst.rate
 	extern	domain	tcamnt		tot.inr.amnt.with.tax, tot.tax.amnt		|RAvi.a.12102020
+	extern	domain	tfgld.date	date.280520			|GH324CR636.a
+			long		invoice.line.count, ann.line.cal		|RAvi.a.20102020
+		domain	tfgld.docn	docn.orno		|RAvi.a.18112020
+		domain	tcorno		docn.orno.str		|RAvi.a.18112020
+		domain	tfgld.ttyp	ityp			|RAvi.a.18112020
 #include<bic_desktop>
 #include <bic_text>
 	
@@ -465,8 +472,11 @@ function extern tdisgdll831tv.custom_invoice
 	iec.no.export = ""
 	pan.no.export = ""
 	tax.amnt = 0				|RAvi.a.07102020
-	tot.inr.amnt.with.tax = 0				|RAvi.a.07102020
-						
+	tot.inr.amnt.with.tax = 0		|RAvi.a.07102020
+	invoice.line.count = 0			|RAvi.a.20102020
+	ann.line.cal = 0			|RAvi.a.20102020
+	tot.tax.amnt = 0			|RAvi.a
+	
     text(1,1) = ""				
 	text(1,2) = ""				
 	
@@ -676,6 +686,7 @@ function extern tdisgdll831tv.custom_invoice
 		tot.inr.amnt = 0
 		final.total = 0
 		create.html.invoice.header()
+		
 		package_no_print()
 				
 		value_declare = ""
@@ -719,11 +730,11 @@ function extern tdisgdll831tv.custom_invoice
 				dbk_description4 = ""
 			endif
 											
-| 			if tdisg832.tobi  = tcyesno.no then
-| 				value_declare = ""
-| 			else
-| 				value_declare = "Value Declared for Custom Purpose Only"
-| 			endif	
+			if tdisg832.tobi  = tcyesno.no then
+				value_declare = ""
+			else
+				value_declare = "Value Declared for Custom Purpose Only"
+			endif	
 			
 			q = 0
 			select	tdisg876.efdt, tdisg876.lbno, tdisg876.type
@@ -735,10 +746,17 @@ function extern tdisgdll831tv.custom_invoice
 				tdisg876.lbno = ""
 			endselect
 		
-			lut.line = 	"EXPORT UNDER " & 
-					trim$(enum.descr$("tdisg.sec.typ", tdisg876.type, "2")) &
-					" No. " & trim$(tdisg876.lbno) & " DATED " &
-					trim$(sprintf$("%D(%02d %-03H %04Y)", tdisg876.efdt)) & "."
+| 			if isspace(tdisg831.cvat) then
+			if not isspace(tdisg831.lcod) then
+				lut.line = 	"EXPORT UNDER " & 
+						trim$(enum.descr$("tdisg.sec.typ", tdisg876.type, "2")) &
+						" No. " & trim$(tdisg876.lbno) & " DATED " &
+						trim$(sprintf$("%D(%02d %-03H %04Y)", tdisg876.efdt)) & "."
+			else
+				lut.line = ""		
+			endif
+					
+			invoice.line.count = invoice.line.count + 1
 			create.invoice.lines()
 			select	tdisg007.type:v.type,sum(tdisg007.nopk):v.nopk
 			from	tdisg007
@@ -770,7 +788,7 @@ function extern tdisgdll831tv.custom_invoice
 			srno = srno + 1
 			get.amount.in.word1(tot_amount)
 		selectempty
-			value_declare = "Value Declared for Custom Purpose Only"
+| 			value_declare = "Value Declared for Custom Purpose Only"
 		endselect
 		
 | 		package_no_print()
@@ -785,15 +803,30 @@ function extern tdisgdll831tv.custom_invoice
 	dbk_des5 = tdisg825.info2
 	
 	if tdisg832.edbk = tcyesno.yes then
+| 		dbk_des1 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT BEING"		
+| 		dbk_des2 = "RESTRICTED BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"	
 		dbk_des4 = "END USE CODE - GNX200"
-		dbk_des6 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT RESTRICTED"	
-		dbk_des7 = "BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"		
+		
+		date.280520 = date.to.num(2020, 05, 28)									
+		if tdisg831.invd < date.280520 and tdisg831.invd <> 0 then
+			dbk_des6 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT RESTRICTED"		
+			dbk_des7 = "BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"		
+			dbk_des8 = ""
+			dbk_des9 = ""
+		else
+			dbk_des6 = "WE HEREBY REQUEST CUSTOMS DEPARTMENT TO RELEASE DUTY DRAWBACK AS PER "		
+			dbk_des7 = "GOVERNMENT POLICY AND RULES OF DUTY DRAWBACK SCHEME APPLICABLE TO US. "			
+			dbk_des8 = "FURTHER DECLARE WE DO NOT HAVE ANY OBJECTION IF DBK AMOUNT IS RESTRICTED"				
+			dbk_des9 = "UNDER ANY PROVISION OF DBK RULES."				
+		endif													
 	else										
 		dbk_des1 = ""
 		dbk_des2 = ""
 		dbk_des4 = ""
-		dbk_des6 = ""	|
+		dbk_des6 = ""	
 		dbk_des7 = ""	
+		dbk_des8 = ""	
+		dbk_des9 = ""	
 	endif	
 	
 	if tdisg832.efms = tcyesno.yes then
@@ -804,7 +837,13 @@ function extern tdisgdll831tv.custom_invoice
 		meis.des2 = ""
 	endif
 													|ISGEC01092.en
-	term.line = "SUPPLY MEANT FOR EXPORT UNDER LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGERATED TAX"
+	
+| 	if isspace(tdisg831.cvat) then
+	if not isspace(tdisg831.lcod) then
+		term.line = "SUPPLY MEANT FOR EXPORT UNDER LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGERATED TAX"
+	else
+		term.line = "SUPPLY MEANT FOR EXPORT ON PAYMENT OF INTEGRATED TAX"
+	endif
 	
 	rprt_send()
 	create.html.we.intend()
@@ -843,6 +882,10 @@ function extern tdisgdll831tv.custom_invoice
 	sum.lc.amnt.inr = round(sum.lc.amnt.inr, 2, 0)
 	final.total.inr = tot.inr.amnt - sum.lc.amnt.inr
 	rprt_send()
+	amt_str = ""
+	amt_str.inr = ""
+	cash.str = ""
+	cash.str.inr = ""
 	
 	tfgld.dll9998.in.words(final.total,amt_str)
 	amt_str = toupper$(amt_str)
@@ -869,7 +912,7 @@ function print.annexure()
 	domain	tcyesno		o.tfacp100.cdf_gstr
 		long		m, n, brp.id
 	
-	brp.id = brp.open("rtdisg84310100a", "PL", 0)
+| 	brp.id = brp.open("rtdisg84310100a", "PL", 0)
 	
 	repeat.flag = 0			
 	m = 0
@@ -878,12 +921,13 @@ function print.annexure()
 							|#CR458.sn
 	r.var.vhno = ""
 	var.dino = 0
-	i.vhno = 1
+	i.vhno = 1	
 							|#CR458.en
 	for n = 1 to 20
 		ninv.array(n) = 0 
 	endfor
 
+	create.annexure.export.header()
 	select	tdisg832.rcno						
 	from	tdisg832
 	where	tdisg832._index1 = {:tdisg831.edrn}
@@ -956,10 +1000,12 @@ function print.annexure()
 				i.vhno = i.vhno + 1
 			endselect
 													
-			brp.ready(brp.id)
+| 			brp.ready(brp.id)
+			create.annexure.export.line()
 		endselect
 		IR.is.printed = false  		
 	endselect	
+	create.annexure.footer()
 }
 
 function package_no_print()
@@ -1926,9 +1972,29 @@ function create.html.invoice.header()
 {
 	string		r.siqr.txt(1000)mb,sbuf(959,40)			|Sanjeev - 22/09/2020
 	domain tclang                    system.language
+	string	qrcode.url(500)						|RAvi.a.s.18112020
+	domain	tcmcs.str50		pass.string, handle.string
+	
+	docn.orno = lval(tdisg831.invn(4;8))
+	ityp = tdisg831.invn(1;3)
+	docn.orno.str = str$(docn.orno)
+	
+	select	ciisg800.comp
+	from	ciisg800
+	where	ciisg800.tran = :ityp
+	and	ciisg800.docn = :docn.orno.str
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	pass.string = trim$(str$(ciisg800.comp)) & "_" &trim$(ityp) & "_" & trim$(Str$(docn.orno.str))
+	handle.string =  "EINV_QRPNG_200"				|RAvi.a.e.18112020
+	
+	qrcode.url = ""
 	r.siqr.txt = ""
 	system.language = language$
 | 	str.idoc = str$(cisli205.idoc)
+	value_declare = ""
 	select	ciisg801.qrst,ciisg801.irnn
 	from	ciisg801
 	where	ciisg801.ninv = {:tdisg831.invn}
@@ -1944,14 +2010,29 @@ function create.html.invoice.header()
 	selectdo
 		if not isspace(trim$(tttxt010.text)) then
 			if not isspace(r.siqr.txt) then
-				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+				r.siqr.txt = r.siqr.txt & tttxt010.text
 			else
-				r.siqr.txt = trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(tttxt010.text)
+				r.siqr.txt = tttxt010.text
 			endif
 		endif     
 	endselect
 	r.siqr.txt = trim$(r.siqr.txt)
 									|Sanjeev - 22/09/2020
+	
+	select	tcisg132.drid
+	from	tcisg132
+	where	tcisg132.hndl = :handle.string
+	and	tcisg132.indx = :pass.string
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcisg132.drid = ""
+	endselect
+	
+	qrcode.url = "http://192.9.200.146/Attachment/ViewFile.aspx?AthHandle=" & trim$(handle.string) &
+				"&Index=" & trim$(pass.string) & "&AttachedBy=" & trim$(logname$) & "&ed=n&t_drid=" & trim$(tcisg132.drid)
 
 	temp.file	=	bse.tmp.dir$()
 	
@@ -1982,11 +2063,24 @@ function create.html.invoice.header()
 	seq.puts("font-style: normal;",fp)
         seq.puts("}",fp)
 	
-	seq.puts("table, th, td {",fp)
+| 	seq.puts("table, th, td {",fp)
+| 		seq.puts("border: 1px solid black;",fp)
+| 		seq.puts("width: 100%;",fp)
+| 		seq.puts("border-collapse: collapse;",fp)
+| 	seq.puts("}",fp)
+	seq.puts("table{",fp)
 		seq.puts("border: 1px solid black;",fp)
 		seq.puts("width: 100%;",fp)
 		seq.puts("border-collapse: collapse;",fp)
+| 		seq.puts("height: 1200px;",fp)
 	seq.puts("}",fp)
+	seq.puts("td, th{",fp)
+		seq.puts("border: 1px solid black;",fp)
+| 		seq.puts("LINE-HEIGHT:20px;",fp)
+| 		seq.puts("width: 100%;",fp)
+		seq.puts("border-collapse: collapse;",fp)
+	seq.puts("}",fp)
+	
 	seq.puts("th{",fp)
 	seq.puts("text-align: center; ",fp)
 	seq.puts("}",fp)
@@ -2014,6 +2108,7 @@ function create.html.invoice.header()
 	seq.puts(".tar{text-align: right}",fp)
 	seq.puts(".tac{text-align: center}",fp)
 	seq.puts(".fta{font: 12px 'Arial'}",fp)
+	seq.puts(".pb { page-break-before: always}",fp)						|RAvi.a.20102020
 	
 	seq.puts("</style>",fp)
 	seq.puts("</head>",fp)
@@ -2024,7 +2119,6 @@ function create.html.invoice.header()
 		&">",fp)
 
 	seq.puts("<table  colspan="&chr$(34)&"14"&chr$(34)&" align="&chr$(34)&"center"&chr$(34)&" style="&chr$(34)&"width: 960px; height: auto; background: #fff; "&chr$(34)&">",fp)
-
 
 	seq.puts("<tr>",fp)
         seq.puts("<td>",fp)
@@ -2037,14 +2131,17 @@ function create.html.invoice.header()
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
 	seq.puts("<tr>",fp)					|RAvi.a.s.30092020
-		seq.puts("<td colspan=18  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta bt bl br fta"&chr$(34)&"><strong>IRN No. : </strong>" & trim$(ciisg801.irnn)&" </td>",fp)
+		seq.puts("<td colspan=16  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta bt bl br fta"&chr$(34)&"><strong>IRN No. : </strong>" & trim$(ciisg801.irnn)&" </td>",fp)
 		seq.puts("</td >",fp)
 		
-		seq.puts("<td colspan=2 class="&chr$(34)&"tar bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	
-			&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 		seq.puts("<td colspan=3 class="&chr$(34)&"tar bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	
+| 			&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+| 			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)
+			seq.puts("<td colspan=3 class="&chr$(34)&"tar bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|Sanjeev - 22/09/2020
+			&qrcode.url & "&amp;size=100x100"&chr$(34)&
 			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
-			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)			
-
+			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)
 	seq.puts("</tr>",fp)					|RAvi.a.e.30092020
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&"><strong>Exporter :</strong> <br>"
@@ -2064,8 +2161,8 @@ function create.html.invoice.header()
 	seq.puts("</tr>",fp)
 	
 	seq.puts("<tr>",fp)
-		seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)& exp2& "<br>"& exp3& "<br>"
-		& exp4,fp)
+		seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)& ">" & trim$(exp2)
+		& "<br>"& trim$(exp3)& "<br>" & trim$(exp4),fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=2  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tar tar fta"&chr$(34)&
 		"><strong>PAN&nbsp;No:&nbsp; <br> GSTIN&nbsp;No.:&nbsp; <br>GSTIN&nbsp;TYPE:</strong>",fp)
@@ -2074,9 +2171,10 @@ function create.html.invoice.header()
 		&gstn.c.no
 		&"<br> GSN",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=10 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&">"& str$(buyer_order) & str$(buyer_date),fp)
+		seq.puts("<td colspan=10 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&">"& str$(buyer_order) & sprintf$("%D(%02d/%02m/%04Y)", buyer_date),fp)
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
+	
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=10  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&">",fp)
 		seq.puts("</td >",fp)
@@ -2132,7 +2230,7 @@ function create.html.invoice.header()
 		seq.puts("<td colspan=7  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"br fta"&chr$(34)&"><strong>Bill of Lading No.</strong> "&tdisg839.biln&
 		"<br> <strong>Vassel:</strong> "&tdisg839.vfln,fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl fta"&chr$(34)&"><strong>Dated:</strong>"&str$(tdisg839.pddt)&"<br><strong>Voyage No.</strong>"
+		seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl fta"&chr$(34)&"><strong>Dated:</strong>"&sprintf$("%D(%02d/%02m/%04Y)", tdisg839.pddt)&"<br><strong>Voyage No.</strong>"
 		&tdisg839.voyg,fp)
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
@@ -2153,7 +2251,8 @@ function create.html.invoice.header()
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tac fta"&chr$(34)&"><strong>Value In INR</strong>",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta tac"&chr$(34)&"><strong>Value In USD without GST</strong>",fp)		|RAvi.cng12102020
+| 		seq.puts("<td colspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta tac"&chr$(34)&"><strong>Value In USD without GST</strong>",fp)		|RAvi.cng12102020
+		seq.puts("<td colspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta tac"&chr$(34)&"><strong>Value In " & tppdm740.ccur &  " without GST</strong>",fp)		|RAvi.cng17122020
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
 	seq.puts("<tr>",fp)
@@ -2178,12 +2277,15 @@ function create.html.invoice.header()
 		seq.puts("</td >",fp)
 | 		seq.puts("<td colspan=1 rowspan=2 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Rate</strong> <br>"&Lumpsum,fp)
 | 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=1 rowspan=2 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Total Value CIF</strong>",fp)
+| 		seq.puts("<td colspan=1 rowspan=2 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Total Value CIF</strong>",fp)
+		seq.puts("<td colspan=1 rowspan=2 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Total Value " 
+			& trim$(delivery_term) & "</strong>",fp)
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
 	seq.puts("<tr>",fp)
 		
-		seq.puts("<td colspan=1 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Rate</strong><br>"& lumpsum,fp)
+| 		seq.puts("<td colspan=1 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Rate</strong><br>"& lumpsum,fp)
+		seq.puts("<td colspan=1 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Rate</strong>",fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Amt</strong>",fp)
 		seq.puts("</td >",fp)
@@ -2257,7 +2359,7 @@ function create.custom.inv.nos.line()
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=4 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&">",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal bb bt br bl tar fta"&chr$(34)&
+		seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal bb bt br bl fta"&chr$(34)&
 			">"&tdisg007.type&"&nbsp;&nbsp;"&sprintf$("%-*.*f",10,2,tot.nopk)&"Nos",fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb tac fta"&chr$(34)&">",fp)
@@ -2285,13 +2387,43 @@ function create.custom.inv.nos.line()
 
 function create.invoice.lines()
 {
+	domain	tcamnt	price.to
+	price.to = 0 
 	seq.puts("<tr>",fp)
-		seq.puts("<td colspan=4 rowspan=1  nowrap valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&"><br><br><br><br><br><br><br><br><br><br>"&tdisg832.pkgd,fp)
+		seq.puts("<td colspan=4 rowspan=1  nowrap valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&"><br><br><br><br><br><br><br><br><br><br><br><br><br>"&tdisg832.pkgd,fp)
 		seq.puts("</td>",fp)
-		seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
-			"><br><strong>HSN CODE DESCRIPTION</strong><br>"
-			&hsn.description1&"<br>"&hsn.description2&"<br>"&hsn.description3&"<br>"&hsn.description4&"<strong>DBK CODE DESCRIPTION</strong><br>"&dbk_description1&
-			"<br>=================================================<br>"&description1&"<br>",fp)
+		
+		if ((not isspace(dbk_description1)) and (not isspace(hsn.description1))) then
+			seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
+				"><br><strong>HSN CODE DESCRIPTION</strong><br>"
+				&hsn.description1&"<br>"&hsn.description2&"<br>"&hsn.description3&"<br>"&hsn.description4&"<br><strong>DBK CODE DESCRIPTION</strong><br>"&dbk_description1&
+				"<br>"&dbk_description2&"<br>"&dbk_description3&"<br>"&dbk_description4&
+				"<br>=================================================<br>"&description1&"<br>",fp)
+		else
+			if not isspace(hsn.description1) then
+				seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
+				"><br><strong>HSN CODE DESCRIPTION</strong><br>"
+				&hsn.description1&"<br>"&hsn.description2&"<br>"&hsn.description3&"<br>"&hsn.description4&
+				"<br>=================================================<br>"&description1&"<br>",fp)
+			else
+				if not isspace(dbk_description1) then
+					seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
+						"><br><strong>DBK CODE DESCRIPTION</strong><br>"&dbk_description1&
+						"<br>"&dbk_description2&"<br>"&dbk_description3&"<br>"&dbk_description4&
+						"<br>=================================================<br>"&description1&"<br>",fp)	
+				else
+					seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
+						"><br><br>"&dbk_description1&"<br>"&dbk_description2&"<br>"&dbk_description3&"<br>"&dbk_description4&
+						"<br>=================================================<br>"&description1&"<br>",fp)		
+				endif
+			endif	
+		endif
+		
+		if tdisg832.pqty <> 0 then
+			price.to = inr.amnt/tdisg832.pqty
+		else
+			price.to = inr.amnt/1
+		endif
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb  tac fta"&chr$(34)&">"&tdisg832.code,fp)
 		seq.puts("</td >",fp)
@@ -2301,7 +2433,7 @@ function create.invoice.lines()
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb tar fta"&chr$(34)&">"&sprintf$("%-*.*f",10,2,tdisg832.pqty),fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb tar fta"&chr$(34)&">"&sprintf$("%-*.*f",10,2,(inr.amnt/tdisg832.pqty)),fp)
+		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb tar fta"&chr$(34)&">"&sprintf$("%-*.*f",10,2,price.to),fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb  tar fta"&chr$(34)&">"&sprintf$("%-*.*f",10,2,inr.amnt),fp)
 		seq.puts("</td >",fp)
@@ -2321,10 +2453,84 @@ function create.invoice.lines()
 
 function create.html.we.intend()
 {	
+	if p = 10 then
+	
+	if invoice.line.count = 3 then
+		seq.puts("</table>",fp)
+		seq.puts("</div>",fp)
+		seq.puts("</td>",fp)
+		seq.puts("</table>",fp)
+| 		seq.puts("</body>",fp)
+| 		seq.puts("</html>",fp)
+		seq.puts("<p class = " &chr$(34)& "pb" &chr$(34)& "></p>",fp)
+		
+		seq.puts("<table  colspan="&chr$(34)&"20"&chr$(34)&" align="&chr$(34)&"center"&chr$(34)&" style="&chr$(34)&"width: 1050px; height: auto; background: #fff; "&chr$(34)&">",fp)
+
+
+		seq.puts("<tr>",fp)
+		seq.puts("<td>",fp)
+		seq.puts("<div class="&chr$(34)&"header_sub"&chr$(34)&" >",fp)
+		
+		seq.puts("<table>",fp)
+		seq.puts("<tr>",fp)
+			seq.puts("<th colspan=18 class="&chr$(34)&"bl bt  br fta tac"&chr$(34)&"><strong>EXPORT INVOICE</strong><br>",fp)
+			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta tar"&chr$(34)&"> Page : 1",fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+| 		seq.puts("<tr>",fp)					|RAvi.a.s.30092020
+| 			seq.puts("<td colspan=18  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta bt bl br fta"&chr$(34)&"><strong>IRN No. : </strong>" & trim$(ciisg801.irnn)&" </td>",fp)
+| 			seq.puts("</td >",fp)
+| 			
+| 			seq.puts("<td colspan=2 class="&chr$(34)&"tar bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	
+| 				&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 				" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+| 				"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)			
+
+| 		seq.puts("</tr>",fp)					|RAvi.a.e.30092020
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&"><strong>Exporter :</strong> <br>"
+			& exp1,fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=2  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tar fta"&chr$(34)&"><strong>CIN:&nbsp;<br> IEC No.:&nbsp;</strong>",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tal fta"&chr$(34)&">"& cin.no.export&"<br>" 
+			& iec.no.export,fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  nowrap valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Invoice No.:</strong> "&str$(tdisg831.invn)
+			&" <br> <strong>Date:</strong>"&sprintf$("%D(%02d/%02m/%04Y)", tdisg831.invd),fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=7  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta"&chr$(34)&"><strong>Exporter Ref No.:</strong> <br> "
+			&tdisg831.xref ,fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+		
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)& ">" & trim$(exp2)
+			& "<br>"& trim$(exp3)& "<br>" & trim$(exp4),fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=2  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tar tar fta"&chr$(34)&
+			"><strong>PAN&nbsp;No:&nbsp; <br> GSTIN&nbsp;No.:&nbsp; <br>GSTIN&nbsp;TYPE:</strong>",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&">"&pan.no.export &"<br>"
+			&gstn.c.no
+			&"<br> GSN",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=10 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&">"& str$(buyer_order) & sprintf$("%D(%02d/%02m/%04Y)", buyer_date),fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+	endif
+	
 	seq.puts("<tr>",fp)
+| 		seq.puts("<td colspan=10 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"  bt br bl fta"&chr$(34)&
+| 			"><br><br>"&dbk_des4&"<br>"&dbk_des6&"<br>"&dbk_des7&"<br>"&dbk_des3&"<br>"&dbk_des5&"<br>"&dbk_des1&"<br>"&dbk_des2&"<br>"&meis.des1&"<br>"&meis.des2&"<br>"&term.line&"<br>"
+| 			&"<br>"&dbk_description2&"<br>"&dbk_description3&"<br>"&dbk_description4,fp)
+| 		seq.puts("</td >",fp)
+| 		seq.puts("<td colspan=10 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"  bt br bl fta"&chr$(34)&
+| 			"><br><br>"&dbk_des4&"<br>"&dbk_des6&"<br>"&dbk_des7&"<br>"&dbk_des8&"<br>"&dbk_des9&"<br>"&dbk_des3&"<br>"&dbk_des5&"<br>"
+| 			&meis.des1&"<br>"&meis.des2&"<br>"&term.line&"<br>"&lut.line,fp)
 		seq.puts("<td colspan=10 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"  bt br bl fta"&chr$(34)&
-			"><br><br>"&dbk_des4&"<br>"&dbk_des6&"<br>"&dbk_des7&"<br>"&dbk_des3&"<br>"&dbk_des5&"<br>"&dbk_des1&"<br>"&dbk_des2&"<br>"&meis.des1&"<br>"&meis.des2&"<br>"&term.line&"<br>"
-			&"<br>"&dbk_description2&"<br>"&dbk_description3&"<br>"&dbk_description4,fp)
+			"><br><br>"&dbk_des4&"<br><br>"&dbk_des6 & dbk_des7 & dbk_des8 & dbk_des9 &"<br><br>" &dbk_des3 &dbk_des5&"<br><br>"
+			&meis.des1 &meis.des2 &"<br><br>"&term.line &"&nbsp;&nbsp;" & lut.line,fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb tac fta"&chr$(34)&">",fp)
 		seq.puts("</td >",fp)
@@ -2347,7 +2553,73 @@ function create.html.we.intend()
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"middle"&chr$(34)&" class="&chr$(34)&"bt bb  tac fta"&chr$(34)&">",fp)
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
+	endif
 
+	if invoice.line.count = 2 then
+		seq.puts("</table>",fp)
+		seq.puts("</div>",fp)
+		seq.puts("</td>",fp)
+		seq.puts("</table>",fp)
+| 		seq.puts("</body>",fp)
+| 		seq.puts("</html>",fp)
+		seq.puts("<p class = " &chr$(34)& "pb" &chr$(34)& "></p>",fp)
+		
+		seq.puts("<table  colspan="&chr$(34)&"14"&chr$(34)&" align="&chr$(34)&"center"&chr$(34)&" style="&chr$(34)&"width: 1050px; height: auto; background: #fff; "&chr$(34)&">",fp)
+
+
+		seq.puts("<tr>",fp)
+		seq.puts("<td>",fp)
+		seq.puts("<div class="&chr$(34)&"header_sub"&chr$(34)&" >",fp)
+		
+		seq.puts("<table>",fp)
+		seq.puts("<tr>",fp)
+			seq.puts("<th colspan=18 class="&chr$(34)&"bl bt  br fta tac"&chr$(34)&"><strong>EXPORT INVOICE</strong><br>",fp)
+			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta tar"&chr$(34)&"> Page : 1",fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+| 		seq.puts("<tr>",fp)					|RAvi.a.s.30092020
+| 			seq.puts("<td colspan=18  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta bt bl br fta"&chr$(34)&"><strong>IRN No. : </strong>" & trim$(ciisg801.irnn)&" </td>",fp)
+| 			seq.puts("</td >",fp)
+| 			
+| 			seq.puts("<td colspan=2 class="&chr$(34)&"tar bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	
+| 				&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 				" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+| 				"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)			
+
+| 		seq.puts("</tr>",fp)					|RAvi.a.e.30092020
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&"><strong>Exporter :</strong> <br>"
+			& exp1,fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=2  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tar fta"&chr$(34)&"><strong>CIN:&nbsp;<br> IEC No.:&nbsp;</strong>",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tal fta"&chr$(34)&">"& cin.no.export&"<br>" 
+			& iec.no.export,fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  nowrap valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&"><strong>Invoice No.:</strong> "&str$(tdisg831.invn)
+			&" <br> <strong>Date:</strong>"&sprintf$("%D(%02d/%02m/%04Y)", tdisg831.invd),fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=7  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta"&chr$(34)&"><strong>Exporter Ref No.:</strong> <br> "
+			&tdisg831.xref ,fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+		
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=5  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)& ">" & trim$(exp2)
+			& "<br>"& trim$(exp3)& "<br>" & trim$(exp4),fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=2  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br tar tar fta"&chr$(34)&
+			"><strong>PAN&nbsp;No:&nbsp; <br> GSTIN&nbsp;No.:&nbsp; <br>GSTIN&nbsp;TYPE:</strong>",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=3  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bl bt bb br fta"&chr$(34)&">"&pan.no.export &"<br>"
+			&gstn.c.no
+			&"<br> GSN",fp)
+			seq.puts("</td >",fp)
+			seq.puts("<td colspan=10 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta"&chr$(34)&">"& str$(buyer_order) & sprintf$("%D(%02d/%02m/%04Y)", buyer_date),fp)
+			seq.puts("</td >",fp)
+		seq.puts("</tr>",fp)
+	endif
+	
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=4 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb  br bl tar fta"&chr$(34)&"><strong>TOTAL</strong>",fp)
 		seq.puts("</td >",fp)
@@ -2393,7 +2665,9 @@ function create.final.html.invoice()
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=4 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl tar fta"&chr$(34)&"><strong>NET PAYBLE</strong>",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=11 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bb bt br bl fta"&chr$(34)&">"&net.payable.line,fp)
+		seq.puts("<td colspan=9 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tar bb bt br bl fta"&chr$(34)&">"&net.payable.line,fp)
+		seq.puts("</td >",fp)
+		seq.puts("<td colspan=2 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"bb bt br bl tar fta"&chr$(34)&">",fp)
 		seq.puts("</td >",fp)
 		seq.puts("<td colspan=1 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" fta tar "&chr$(34)&">"&sprintf$("%-*.*f",10,2,final.total.inr),fp)
 		seq.puts("</td >",fp)
@@ -2410,12 +2684,12 @@ function create.final.html.invoice()
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
 	seq.puts("<tr>",fp)
-		seq.puts("<td colspan=15 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
+		seq.puts("<td colspan=14 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&" bb bt br bl fta"&chr$(34)&
 			"><strong>GROSS AMOUNT OF INVOICE(IN WORDS)<br>"&tppdm740.ccur&"&nbsp;"&"&nbsp;"&cash.str&"<br>INR"&"&nbsp;&nbsp;"&cash.str.inr&"<br>"
 			&rate.type.line&"<br>WEHTHER THE TAX IS PAYBLE ON REVERSE CHARGE BASIS:NO<br>DECLARATION:</strong>"
-			&"WE DECLARE THAT INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS AND DESCRIBED AND THAT ALL PARTICULARS ARE TRUE AND CORRECT<br><strong>SUPPLIER's TAX INVOICE DETAILS AS PER ANNEXURE ATTACHED.</strong>",fp)
+			&" WE DECLARE THAT INVOICE SHOWS THE ACTUAL PRICE OF THE GOODS AND DESCRIBED AND THAT ALL PARTICULARS ARE TRUE AND CORRECT<br><strong>SUPPLIER's TAX INVOICE DETAILS AS PER ANNEXURE ATTACHED.</strong>",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=5 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta"&chr$(34)&"><strong>FOR ISGEC HEAVY ENGINEERING LTD.<br><br><br><br><br>Authorised Signatory</strong>",fp)
+		seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta"&chr$(34)&"><strong>FOR ISGEC HEAVY ENGINEERING LTD.<br><br><br><br><br>Authorised Signatory</strong>",fp)
 		seq.puts("</td >",fp)
 	seq.puts("</tr>",fp)
 	
@@ -2423,12 +2697,14 @@ function create.final.html.invoice()
 	seq.puts("</div>",fp)
 	seq.puts("</td>",fp)
 	seq.puts("</table>",fp)
-	seq.puts("</body>",fp)
-	seq.puts("</html>",fp)
 	
-	seq.close(fp)
-	ret2	=	server2client(file.name,local.file.name,1)
-	ret2	=	app_start(local.file.name,"c:","","","")
+	seq.puts("<p class = " &chr$(34)& "pb" &chr$(34)& "></p>",fp)
+| 	seq.puts("</body>",fp)
+| 	seq.puts("</html>",fp)
+	
+| 	seq.close(fp)
+| 	ret2	=	server2client(file.name,local.file.name,1)
+| 	ret2	=	app_start(local.file.name,"c:","","","")
 }
 
 |***************************Commercial Invoice**********************************
@@ -2436,6 +2712,25 @@ function create.html.com.invoice.header()
 {
 	string		r.siqr.txt(1000)mb,sbuf(959,40)			|Sanjeev - 22/09/2020
 	domain tclang                    system.language
+	string	qrcode.url(500)							|RAvi.a.s.18112020
+	domain	tcmcs.str50		pass.string, handle.string
+	
+| 	idoc = lval(tdisg831.cinv(4;8))
+	ityp = tdisg831.cinv(1;3)
+	docn.orno.str = tdisg831.cinv
+	
+	select	ciisg800.comp
+	from	ciisg800
+	where	ciisg800.tran = :ityp
+	and	ciisg800.docn = :docn.orno.str
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	pass.string = trim$(str$(ciisg800.comp)) & "_" &trim$(ityp) & "_" & trim$(Str$(docn.orno.str))
+	handle.string =  "EINV_QRPNG_200"
+
+	qrcode.url = ""								|RAvi.a.e.18112020
 	r.siqr.txt = ""
 	system.language = language$
 | 	str.idoc = str$(cisli205.idoc)
@@ -2454,14 +2749,29 @@ function create.html.com.invoice.header()
 	selectdo
 		if not isspace(trim$(tttxt010.text)) then
 			if not isspace(r.siqr.txt) then
-				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+				r.siqr.txt = r.siqr.txt & tttxt010.text
 			else
-				r.siqr.txt = trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(tttxt010.text)
+				r.siqr.txt = tttxt010.text
 			endif
 		endif     
 	endselect
 	r.siqr.txt = trim$(r.siqr.txt)
 									|Sanjeev - 22/09/2020
+									
+	select	tcisg132.drid
+	from	tcisg132
+	where	tcisg132.hndl = :handle.string
+	and	tcisg132.indx = :pass.string
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcisg132.drid = ""
+	endselect
+	
+	qrcode.url = "http://192.9.200.146/Attachment/ViewFile.aspx?AthHandle=" & trim$(handle.string) &
+				"&Index=" & trim$(pass.string) & "&AttachedBy=" & trim$(logname$) & "&ed=n&t_drid=" & trim$(tcisg132.drid)
 
 	temp.file	=	bse.tmp.dir$()
 	
@@ -2550,10 +2860,16 @@ function create.html.com.invoice.header()
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=10  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta bt bl br fta"&chr$(34)&"><strong>IRN&nbsp;No.</strong>" & trim$(ciisg801.irnn)&" </td>",fp)
 		seq.puts("</td >",fp)
-		seq.puts("<td colspan=10 class="&chr$(34)&"tar bt bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|RAvi.com.s
-		&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
-		" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
-		"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)					|RAvi.com.e
+| 		seq.puts("<td colspan=10 class="&chr$(34)&"tar bt bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|RAvi.com.s
+| 		&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 		" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+| 		"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)					|RAvi.com.e
+		
+		seq.puts("<td colspan=10 class="&chr$(34)&"tar bt bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|Sanjeev - 22/09/2020
+			&qrcode.url & "&amp;size=100x100"&chr$(34)&
+			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)
+		
 	seq.puts("</tr>",fp)
 			
 	seq.puts("<tr>",fp)
@@ -2853,7 +3169,8 @@ function get.tax.data()
 	
 	tctax.dll9141.determine.aggregate.tax.amounts.per.line( 
 					tdisg831.ccty,				| domain tcccty i.tax.country, 
-					tdisg832.cvat,				| domain tccvat i.aggregate.tax.code, 
+| 					tdisg832.cvat,				| domain tccvat i.aggregate.tax.code, 
+					tdisg831.cvat,				| domain tccvat i.aggregate.tax.code, 
 					utc.num(),				| domain tcdate i.tax.date, 
 					assv.val,				| domain tcamnt i.order.line.price, 
 					assv.val,				| domain tcamnt i.customs.value, 
@@ -2888,7 +3205,8 @@ function get.tax.data()
 					
 	select	tctax941.cvat,tctax941.layr,tctax941.seqn
 	from	tctax941
-	where	tctax941._index1 = {:tdisg831.ccty, :tdisg832.cvat}
+| 	where	tctax941._index1 = {:tdisg831.ccty, :tdisg832.cvat}
+	where	tctax941._index1 = {:tdisg831.ccty, :tdisg831.cvat}
 	and	tctax941.amor = tctax.amor.l.not.appl
 	selectdo
 		if not tcmcs.dll0036.get.indirect.tax.l(	tdisg831.ccty, 
@@ -2922,4 +3240,95 @@ function get.tax.data()
 	endselect
 	
 	tax.amnt = cgst.amnt + sgst.amnt + igst.amnt
+}
+
+function create.annexure.export.header()
+{
+	seq.puts("<table  colspan="&chr$(34)&"20"&chr$(34)&" align="&chr$(34)&"center"&chr$(34)&" style="&chr$(34)&"width: 1050px; height: auto; background: #fff; "&chr$(34)&">",fp)seq.puts("<tr>",fp)
+        seq.puts("<tr>",fp)
+        seq.puts("<td>",fp)
+	seq.puts("<div class="&chr$(34)&"header_sub"&chr$(34)&" >",fp)
+	
+	seq.puts("<table>",fp)
+	
+	seq.puts("<tr>",fp)
+		seq.puts("<th colspan=20 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"><strong>ANNEXURE TO EXPORT INVOICE No.&nbsp;" & trim$(tdisg831.invn) &
+			"&nbsp; DATED &nbsp;" & sprintf$("%D(%02d %-03H %04Y)", tdisg831.invd) & "</strong><br><br><br></th>",fp)
+| 		seq.puts("<td colspan=5 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"> Page : 1",fp)
+| 		seq.puts("</td >",fp)
+	seq.puts("</tr>",fp)
+	
+	seq.puts("<tr>",fp)
+		seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Sr. No. </td>",fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Supplier </td>" ,fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Supplier's GSTIN </td>",fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Tax Invoice No. </td>",fp)
+		seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Date </td>",fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">Vehicle No. </td>",fp)
+		seq.puts("</td >",fp)
+	seq.puts("</tr>",fp)
+	
+| 	seq.puts("</table>",fp)
+| 	seq.puts("</div>",fp)
+| 	seq.puts("</td>",fp)
+| 	seq.puts("</tr>",fp)
+| 	seq.puts("</table>",fp)
+| 	
+| 	seq.close(fp)
+| 	ret2	=	server2client(file.name,local.file.name,1)
+| 	ret2	=	app_start(local.file.name,"c:","","","")
+}
+
+function create.annexure.export.line()
+{	
+	if repeat.flag = 0 then
+		ann.line.cal = ann.line.cal + 1
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">" & str$(o.srno) & "</td>", fp)
+			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(tccom100.nama) & "</td>",fp)
+			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(gstn.b.no) & "</td>",fp)
+			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(tfacp100.isup) & "</td>",fp)
+			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& sprintf$("%D(%02d/%02m/%04Y)",tfacp100.invd) & "</td>",fp)
+			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(r.var.vhno) & "</td>",fp)
+		seq.puts("</tr>",fp)
+	endif
+	
+	if repeat.flag = 0 and not isspace(p.line) then
+		seq.puts("<tr>",fp)
+		seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"></td>", fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"></td>",fp)
+		seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"></td>",fp)
+		seq.puts("<td colspan=10 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(p.line) &"</td>",fp)
+		seq.puts("</tr>",fp)
+	endif
+	
+}
+
+function create.annexure.footer()
+{
+	long	i
+	i = 0
+	
+	for i = ann.line.cal to 500
+		seq.puts("<tr>",fp)
+			seq.puts("<td colspan=20 class="&chr$(34)&"bl bt br bb fta"&chr$(34)&"></td>", fp)
+		seq.puts("</tr>",fp)
+	endfor
+		
+	seq.puts("<tr>",fp)
+		seq.puts("<td colspan=14 class="&chr$(34)&"bl bt  br fta"&chr$(34)&"></td>", fp)
+		seq.puts("<td colspan=6 rowspan=1  valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"tal fta"&chr$(34)
+			&"><strong>FOR ISGEC HEAVY ENGINEERING LTD.<br><br><br><br><br>Authorised Signatory</strong>",fp)
+		seq.puts("</td >",fp)
+	seq.puts("</tr>",fp)
+
+	seq.puts("</table>",fp)
+	seq.puts("</div>",fp)
+	seq.puts("</td>",fp)
+	seq.puts("</tr>",fp)
+	seq.puts("</table>",fp)
+	
+	seq.close(fp)
+	ret2	=	server2client(file.name,local.file.name,1)
+	ret2	=	app_start(local.file.name,"c:","","","")
 }
