@@ -183,6 +183,7 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 	
 	extern	domain	tcmcs.str132m	tcs.label1, tcs.label2, tcs.label3			|GH412CR741.a
 	extern			long	tcs.flag						|GH412CR741.a
+	extern			long	cal.gr.line						|GH412CR741.a
 #include<bic_desktop>
 #include <bic_text>
 	
@@ -215,7 +216,7 @@ function extern iciisg2405r.print.draft.invoice()
 	tot.gst.amnt = 0.00
 	tot.assv.val = 0.00
 	o.srno = 0
-	
+	cal.gr.line = 0
 	
 	tcisgdll0100.get.user.name(logname$, o.user.name)
 
@@ -2359,9 +2360,15 @@ function get.tax.data()
 |****************************Create HTML Invoice********************************
 function create.html.invoice.header()
 {
-
-	string		r.siqr.txt(1000)mb,sbuf(959,40)			|Sanjeev - 22/09/2020
+	string		r.siqr.txt(100000)mb,sbuf(959,40)			|Sanjeev - 22/09/2020
 	domain tclang                    system.language
+	string	qrcode.url(500)							|RAvi.a.s.18112020
+	domain	tcmcs.str50		pass.string, handle.string
+	
+	pass.string = trim$(str$(cisli205.sfcp)) & "_" &trim$(cisli205.ityp) & "_" & trim$(Str$(cisli205.idoc))
+	handle.string =  "EINV_QRPNG_200"					|RAvi.a.e.18112020
+	
+	qrcode.url = ""
 	r.siqr.txt = ""
 	system.language = language$
 	str.idoc = str$(cisli205.idoc)
@@ -2379,14 +2386,44 @@ function create.html.invoice.header()
 	selectdo
 		if not isspace(trim$(tttxt010.text)) then
 			if not isspace(r.siqr.txt) then
-				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(r.siqr.txt) & trim$(tttxt010.text)
+				r.siqr.txt = r.siqr.txt & tttxt010.text
 			else
-				r.siqr.txt = trim$(tttxt010.text)
+| 				r.siqr.txt = trim$(tttxt010.text)
+				r.siqr.txt = tttxt010.text
 			endif
 		endif     
 	endselect
 	r.siqr.txt = trim$(r.siqr.txt)
-									|Sanjeev - 22/09/2020
+	
+	select	tcisg132.drid
+	from	tcisg132
+	where	tcisg132.hndl = :handle.string
+	and	tcisg132.indx = :pass.string
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcisg132.drid = ""
+	endselect
+	
+	qrcode.url = "http://192.9.200.146/Attachment/ViewFile.aspx?AthHandle=" & trim$(handle.string) &
+				"&Index=" & trim$(pass.string) & "&AttachedBy=" & trim$(logname$) & "&ed=n&t_drid=" & trim$(tcisg132.drid)
+	
+	select 	tpisg039.edrn							|RAvi.a.s.07102020
+	from	tpisg039
+	where	tpisg039._index3 = {:cisli205.ityp, :cisli205.idoc, :cisli235.cprj, :cisli235.ofbp}
+	as set with 1 rows
+	selectdo
+	endselect
+			
+	select	tdisg831.ashp, tdisg831.edrn					
+	from	tdisg831
+	where	tdisg831._index1 = {:tpisg039.edrn}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	actual.shipment = (tdisg831.ashp = tcyesno.yes) ? true:false		|RAvi.a.s.07102020
 	curr.comp.file = get.compnr()
 	
 	if curr.comp.file = 200 then
@@ -2505,8 +2542,9 @@ function create.html.invoice.header()
 		reg.name2 = "New Delhi - 110065 - India"
 		break
 	case 200:
-		pan.no = "AAACI5540K"
-		cin.no = "L23423HR1933 PL000097"
+		pan.no = "AAACT5540K"
+| 		cin.no = "L23423HR1933 PL000097"
+		cin.no = "L23423HR1933PLC000097"				|RAvi.a
 		reg.name1 = "Radaur Road."
 		reg.name2 = "Yamunanagar - 135001 (Haryana) India"
 		break
@@ -2519,15 +2557,18 @@ function create.html.invoice.header()
 		break
 	endcase
 	seq.puts("<tr>",fp)
-		if curr.comp.file = 200 or curr.comp.file = 700 then
-			seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&
-		| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-					"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-				seq.puts("</td>",fp)
-		else
-			seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&" width=50px>",fp)
-			seq.puts("</td>",fp)	
-		endif
+| 		if curr.comp.file = 200 or curr.comp.file = 700 then						|RAvi.a.s.03102020
+| 			seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&
+| 		| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 					"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 				seq.puts("</td>",fp)
+| 		else
+| 			seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&" width=50px>",fp)
+| 			seq.puts("</td>",fp)	
+| 		endif
+		seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&" width=50px>",fp)
+			seq.puts("</td>",fp)									|RAvi.a.e.03102020
+			
 		seq.puts("<th colspan=6 class="&chr$(34)&"br bt bb bl"&chr$(34)& ">TAX INVOICE<br>",fp)
 		seq.puts(company.name & "<br>",fp)
 		seq.puts("<p  class="&chr$(34)&"fta"&chr$(34)&"><strong>" &  own.line1 &"<br>"& own.line2 & "<br>Website: www.isgec.com</strong></p></th>",fp)
@@ -2552,10 +2593,15 @@ function create.html.invoice.header()
 		seq.puts("</td >",fp)
 | 		seq.puts("<td colspan=2 class="&chr$(34)&"fta"&chr$(34)&">"&							|Sanjeev - 22/09/2020
 | 			"<img src="&chr$(34)&"file://///localhost/111/123.jpg"&chr$(34)&" width=100px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&">",fp)
-		seq.puts("<td colspan=2 class="&chr$(34)&"tal bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|Sanjeev - 22/09/2020
-			&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 		seq.puts("<td colspan=2 class="&chr$(34)&"tal bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	|Sanjeev - 22/09/2020
+| 			&"https://api.qrserver.com/v1/create-qr-code/?data="&r.siqr.txt&"&amp;size=100x100"&chr$(34)&
+| 			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
+| 			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)	
+
+		seq.puts("<td colspan=2 class="&chr$(34)&"tal bt bb bl br fta"&chr$(34)&" ><img id='barcode' src="&chr$(34)	
+			&qrcode.url & "&amp;size=100x100"&chr$(34)&
 			" alt="&chr$(34)&""&chr$(34)&" title="&chr$(34)&""&chr$(34)&" width="&chr$(34)&
-			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)					||Sanjeev - 22/09/2020
+			"100"&chr$(34)&" height="&chr$(34)&"100"&chr$(34)&" /></td>",fp)					
 			
 		seq.puts("</td>",fp)
 		seq.puts("<td colspan=6 valign="&chr$(34)&"top"&chr$(34)&" class="&chr$(34)&"fta"&chr$(34)&"> <strong>GSTIN :</strong>"&gstn.c.no&"<br>",fp)
@@ -2764,6 +2810,7 @@ function create.html.total.amount()
 }
 function create.html.gr.line()
 {
+	cal.gr.line = cal.gr.line + 1
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=1 class="&chr$(34)&"fta"&chr$(34)&">"&str$(tfisg002.grno)&"</td>",fp)
 		seq.puts("<td colspan=1 class="&chr$(34)&"fta"&chr$(34)&">"&sprintf$("%D(%02d/%02m/%04Y)", tfisg002.grdt)&"</td>",fp)
@@ -2776,9 +2823,9 @@ function create.html.gr.line()
 }
 function create.final.html.invoice()
 {
-	long	r
-	r = lval(tfisg002.grno)
-	for i = r to 9
+| 	long	r
+| 	r = lval(tfisg002.grno)
+	for i = cal.gr.line to 9
 		seq.puts("<tr>",fp)
 			seq.puts("<td colspan=1 class="&chr$(34)&"bt bb"&chr$(34)&"><br></td>",fp)
 			seq.puts("<td colspan=1 class="&chr$(34)&"bt bb"&chr$(34)&"><br></td>",fp)
@@ -2902,8 +2949,9 @@ function create.html.header.invoice2()
 		reg.name2 = "New Delhi - 110065 - India"
 		break
 	case 200:
-		pan.no = "AAACI5540K"
-		cin.no = "L23423HR1933 PL000097"
+		pan.no = "AAACT5540K"
+| 		cin.no = "L23423HR1933 PL000097"
+		cin.no = "L23423HR1933PLC000097"			|RAvi.a
 		reg.name1 = "Radaur Road."
 		reg.name2 = "Yamunanagar - 135001 (Haryana) India"
 		break
@@ -2918,12 +2966,13 @@ function create.html.header.invoice2()
 	
 	seq.puts("<tr>",fp)
 		if curr.comp.file = 200 or curr.comp.file = 700 then
-			seq.puts("<td colspan=1 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&
-		| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-					"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-				seq.puts("</td>",fp)
+| 			seq.puts("<td colspan=1 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&						|RAvi.a.s03102020
+| 		| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 					"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 				seq.puts("</td>",fp)
 		
-			seq.puts("<th colspan=3 class="&chr$(34)&"br bt bb bl"&chr$(34)& ">" & company.name & "<br>",fp)
+| 			seq.puts("<th colspan=3 class="&chr$(34)&"br bt bb bl"&chr$(34)& ">" & company.name & "<br>",fp)			|RAvi.a.e03102020
+			seq.puts("<th colspan=5 class="&chr$(34)&"br bt bb bl"&chr$(34)& ">" & company.name & "<br>",fp)
 			seq.puts("<p  class="&chr$(34)&"fta"&chr$(34)&"><strong>" &  own.line1 &"<br>"& own.line2 & "<br>Website: www.isgec.com</strong></p></th>",fp)
 			seq.puts("<td colspan=1 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">",fp)
 			seq.puts("</td>",fp)
@@ -3323,8 +3372,9 @@ function create.invoice0.header()
 		reg.name2 = "New Delhi - 110065 - India"
 		break
 	case 200:
-		pan.no = "AAACI5540K"
-		cin.no = "L23423HR1933 PL000097"
+		pan.no = "AAACT5540K"
+| 		cin.no = "L23423HR1933 PL000097"
+		cin.no = "L23423HR1933PLC000097"				|RAvi.a
 		reg.name1 = "Radaur Road."
 		reg.name2 = "Yamunanagar - 135001 (Haryana) India"
 		break
@@ -3339,12 +3389,13 @@ function create.invoice0.header()
 	
 	seq.puts("<tr>",fp)
 	if curr.comp.file = 200 or curr.comp.file = 700 then
-		seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&
-	| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-				"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
-			seq.puts("</td>",fp)
-	
-		seq.puts("<th colspan=4 class="&chr$(34)&"br bt bb bl"&chr$(34)&">" & company.name & "<br>",fp)
+| 		seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl fta"&chr$(34)&">"&					|RAvi.a.s.03102020
+| 	| 			"<img src="&chr$(34)&"c:\temp\isgeclogo.png"&chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 				"<img src="&chr$(34)& trim$(local.file.name1) &chr$(34)&" width=50px"&chr$(34)&" align="&chr$(34)&"right"&chr$(34)&" style="&chr$(34)&"float:left"&chr$(34)&">",fp)
+| 			seq.puts("</td>",fp)
+																|RAvi.a.e.03102020
+| 		seq.puts("<th colspan=4 class="&chr$(34)&"br bt bb bl"&chr$(34)&">" & company.name & "<br>",fp)
+		seq.puts("<th colspan=12 class="&chr$(34)&"br bt bb bl"&chr$(34)&">" & company.name & "<br>",fp)
 		seq.puts("<p  class="&chr$(34)&"fta"&chr$(34)&"><strong>" &  own.line1 &"<br>"& own.line2 & "<br>Website: www.isgec.com</strong></p></th>",fp)
 		seq.puts("<td colspan=4 class="&chr$(34)&"br bt bb bl"&chr$(34)&">",fp)
 		seq.puts("</td>",fp)
@@ -3490,26 +3541,38 @@ function domain tcdsca	get.description(domain tcccty	i.field)
 
 function print.tcs.value()						|GH412CR741.a.s
 {
+	domain	tcdate	date.idat
 	tcs.label1 = ""
 	tcs.label2 = ""
 	tcs.label3 = ""
 	tcs.flag = 0 
-	select	tpisg045.tcsa
-	from	tpisg045
-	where	tpisg045._index1 = {:cisli235.cprj}
-	as set with 1 rows
-	selectdo
-		if tpisg045.tcsa = tcyesno.yes then
-			tcs.label1 = "Please note that as per Section 206C(1H) of the Income Tax Act, 1961, TCS amount @ 0.075% (present applicable"
-			tcs.label2 = "rate w.e.f. 01-October-2020) of above gross invoice amount is payable additionally by you along with the payment"
-			tcs.label3 = "against this invoice."
-			tcs.flag = 1
-		else
-			tcs.label1 = ""
-			tcs.label2 = ""
-			tcs.label3 = ""
-			tcs.flag = 0 
-		endif
-	endselect
+	
+	
+	date.idat = date.to.utc(2020, 10, 01, 0, 0, 0)
+	
+	if cisli205.idat > date.idat then
+		select	tpisg045.tcsa
+		from	tpisg045
+		where	tpisg045._index1 = {:cisli235.cprj}
+		as set with 1 rows
+		selectdo
+			if tpisg045.tcsa = tcyesno.yes then
+				tcs.label1 = "Please note that as per Section 206C(1H) of the Income Tax Act, 1961, TCS amount @ 0.075% (present applicable"
+				tcs.label2 = "rate w.e.f. 01-October-2020) of above total invoice amount(Incl. Tax) is payable additionally by you along "
+				tcs.label3 = "with the payment against this invoice."
+				tcs.flag = 1
+			else
+				tcs.label1 = ""
+				tcs.label2 = ""
+				tcs.label3 = ""
+				tcs.flag = 0 
+			endif
+		endselect
+	else
+		tcs.label1 = ""
+		tcs.label2 = ""
+		tcs.label3 = ""
+		tcs.flag = 0 
+	endif
 }
 									|GH412CR741.a.e
