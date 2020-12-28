@@ -532,7 +532,7 @@ function read.main.table.export(domain tdisg.advice i.advice, domain tfgld.date 
 		tdisg831.gstn.s, tdisg831.invd, tdisg831.invn,
 		tdisg831.sbno, tdisg831.shdt,
 		tdisg831.etyp, tdisg831.cind, tdisg831.cinv,				
-		tdisg831.cprj, tdisg831.lcno						
+		tdisg831.cprj, tdisg831.lcno, tdisg831.cvat				|RAvi.a.28122020						
 	from 	tdisg831
 	where  	tdisg831.invd = :i.date							|#ISGEC01043.n
 	and	tdisg831.type = tdisg.type.export
@@ -680,7 +680,7 @@ function read.main.table.export(domain tdisg.advice i.advice, domain tfgld.date 
 				bill.to.city = ""
 				bill.to.code = ""
 				
-	
+				tdisg832.cvat = tdisg831.cvat						|GH455.RAvi.a.28122020
 				get.tax.data()
 				ship.to.code = "NA"
 				get.advance.data.and.print.report()					|#ISGEC01043.o
