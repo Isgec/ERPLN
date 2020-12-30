@@ -49,6 +49,9 @@
 |*
 |* ID: GH330CR626, RAvi Kumar, 02-06-2020
 |* Rights of purchase receipt correction session
+|*
+|* GH451CR000, RAvi Kumar, 30-11-2020
+|* Exclude WHR correction session from Purchase Receipt blocking on month end
 
 |******************************************************************************
                                                                                 
@@ -128,13 +131,16 @@ function extern long ue.before.before.save.object(long mode)
 		
 		num.to.date(curr.date, yy, mm, dd)
 
-		if dd >= 26 and tdpur406.conf = tcyesno.yes then
-			if 	curr.user = "9583" or		|* Pankaj Sir
-				curr.user = "3776" or		|* RAvi Kumar
-				curr.user = "0330"  then	|* Veena Mam
-			else
-				dal.set.error.message("@Receipt Can't be Confirmed....")
-				return(DALHOOKERROR)
+		
+		if calling.prog <> "whinh3121s000" then					|GH451CR000.a	
+			if dd >= 26 and tdpur406.conf = tcyesno.yes then
+				if 	curr.user = "9583" or		|* Pankaj Sir
+					curr.user = "3776" or		|* RAvi Kumar
+					curr.user = "0330"  then	|* Veena Mam
+				else
+					dal.set.error.message("@Receipt Can't be Confirmed....")
+					return(DALHOOKERROR)
+				endif
 			endif
 		endif
 					|#SD01112017.en
