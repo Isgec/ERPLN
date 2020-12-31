@@ -23,6 +23,9 @@
 |*
 |* ID GH387CR710, RAvi Kumar, 18-08-2020
 |* Circular for regular working hours 8 45 am to 5 30 pm will be restored
+|*
+|* ID GH464CR815, RAvi Kumar, 30-12-2020
+|* our office work hours will change from 1st January 2021
 |****************************** declaration section ***************************
 declaration:
 #ident "@(#)ISG001022, Yoshita Kundwani, IT0177, 16-05-2014 , VRC B61U a7 live"
@@ -158,10 +161,16 @@ function read.main.table()
 		|and	tppss030.cdty <> "D00"
 		group by tiisg910.emno, tiisg910.tdat
 		selectdo
-			if	hrs.m > 0.00 and	round(hrs.m,2,1) < 8.25	then		|GH367CR673.com
-| 			if	hrs.m > 0.00 and	round(hrs.m,2,1) < 9.50	then		|GH367CR673.a		GH387CR710.com
-				rprt_send()				
-			endif
+			if date.m > date.to.num(2020, 12, 31) then					|GH464CR815.a.s
+				if	hrs.m > 0.00 and	round(hrs.m,2,1) < 8.75	then	
+					rprt_send()				
+				endif
+			else
+				if	hrs.m > 0.00 and	round(hrs.m,2,1) < 8.25	then		|GH464CR815.com
+	| 			if	hrs.m > 0.00 and	round(hrs.m,2,1) < 9.50	then		|GH367CR673.a		GH387CR710.com
+					rprt_send()				
+				endif
+			endif	
 			hrs.m = 0
 		endselect
 		
@@ -268,10 +277,16 @@ function read.main.table.new()
 				and	tcccp020.avlb = tcyesno.yes
 				group by tiisg910.emno, tiisg910.tdat
 				selectdo
-					if	(hrs.m > 0.00) and	(round(hrs.m,2,1) < 8.25)	then	|GH367CR673.com
-| 					if	hrs.m > 0.00 and	round(hrs.m,2,1) < 9.50	then		|GH367CR673.a		GH387CR710.com
-						rprt_send()				
-					endif
+					if date.m > date.to.num(2020, 12, 31) then					|GH464CR815.a.s
+						if	hrs.m > 0.00 and	round(hrs.m,2,1) < 8.75	then	
+							rprt_send()				
+						endif
+					else
+						if	hrs.m > 0.00 and	round(hrs.m,2,1) < 8.25	then		|GH464CR815.com
+			| 			if	hrs.m > 0.00 and	round(hrs.m,2,1) < 9.50	then		|GH367CR673.a		GH387CR710.com
+							rprt_send()				
+						endif
+					endif	
 					hrs.m = 0
 				selectempty
 	| 				for date.m = startdate.f to	enddate.t	|#ISGECDV001055.o
