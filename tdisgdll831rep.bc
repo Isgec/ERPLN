@@ -213,7 +213,7 @@ extern	domain	tcmcs.str50	consignee1,consignee2,consignee3,consignee4,consignee5
 extern	domain	tcdsca		label1,label2,label3,label4,label5,report_desc,
 				port_discharge,port_loading
 extern	domain	tcwght		gross_weight
-extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2
+extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2, meis.des3
 extern domain	tcmcs.str100 	dbk_des6,dbk_des7, dbk_des8	|ISGEC01158.n		|GH324CR636.a
 extern	domain	tcamnt		amnt.inr
 extern	domain	tcmcs.str5	i.rev
@@ -977,11 +977,15 @@ function extern tdisgdll831rep.custom_invoice
 	endif	
 	
 	if tdisg832.efms = tcyesno.yes then
-		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER MERCHANDISE EXPORTS FROM INDIA SCHEME (MEIS)"
-		meis.des2 = "ALSO REWARD SCHEME MUST BE TICKED YES"
+| 		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER MERCHANDISE EXPORTS FROM INDIA SCHEME (MEIS)"	|RAvi.a.s.04122021
+| 		meis.des2 = "ALSO REWARD SCHEME MUST BE TICKED YES"
+		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER REMISSION OF DUTIES AND TAXES ON EXPORTED"
+		meis.des2 = " PRODUCTS(RoDTEP) SCHEME."			
+		meis.des3 = "ALSO REWARD SCHEME MUST BE TICKED YES"						|RAvi.a.e.04122021
 	else
 		meis.des1 = ""
 		meis.des2 = ""
+		meis.des3 = ""
 	endif
 													|ISGEC01092.en
 	term.line = "SUPPLY MEANT FOR EXPORT UNDER LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGERATED TAX"
