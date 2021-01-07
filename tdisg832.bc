@@ -57,6 +57,9 @@
 |* 
 |* GH448CR000, RAvi Kumar, 27-11-2020
 |* E-Invoicing-Quantity and Price check in Billing Advice
+|*
+| GH467CR000, RAvi Kumar, 04-01-2020
+|* Billing advice line cannot be delete after done Custom invoice and E-Invoicing
 | *********************************************************************************
 
 #include <bic_dal2>
@@ -88,6 +91,7 @@
 	table	twhisg311			|#ISGEC015079.n
 	table	ttfisg182			|#ISGEC016020.n
 	table	ttpisg039			|#ISGEC016020.n
+	table	ttdisg045			|RAvi.a.29122020
 
 	long global.session.val
 	extern domain tcorno		v.str		|#ISG001041.sn
@@ -518,6 +522,10 @@ function extern boolean method.is.allowed(long type)
 		if tdisg831.stat <> tdisg.stat.created then
 			return(false)
 		endif
+		
+		if not get.custom.invoice(tdisg832.edrn) then			|GH467CR000.a
+			return(false)
+		endif
 		break
 		
 	endcase
@@ -745,9 +753,23 @@ function	extern boolean	tdisg832.nins.is.valid()
 			select	tdisg046.rqno:bind.rqno				|GH423CR770.a.s
 			from	tdisg046
 			where	tdisg046.nins = :tdisg832.nins
+			and	tdisg046.ninc = :tdisg832.ninc			|RAvi.a.s.29122020
 			selectdo
-				dal.set.error.message("@Installment is Already Linked With Credit/Debit Request No. %s", bind.rqno)
-				return(false)
+				select	tdisg045.invn
+				from	tdisg045
+				where	tdisg045._index1 = {:bind.rqno}
+				as set with 1 rows
+				selectdo
+					select	tdisg831.cprj
+					from	tdisg831
+					where	tdisg831._index2 = {:tdisg045.invn}
+					and	tdisg831.cprj = :o.cprj
+					as set with 1 rows
+					selectdo
+						dal.set.error.message("@Installment is Already Linked With Credit/Debit Request No. %s", bind.rqno)
+						return(false)
+					endselect
+				endselect
 			endselect						|GH423CR770.a.e
 		endselect
 	endif	
@@ -2460,3 +2482,22 @@ function boolean check.decimal.price()					|RAvi.a.s.29102020
 	endif	
 	return(false)
 }								|RAvi.a.e.29102020
+
+function boolean get.custom.invoice							|GH467CR000.a.s
+				(
+					domain	tcorno	i.edrn
+				)
+{
+	select	tdisg831.invn
+	from	tdisg831
+	where	tdisg831._index1 = {:i.edrn}
+	selectdo
+	endselect
+	
+	if isspace(tdisg831.invn) then
+		return(true)
+	else
+		return(false)
+	endif
+}											|GH467CR000.a.e
+
