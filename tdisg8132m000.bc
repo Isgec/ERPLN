@@ -36,7 +36,12 @@
 |* 
 |* ID: GH300CR602, RAvi Kumar, 07-04-2020
 |* Attachment facility in Receipt, Billing advice and document tracking
-
+|* 
+|* GH429CR754, RAvi Kumar, 26-10-2020
+|* Process of GST Paid Invoices Dr Notes/Cr Notes of Export Invoicing
+|*
+| GH467CR000, RAvi Kumar, 04-01-2020
+|* Billing advice line cannot be delete after done Custom invoice and E-Invoicing
 |****************************** declaration section ***************************
 declaration:
 #ident "@(#)ISG001016, Yoshita Kundwani, IT0177, 31-05-2014 , VRC B61U "
@@ -67,6 +72,8 @@ declaration:
   table		ttcmcs036
  extern table		ttdisg027		|ISGEC018001.n
  table		ttdisg030
+ table		tciisg800			|GH429CR754.a
+ table		tciisg801			|GH429CR754.a
 
 #include <bic_dam>
 extern 	domain 	tfgld.sess	import.session
@@ -111,6 +118,8 @@ extern	domain	tcorno	new.orno,new.var.orno,stack.orno(99999),var.ornoj		|test.n
 extern	domain	tcpono	new.pono,new.var.pono,var.ponoj		|test.n	
 extern  domain  tcsern	    l.count,var.count,l.count1
 long 		            stack.pono(99999),ret.val,sql.by.level(99999),sql.x
+	extern	domain	tfgld.ttyp	ityp				|GH429CR754.a
+	extern	domain	tcorno		docn.orno.str			|GH429CR754.a	
 	
 	#include"itcisg00001"
 	#include<bic_desktop>				|GH300CR602.a
@@ -725,6 +734,45 @@ function set.enable.disable.command()
 	else
 		disable.commands("foc_po")
 	endif	
+	
+	select	tdisg831.type,								|GH429CR754.a.s
+		tdisg831.invn
+	from	tdisg831
+	where	tdisg831._index1 = {:tdisg832.edrn}
+	and	tdisg831.type = tdisg.type.export
+	as set with 1 rows
+	selectdo
+		ityp = tdisg831.invn(1; 3)
+		docn.orno.str = tdisg831.invn(4; 8)
+| 		enable.fields("tdisg832.cvat")
+		select	ciisg800.comp
+		from	ciisg800
+		where	ciisg800.tran = :ityp
+		and	ciisg800.docn = :docn.orno.str
+		as set with 1 rows
+		selectdo
+		endselect
+		
+		enable.commands("tdisg832.cvat")
+		select	ciisg801.errm
+		from	ciisg801
+		where	ciisg801._index1 = {:ciisg800.comp, :ityp, :docn.orno.str}
+		as set with 1 rows
+		selectdo
+			if isspace(ciisg801.errm) then
+				disable.commands("tdisg832.cvat")			
+				disable.commands(mark.delete, actual.occ)			|GH467CR000.a
+				disable.fields("tdisg832.code", actual.occ,
+| 						"tdisg832.pqty", actual.occ,
+						"tdisg832.bivl", actual.occ,
+						"tdisg832.ityp", actual.occ,
+						"tdisg832.gdsc", actual.occ,
+						"tdisg832.pcun", actual.occ)
+			endif	
+		endselect									|GH429CR754.a.e
+	selectempty
+		disable.fields("tdisg832.cvat")
+	endselect
 }
 									|#ISGECDV001082.en
 
@@ -1180,7 +1228,7 @@ function update.quantity.in.tdisg873()
 
 function extern get_attachment()								|GH300CR602.a.s
 {	
-	domain	tcncmp			curr.comp
+	domain	tcncmp			curr.comp, curr.comp.o
 	domain	tcmcs.str1		p.char, c.char
 	domain	tcmcs.str30		i.host	
 	domain	tclogn			o.user
@@ -1194,7 +1242,17 @@ function extern get_attachment()								|GH300CR602.a.s
 	i.host =  toupper$(i.host)
 	i.host = trim$(i.host)
 	
-	curr.comp = get.compnr()
+	curr.comp.o = get.compnr()
+	
+	select	tcemm030.lcmp:curr.comp
+	from	tcemm030
+	where	tcemm030.fcmp = :curr.comp.o
+	as set with 1 rows
+	selectdo
+	selectempty
+		curr.comp = 0
+	endselect
+	
 	p.char = ""
 	c.char = ""
 	irno.str = ""

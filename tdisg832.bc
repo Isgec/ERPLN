@@ -523,9 +523,9 @@ function extern boolean method.is.allowed(long type)
 			return(false)
 		endif
 		
-		if not get.custom.invoice(tdisg832.edrn) then			|GH467CR000.a
-			return(false)
-		endif
+| 		if not get.custom.invoice(tdisg832.edrn) then			|GH467CR000.a
+| 			return(false)
+| 		endif
 		break
 		
 	endcase
