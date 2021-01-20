@@ -235,7 +235,12 @@ function extern long tpisgdll0011.Update_Sanction_Submit_Status
 {
 	long ret_val
 	
-	select 	tpisg011.acti
+	select 	tpisg011.acti,
+		tpisg011.act1,						|RAvi.a.s.19012021
+		tpisg011.user,
+		tpisg011.date,
+		tpisg011.apby,
+		tpisg011.apdt						|RAvi.a.e.19012021
 	from	tpisg011 for update
 	where	tpisg011._index1 = {:i.cprj,:i.vers}
 	and	tpisg011.acti = :i.acti
@@ -271,7 +276,10 @@ function extern long tpisgdll0011.Update_Sanction_Status
 {
 	long ret_val
 	
-	select 	tpisg011.acti
+	select 	tpisg011.acti,						|RAvi.a.s.19012021
+		tpisg011.act1,
+		tpisg011.apby,
+		tpisg011.apdt						|RAvi.a.e.19012021
 	from	tpisg011 for update
 	where	tpisg011._index1 = {:i.cprj,:i.vers}
 	and	tpisg011.acti = :i.acti
@@ -517,7 +525,15 @@ function extern tpisgdll0011.Revise_Sanction_Control
 	
 	new.version =  str$(val(i.vers) + i.increment)
 	
-	select	tpisg011.vers
+	select	tpisg011.vers,
+		tpisg011.reas,									|RAvi.a.s.19012021
+		tpisg011.acti,
+		tpisg011.act1,
+		tpisg011.apby,
+		tpisg011.apdt,
+		tpisg011.user,
+		tpisg011.date,
+		tpisg011.cdis									|RAvi.a.e.19012021
 	from	tpisg011 for update
 	where	tpisg011._index1 = {:i.cprj,:i.vers}
 	selectdo
