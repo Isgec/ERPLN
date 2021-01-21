@@ -761,9 +761,9 @@ function set.enable.disable.command()
 		selectdo
 			if isspace(ciisg801.errm) then
 				disable.commands("tdisg832.cvat")			
-				disable.commands(mark.delete, actual.occ)			|GH467CR000.a
+				disable.commands(mark.delete, add.set, actual.occ)			|GH467CR000.a #IR165944
 				disable.fields("tdisg832.code", actual.occ,
-| 						"tdisg832.pqty", actual.occ,
+						"tdisg832.pqty", actual.occ,
 						"tdisg832.bivl", actual.occ,
 						"tdisg832.ityp", actual.occ,
 						"tdisg832.gdsc", actual.occ,
