@@ -44,6 +44,9 @@
 |*
 |* GH413CR739, RAvi Kumar, 07-10-2020
 |* Display Billing Advice Status against FOC Receipts in PTR Print
+|*
+|* GH457CR795, RAvi Kumar, 21-12-2020
+|* Modification in Print Voucher
 
 |****************************** declaration section ***************************
 declaration:
@@ -66,6 +69,9 @@ declaration:
 	table	ttpisg039				|GH413CR739.a
 	table	ttdisg831				|GH413CR739.a
 	table	ttdisg832				|GH413CR739.a
+	table	ttdisg873				|GH413CR739.a
+	table	ttfisg183				|GH457CR795.a
+	table	ttccom001				|GH457CR795.a
 
 |******** Form Field ***********************************************************
 
@@ -178,6 +184,7 @@ declaration:
 		string		session.code(13)		|GH326CR620.a
 	extern	domain	tcncmp		comp.curr		|GH326CR620.a
 	extern	domain	tcmcs.long	reason.flag		|GH413CR739.a
+	extern	domain	tcorno		reason.data		|GH413CR739.a
 	#include <bic_text>
 	
 	#define	FIX_LEDGER "9500300     "	|#GST001026.n
@@ -380,7 +387,8 @@ function non.finalized.transactions()
 		endif
 		get.irno(tfgld102.ttyp, tfgld102.docn)							|GH315CR613.a
 		rep.ccur = tfgld102.ccur
-		pint.reasoncode(tfgld102.cono, tfgld102.ttyp, tfgld102.docn)						|GH413CR739.a		
+		pint.reasoncode(tfgld102.cono, tfgld102.ttyp, tfgld102.docn)						|GH413CR739.a	
+		get.hdat.data(tfgld102.ttyp, tfgld102.docn)										|GH457CR795.a	
 		on case  tfgld102.catg
 		case	tfgld.catg.purchase.inv:
 		case	tfgld.catg.purchase.cred:
@@ -549,15 +557,27 @@ function get.purchase.order
 				o.cprj = ""
 			endselect
 		else
-			select 	tdpur401.cprj:o.cprj
-			from	tdpur401
-			where	tdpur401._index1 = {:o.orno,:o.pono,:o.sqnb}
-			and	tdpur401._compnr = 200				|#36096.n
-			as set with 1 rows
-			selectdo
-			selectempty
-				o.cprj = ""
-			endselect
+			if get.compnr() = 700 then				|RAvi.a.18112020
+				select 	tdpur401.cprj:o.cprj
+				from	tdpur401
+				where	tdpur401._index1 = {:o.orno,:o.pono,:o.sqnb}
+				and	tdpur401._compnr = 700				|#36096.n
+				as set with 1 rows
+				selectdo
+				selectempty
+					o.cprj = ""
+				endselect
+			else							|RAvi.a.s.18112020
+				select 	tdpur401.cprj:o.cprj
+				from	tdpur401
+				where	tdpur401._index1 = {:o.orno,:o.pono,:o.sqnb}
+				and	tdpur401._compnr = 200				|#36096.n
+				as set with 1 rows
+				selectdo
+				selectempty
+					o.cprj = ""
+				endselect
+			endif							|RAvi.a.E.18112020
 		endif
 	selectempty
 		o.orno = ""
@@ -638,6 +658,7 @@ function finalized.transactions()
 		
 		get.irno(tfgld106.otyp, tfgld106.odoc)							|GH315CR613.a
 		pint.reasoncode(tfgld106.ocmp, tfgld106.otyp, tfgld106.odoc)						|GH413CR739.a		
+		get.hdat.data(tfgld106.otyp, tfgld106.odoc)								|GH457CR795.a	
 		rep.ccur = tfgld106.ccur
 		
 		on case  tfgld106.catg
@@ -1420,6 +1441,7 @@ function get.tax.ledger.data
 					:i.rep.docn
 					}
 		and	tfgld102.leac = FIX_LEDGER
+		and	tfgld102.cvat <> "STCS00001"					|GH457CR795.a
 		group by tfgld102.leac, tfgld102.ccty, tfgld102.cvat
 		selectdo	
 			select	tfgld071.vacp:get.GL.code
@@ -1597,35 +1619,98 @@ function pint.reasoncode(	domain	tcncmp		i.comp,						|GH413CR739.a.s
 	and	tfacp251._compnr = :ncmp.f
 	as set with 1 rows
 	selectdo
-		select	tdisg832.tobi
-		from	tdisg832
-		where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
-		and	tdisg832.tobi = tcyesno.yes
-		and	tdisg832._compnr = :tcemm030.lcmp
+		select	tdisg873.sdrn,
+			tdisg873.edrn
+		from	tdisg873
+		where	tdisg873.rcno = {:tfacp251.rcno}
+		and	tdisg873.rcln = {:tfacp251.rseq}
+		and	tdisg873._compnr = :tcemm030.lcmp
 		as set with 1 rows
 		selectdo
-			reason.flag = 0
+			select	tdisg831.stat
+			from	tdisg831
+			where	tdisg831._index1 = {:tdisg873.sdrn}
+			and	tdisg831.stat = tdisg.stat.process
+			and	tdisg831._compnr = :tcemm030.lcmp
+			as set with 1 rows
+			selectdo
+				reason.flag = 1
+				reason.data = trim$(tdisg873.edrn)
+			selectempty
+				reason.flag = 0
+			endselect
 		selectempty
-			select	tdisg832.reas,
-				tdisg832.edrn
+			select	tdisg832.tobi
 			from	tdisg832
 			where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
+			and	tdisg832.tobi = tcyesno.yes
 			and	tdisg832._compnr = :tcemm030.lcmp
 			as set with 1 rows
 			selectdo
-				select	tdisg831.stat
-				from	tdisg831
-				where	tdisg831._index1 = {:tdisg832.edrn}
-				and	tdisg831.stat = tdisg.stat.process
-				and	tdisg831._compnr = :tcemm030.lcmp
+				reason.flag = 0
+			selectempty
+				select	tdisg832.reas,
+					tdisg832.edrn
+				from	tdisg832
+				where	tdisg832._index4 = {:tfacp251.rcno, :tfacp251.rseq}
+				and	tdisg832._compnr = :tcemm030.lcmp
 				as set with 1 rows
 				selectdo
-					reason.flag = 1
-				selectempty
-					reason.flag = 0
+					select	tdisg831.stat
+					from	tdisg831
+					where	tdisg831._index1 = {:tdisg832.edrn}
+					and	tdisg831.stat = tdisg.stat.process
+					and	tdisg831._compnr = :tcemm030.lcmp
+					as set with 1 rows
+					selectdo
+						reason.flag = 1
+						reason.data = trim$(tdisg832.reas)
+					selectempty
+						reason.flag = 0
+					endselect
+	| 				reason.flag = 0
 				endselect
-| 				reason.flag = 0
 			endselect
 		endselect
 	endselect
 }													|GH413CR739.a.e
+
+function get.hdat.data(	domain	tfgld.ttyp	i.ttyp,				|GH457CR795.a.s
+			domain	tfgld.docn	i.ninv)						
+{
+	domain	tcibd.sern	sern.irno
+	select	tfacp251.shpm:sern.irno
+	from	tfacp251
+	where	tfacp251._index1 = {:ncmp.f, :i.ttyp, :i.ninv}
+	and	tfacp251._compnr = :ncmp.f
+	as set with 1 rows
+	selectdo
+	selectempty
+		sern.irno = ""
+	endselect
+	
+	select	tcemm030.lcmp
+	from	tcemm030
+	where	tcemm030.fcmp = :comp.curr
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	select	tfisg183.hdat,						
+		tfisg183.user,
+		tccom001.nama
+	from	tfisg183, tccom001
+	where	tfisg183._index1 = {:sern.irno}
+	and	tfisg183.lsta in (8, 12)
+	and	tfisg183.user refers to tccom001
+	and	tfisg183._compnr = :tcemm030.lcmp
+	order by tfisg183.hdat desc
+	as set with 1 rows
+	selectdo
+	selectempty
+		tfisg183.hdat = 0
+		tccom001.nama = ""
+	endselect						
+}
+									|GH457CR795.a.e
+
