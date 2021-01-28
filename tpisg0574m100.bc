@@ -36,6 +36,7 @@ declaration:
 	extern	domain	tppdm.dscl	cspa.dsca
 	extern	domain	tcnama		pcod.dsca
 	extern	domain	tcnama		logn.sar, bpid.nama		|GH353CR658.a	
+	extern	domain	tcnama		rper.nama, emno.nama, apby.nama			|RAvi.a.27012021
 								|#GH242CR505.en
 |****************************** program section ********************************
 |****************************** group section **********************************
@@ -75,17 +76,17 @@ before.display:
 	
 field.dept:
 before.display:
-	if len(trim$(tpisg074.rper)) < 4 then
-		if len(trim$(tpisg074.rper)) < 3 then
-			if len(trim$(tpisg074.rper)) < 2 then
-				tpisg074.rper = "000" & tpisg074.rper
-			else
-				tpisg074.rper = "00" & tpisg074.rper
-			endif
-		else
-			tpisg074.rper = "0" & tpisg074.rper
-		endif
-	endif
+| 	if len(trim$(tpisg074.rper)) < 4 then
+| 		if len(trim$(tpisg074.rper)) < 3 then
+| 			if len(trim$(tpisg074.rper)) < 2 then
+| 				tpisg074.rper = "000" & tpisg074.rper
+| 			else
+| 				tpisg074.rper = "00" & tpisg074.rper
+| 			endif
+| 		else
+| 			tpisg074.rper = "0" & tpisg074.rper
+| 		endif
+| 	endif
 	
 	select	dmisg130.dept:dept
 	from	dmisg130
@@ -147,4 +148,36 @@ before.display:
 		bpid.nama = ""
 	endselect
 							|GH353CR658.a.e
+							
+field.rper.nama:
+before.display:
+	select	tccom001.nama:rper.nama
+	from	tccom001
+	where	tccom001._index1 = {:tpisg074.rper}
+	as set with 1 rows
+	selectdo
+	selectempty
+		rper.nama = ""
+	endselect
 
+field.emno.nama:
+before.display:
+	select	tccom001.nama:emno.nama
+	from	tccom001
+	where	tccom001._index4 = {:tpisg074.emno}
+	as set with 1 rows
+	selectdo
+	selectempty
+		emno.nama = ""
+	endselect
+
+field.apby.nama:
+before.display:
+	select	tccom001.nama:apby.nama
+	from	tccom001
+	where	tccom001._index4 = {:tpisg074.apby}
+	as set with 1 rows
+	selectdo
+	selectempty
+		apby.nama = ""
+	endselect

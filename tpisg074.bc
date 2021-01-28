@@ -349,6 +349,19 @@ function extern boolean tpisg074.rper.is.derived(long mode)
 	return(true)
 }
 
+function extern boolean tpisg074.rper.is.valid(long mode)					|RAvi.a.s.28012021
+{
+	select	dmisg152.*
+	from	dmisg152
+	where	dmisg152._index1 = {:tpisg074.cprj, :tpisg074.rper}
+	as set with 1 rows
+	selectdo
+	selectempty
+		return(false)
+	endselect
+	return(true)
+}
+
 function extern boolean tpisg074.natp.is.mandatory(long mode)
 {
 	on case mode 
