@@ -150,6 +150,9 @@
 |*
 |* GH411CR000, RAvi Kumar, 25-09-2020
 |* PO Footer Text Printing
+|* 
+|* GH465CR832, RAvi Kumar, 05-01-2021
+|* Price annexure upload with PO
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -239,7 +242,7 @@ declaration:
 	extern	domain	tctax.txnb.l	brnc.lst,brnc.cst
 	extern	domain	tctelp	brnc.telp,vend.telp
 	extern	domain	tctefx	brnc.tefx,vend.tefx
-	extern	domain	tcpono		line.indc	
+	extern	domain	tcpono		line.indc, line.indc.anne
 	extern boolean highest.vrsn
 	string 	borf(5)
 	extern domain tcdate	adat.c
@@ -592,15 +595,28 @@ function read.main.table()
 			select.header.from.history()
 		endif
 					|#SD04052017.sn
-		select	tdpur401.cprj:temp.cprj,
-		 	tdpur401.rnso.l:o.gstn.c
-		from	tdpur401
-		where	tdpur401._index1 = {:i.orno}
-		selectdo
-		selectempty
-			temp.cprj = ""
-			o.gstn.c = 0
-		endselect
+					
+		if not highest.vrsn then					|RAvi.a.s.19122020 #IR160121
+			select	tdmsl501.cprj:temp.cprj,
+				tdmsl501.rnso.l:o.gstn.c
+			from	tdmsl501
+			where	tdmsl501._index1 = {:i.orno, :i.vrsn}
+			selectdo
+			selectempty
+				temp.cprj = ""
+				o.gstn.c = 0
+			endselect
+		else								|RAvi.a.e.19122020
+			select	tdpur401.cprj:temp.cprj,
+				tdpur401.rnso.l:o.gstn.c
+			from	tdpur401
+			where	tdpur401._index1 = {:i.orno}
+			selectdo
+			selectempty
+				temp.cprj = ""
+				o.gstn.c = 0
+			endselect
+		endif
 		
 								|#ISGEC017006.sn
 		select	tctax940.cdf_cadr, tctax940.stpv, tctax940.regn:i.gstn.c.no
@@ -921,6 +937,7 @@ function read.main.table()
 	new.ldat.c = ld.date()				|#ISGEC002024.n
 		
 	line.indc = 0
+	line.indc.anne = 0
 	if curr.comp = 200 then							|#ISGEC01038.sn
 		rep.cin = "L23423HR1933PLC000097"
 	else
@@ -1087,6 +1104,8 @@ function read.main.table()
 				send.document.detail()
 				line.indc = 3
 				send.document.detail()
+				line.indc.anne = 4				|GH465CR832.a
+				print.po.annexure()				|GH465CR832.a
 			endif
 		selectempty						|#ISGEC016032.sn
 			if	last.vrsn	<>	tdmsl501.vrsn	then
@@ -2242,6 +2261,8 @@ function	process.data.revision.wise()
 	send.document.detail()
 	line.indc 	= 	3
 	send.document.detail()
+	line.indc.anne = 4					|GH465CR832.a
+	print.po.annexure()					|GH465CR832.a
 }
 
 function	print.data.without.history()
@@ -2980,3 +3001,15 @@ function long delete.flag.enable(domain	tcorno orno.f,					|RAvi.a.s.11102019.GH
 	return(delete.po.flag)
 }
 											|RAvi.a.e.11102019.GH163CR000
+											
+function print.po.annexure()							|GH465CR832.a.s
+{		
+	select	tdisg225.*
+	from	tdisg225
+	where	tdisg225._index1 = {:i.orno, :i.vrsn, :tdpur401.pono}
+	selectdo
+		rprt_send()
+	endselect
+	
+	line.indc.anne = 5
+}										|GH465CR832.a.e
