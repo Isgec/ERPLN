@@ -33,6 +33,9 @@
 |* 
 |* GH418CR752, RAvi Kumar, 09-10-2020
 |* EBA should not be returned to Projects when E-Invoice IRN generated
+|* 
+|* GH480CR000, RAvi Kumar, 29-01-2021
+|* Issue in freeze custom invoice against Generation of Commercial Invoice with Cr Note
 |****************************** declaration section ***************************
 declaration:
 #ident "@(#)ISG001016, Yoshita Kundwani, IT0177, 31-05-2014 , VRC B61U "
@@ -65,6 +68,8 @@ declaration:
   table		tciisg800		|RAvi.a.28092020
   table		tciisg801		|RAvi.a.28092020
   table		tciisg800		|RAvi.a.28092020
+  table		ttdisg045		|GH480CR000.a
+  table		ttdisg046		|GH480CR000.a
 
 #include <bic_dam>
 #include"itcisg00001"
@@ -143,6 +148,7 @@ extern	domain	tcmcs.str100m	description3			|ISGEC01031.n
 	extern	domain	tcmcs.str70	irrn			|RAvi.a.01102020
 	extern	domain	tcdate		irn.date		|RAvi.a.01102020
 		domain	tcncmp		curr_comp.r	
+		domain	tcamnt		total.in.amnt.cr.dr	|GH480CR000.a
 |****************************** program section ********************************
 before.program:
 	curr_comp.r = get.compnr()
@@ -186,6 +192,7 @@ before.display.object:
 | 			message("E-Invoice already generated, Cannot Sent Back to Project")
 | 			choice.again()
 			disable.commands("isg.sent.proj")
+			disable.fields("tdisg831.cvat", actual.occ, "tdisg831.eist", actual.occ, "tdisg831.lcod", actual.occ, "tdisg831.rate", actual.occ)
 		endif
 	endselect	
 										|GH418CR752.a.e
@@ -336,7 +343,7 @@ on.choice:
 
 choice.cont.postship:
 before.choice:
-	
+	total.in.amnt.cr.dr = tdisg831.amti				|GH480CR000.a
 	if tdisg831.efms = tcyesno.no then
 		message("Packing List Not Received")
 		choice.again()
@@ -348,7 +355,27 @@ before.choice:
 	else	
 		if tdisg831.octy <> "IN " then
 		else
-			if abs(tdisg831.shmt - tdisg831.amti) > 1.00 then |* Tolerance for 1, as rounding was not preferred
+			select	tdisg045.rqno,				|GH480CR000.a.s
+				tdisg045.note
+			from	tdisg045
+			where	tdisg045._index3 = {:tdisg831.invn}
+			selectdo
+				select	tdisg046.amnt
+				from	tdisg046
+				where	tdisg046._index1 = {:tdisg045.rqno}
+				selectdo
+					if tdisg045.note = tdisg.notes.credit then
+						total.in.amnt.cr.dr = total.in.amnt.cr.dr - tdisg046.amnt
+					else
+						if tdisg045.note = tdisg.notes.debit then
+							total.in.amnt.cr.dr = total.in.amnt.cr.dr + tdisg046.amnt
+						endif
+					endif
+				endselect
+			endselect					|GH480CR000.a.e
+			
+| 			if abs(tdisg831.shmt - tdisg831.amti) > 1.00 then |* Tolerance for 1, as rounding was not preferred			|GH480CR000.a.com
+			if abs(tdisg831.shmt - total.in.amnt.cr.dr) > 1.00 then |* Tolerance for 1, as rounding was not preferred		|GH480CR000.a
 				message("@Custom Invoice Amount not Equal to Shipping Amount")
 				choice.again()
 			endif
@@ -397,9 +424,17 @@ before.display:
 	ityp = tdisg831.invn(1;3)
 	docn.orno.str = str$(docn.orno)
 	
+	select	ciisg800.comp
+	from	ciisg800
+	where	ciisg800.tran = :ityp
+	and	ciisg800.docn = :docn.orno.str
+	as set with 1 rows
+	selectdo
+	endselect
+	
 	select	ciisg801.errm
 	from	ciisg801
-	where	ciisg801._index1 = {:tppdm600.ncmp, :ityp, :docn.orno.str}
+	where	ciisg801._index1 = {:ciisg800.comp, :ityp, :docn.orno.str}
 	as set with 1 rows
 	selectdo
 		if isspace(ciisg801.errm) then

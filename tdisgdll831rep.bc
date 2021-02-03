@@ -137,7 +137,8 @@ table   tdmisg128
 table   ttccom001
 table   tdmisg133
 table   ttfisg405
-						
+table   ttdisg045
+table   ttdisg046
 						|# ISGEC004011.en
 table	ttccom120				|#ISGEC016026.n						
 
@@ -2331,7 +2332,7 @@ function extern tdisgdll831rep_commercial_invoice
 	select	tdisg831.bpid,tdisg831.cprj,tdisg831.invn,
 		tdisg831.fovv,tdisg831.frgt,tdisg831.insu,
 		tdisg831.ofbp,tdisg831.cinv,tdisg831.lcno,
-		tdisg831.motp,tdisg831.xref
+		tdisg831.motp,tdisg831.xref, tdisg831.invn                                |RAvi.a.06112020
 	from	tdisg831
 | 	where	tdisg831._index3 = {:tdisg831.cinv}
 	where	tdisg831._index3 = {:i.cinv}
@@ -2502,6 +2503,28 @@ function extern tdisgdll831rep_commercial_invoice
 		i.advance.payment = 0.00
 		i.ret.payment = 0.00
 		
+		select	tdisg045.*								|RAvi.a.s.06112020
+		from	tdisg045
+		where	tdisg045.invn = {:tdisg831.invn}
+		selectdo
+			select	tdisg046.*
+			from	tdisg046
+			where	tdisg046._index1 = {:tdisg045.rqno, :tdisg832.rcno, :tdisg832.rcln}
+			as set with 1 rows
+			selectdo
+				if tdisg045.note = tdisg.notes.credit then
+					tdisg832.bivl = tdisg832.bivl - tdisg046.amnt
+					tdisg832.pqty = tdisg832.pqty - tdisg046.qnty
+				else
+					if tdisg045.note = tdisg.notes.debit then
+						tdisg832.bivl = tdisg832.bivl + tdisg046.amnt
+						tdisg832.pqty = tdisg832.pqty + tdisg046.qnty
+						tdisg832.pcun = tdisg046.cuni
+					endif
+				endif
+			endselect
+		endselect									|RAvi.a.e.06112020
+		
 		tot_nwgt = tot_nwgt + tdisg832.nwgt
 		tot_gwgt = tot_gwgt + tdisg832.gwgt
 		
@@ -2512,18 +2535,32 @@ function extern tdisgdll831rep_commercial_invoice
 		
 		i.ret.payment = (i.total.fob * o.total.ret.perc)/100
 		
-		select	tpisg031.dsca,tpisg031.txta
-		from	tpisg031
-		where	tpisg031._index1 = {:tdisg831.cprj,:tdisg831.ofbp,:tdisg832.ninc}
-		selectdo
-			spaceCall(tpisg031.dsca)		|#ISGEC01031.n
-		selectempty
-			tpisg031.dsca = tdisg832.dsca
-			description3 = tpisg031.dsca(51;100)	|#ISGEC01031.n
-		endselect
+		if tdisg045.note = tdisg.notes.debit then					|RAvi.a.s.06112020
+			select	tpisg031.dsca,tpisg031.txta
+			from	tpisg031
+			where	tpisg031._index1 = {:tdisg831.cprj,:tdisg831.ofbp,:tdisg046.ninc}
+			selectdo
+				spaceCall(tpisg031.dsca)		
+			selectempty
+				tpisg031.dsca = tdisg046.item
+				description3 = tpisg031.dsca(51;100)
+			endselect								|RAvi.a.e.06112020
+		else
+			select	tpisg031.dsca,tpisg031.txta
+			from	tpisg031
+			where	tpisg031._index1 = {:tdisg831.cprj,:tdisg831.ofbp,:tdisg832.ninc}
+			selectdo
+				spaceCall(tpisg031.dsca)		|#ISGEC01031.n
+			selectempty
+				tpisg031.dsca = tdisg832.dsca
+				description3 = tpisg031.dsca(51;100)	|#ISGEC01031.n
+			endselect
+		endif
 		
 		p = 3
-		rprt_send()
+		if tdisg832.bivl <> 0 then			|RAvi.a.s.06112020
+			rprt_send()
+		endif						|RAvi.a.e.06112020
 	endselect
 	package_no_print_commercial()
 	get_insurance_freight()
