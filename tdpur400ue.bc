@@ -97,6 +97,9 @@
 |* 
 |* GH447CR757, RAvi Kumar, 26-11-2020
 |* Blacklisting of vendor should not affect Bill booking and amendments of existing POs
+|*
+|* GH481CR000, RAvi Kumar, 03-02-2021
+|* Remove PO Series check  from Receipt correction sessions
 
 |******************************************************************************
 	table	ttdmsl400
@@ -206,7 +209,9 @@ function extern long ue.before.before.save.object(long mode)
 			calling.prog = "tdpur4106m000" or 
 			calling.prog = "whinh3112s000" or
 			calling.prog = "tdpur4534m000" or
-			calling.prog = "tdpur4501m140" then
+			calling.prog = "tdpur4501m140" or
+			calling.prog = "tdpur4534m000" or		|GH481CR000.a
+			calling.prog = "tdpur4501m140" then		|GH481CR000.a
 		else
 			if not check.series.auth(tdpur400.orno(1;4), user.auto) then		
 				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
@@ -242,7 +247,9 @@ function extern long ue.before.before.save.object(long mode)
 			calling.prog = "tdpur4106m000" or 
 			calling.prog = "whinh3112s000" or
 			calling.prog = "tdpur4534m000" or
-			calling.prog = "tdpur4501m140" then
+			calling.prog = "tdpur4501m140" or			
+			calling.prog = "tdpur4106s100" or		|GH481CR000.a
+			calling.prog = "whinh3121s000"  then		|GH481CR000.a
 		else
 			if not check.series.auth(tdpur400.orno(1;4), user.auto) then	
 				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
