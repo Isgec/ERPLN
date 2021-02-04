@@ -872,6 +872,9 @@ on.choice:
 					show.dal.messages(MSG.ALL)
 					abort.transaction()
 	endif
+	
+	change_incentive_status(tpisg.sanction.free)				|GH483CR000.a
+	
 	commit.transaction()
 
 choice.cont.tree.view:
