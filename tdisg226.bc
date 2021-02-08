@@ -111,6 +111,12 @@ function extern boolean tdisg226.docn.is.valid()
 	return(true)
 }
 
+
+function extern	boolean tdisg226.bpid.is.mandatory()
+{
+	return(true)
+}
+
 function long send.email()
 {
 	string tmp.file(200),line(500)
