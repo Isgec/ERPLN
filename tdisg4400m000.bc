@@ -153,6 +153,9 @@
 |* 
 |* GH465CR832, RAvi Kumar, 05-01-2021
 |* Price annexure upload with PO
+|*
+|* GH486CR000, RAvi Kumar, 02-02-2021
+|* Issue in Purchase order printout if Purchase  order Line Qty and price 0.0000
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -1003,13 +1006,22 @@ function read.main.table()
 					tcmcs052.dsca = ""
 				endif
 				
-				tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-				tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-	| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-				tdpur401.qoor = add.qty			|#ISGEC017006.n
+				if tdpur401.qoor = 0 then								|RAvi.a.s.02022021
+					tdpur401.oamt = 0
+					tdpur401.tase.l = 0
+					tdpur401.tasv.l = 0
+					tdpur401.tass.l = 0
+					tdpur401.tasg.l = 0
+					tdpur401.qoor = 0							
+				else											|RAvi.a.e.02022021
+					tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+					tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+					tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+					tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+		| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+					tdpur401.qoor = add.qty			|#ISGEC017006.n
+				endif
 				iamt.m = 0
 				exc.amnt = 0
 				sgst.amnt = 0	|#ISGEC017006.n
@@ -1694,13 +1706,22 @@ function get.po.totals()
 				add.qty = get.additional.qty.from.501()
 			endif
 			
-			tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-			tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-	| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-			tdpur401.qoor = add.qty			|#ISGEC017006.n
+			if tdpur401.qoor = 0 then								|RAvi.a.s.02022021
+				tdpur401.oamt = 0
+				tdpur401.tase.l = 0
+				tdpur401.tasv.l = 0
+				tdpur401.tass.l = 0
+				tdpur401.tasg.l = 0
+				tdpur401.qoor = 0
+			else											|RAvi.a.e.02022021
+				tdpur401.oamt = (tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+				tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+		| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+				tdpur401.qoor = add.qty			|#ISGEC017006.n
+			endif
 			iamt.m = 0
 			exc.amnt = 0
 			sgst.amnt = 0	|#ISGEC017006.sn
@@ -1862,12 +1883,20 @@ function get.po.totals()
 						add.qty 	= 	get.additional.qty.from.501()
 					endif
 					
-					tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-					tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-					tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-					tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-	| 				tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-					tdpur401.qoor = add.qty			|#ISGEC017006.n
+					if tdpur401.qoor = 0 then								|RAvi.a.s.02022021
+						tdpur401.oamt = 0
+						tdpur401.tase.l = 0
+						tdpur401.tasv.l = 0
+						tdpur401.tass.l = 0
+						tdpur401.qoor = 0
+					else											|RAvi.a.e.02022021
+						tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+						tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+						tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+						tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+		| 				tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+						tdpur401.qoor = add.qty			|#ISGEC017006.n
+					endif
 					iamt.m 			=	0
 					exc.amnt 		= 	0
 					sgst.amnt 		= 	0	|#ISGEC017006.sn
@@ -2187,12 +2216,21 @@ function	process.data.revision.wise()
 	if 	isspace(tdpur401.cprj) 	then
 		tcmcs052.dsca 	= 	""
 	endif
-	tdpur401.oamt 	= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-	tdpur401.tase.l	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-	tdpur401.tasv.l = 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-	tdpur401.tass.l = 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-| 	tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-	tdpur401.qoor = add.qty			|#ISGEC017006.n
+	
+	if tdpur401.qoor = 0 then								|RAvi.a.s.02022021
+		tdpur401.oamt = 0
+		tdpur401.tase.l = 0
+		tdpur401.tasv.l = 0
+		tdpur401.tass.l = 0
+		tdpur401.qoor = 0
+	else											|RAvi.a.e.02022021
+		tdpur401.oamt 	= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+		tdpur401.tase.l	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+		tdpur401.tasv.l = 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+		tdpur401.tass.l = 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+	| 	tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+		tdpur401.qoor = add.qty			|#ISGEC017006.n
+	endif
 	iamt.m 		= 	0
 	exc.amnt 	= 	0
 	sgst.amnt 	= 	0	|#ISGEC017006.sn
@@ -2362,12 +2400,20 @@ function	print.total.data.without.history()
 				add.qty 	= 	get.additional.qty.from.501()
 			endif
 			
-			tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
-			tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
-			tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-	| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
-			tdpur401.qoor = add.qty			|#ISGEC017006.n
+			if tdpur401.qoor = 0 then								|RAvi.a.s.02022021
+				tdpur401.oamt = 0
+				tdpur401.tase.l = 0
+				tdpur401.tasv.l = 0
+				tdpur401.tass.l = 0
+				tdpur401.qoor = 0
+			else											|RAvi.a.e.02022021
+				tdpur401.oamt 		= 	(tdpur401.oamt / tdpur401.qoor ) * (add.qty)
+				tdpur401.tase.l 	= 	(tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tasv.l 	= 	(tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
+				tdpur401.tass.l 	= 	(tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
+		| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
+				tdpur401.qoor = add.qty			|#ISGEC017006.n
+			endif
 			iamt.m 			=	0
 			exc.amnt 		= 	0
 			sgst.amnt 		= 	0	|#ISGEC017006.sn
