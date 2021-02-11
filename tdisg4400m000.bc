@@ -156,6 +156,9 @@
 |*
 |* GH486CR000, RAvi Kumar, 02-02-2021
 |* Issue in Purchase order printout if Purchase  order Line Qty and price 0.0000
+|* 
+|* GH487CR000, RAvi Kumar, 09-02-2021
+|* ISSUE IN CALCULATING TAX VALUE IN PO PRINTOUT DUE TO RECEIVED QTY IS MORE THAN ORDER QTY.
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -1018,7 +1021,10 @@ function read.main.table()
 					tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
 					tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
 					tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+					if add.qty > tdpur401.qoor then							|GH487CR000.a
+					else
+						tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+					endif
 		| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
 					tdpur401.qoor = add.qty			|#ISGEC017006.n
 				endif
@@ -1718,7 +1724,10 @@ function get.po.totals()
 				tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
 				tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
 				tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-				tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+				if add.qty > tdpur401.qoor then							|GH487CR000.a
+				else
+					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+				endif
 		| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
 				tdpur401.qoor = add.qty			|#ISGEC017006.n
 			endif
