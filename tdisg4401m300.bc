@@ -21,6 +21,9 @@
 |*
 |* GH431CR774, RAvi Kumar, 02-11-2020
 |* Print Warehouse codes in Po Delivery Reports
+|* 
+|* GH495CR000, RAvi Kumar, 17-02-2021
+|* In Project EC0034, PO P83006079 and P83006081 showing incorrect value in Linewise Po delivery status report
 |****************************** declaration section ***************************
 declaration:
 
@@ -278,7 +281,8 @@ function read.main.table()
 			rep.hcod = ""
 		endselect
 					|#ISGECGST002.en
-		rep.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)
+| 		rep.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)	|GH495CR000.old
+		rep.oqnt = get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)			|GH495CR000.new
 		if	tdpur401.qoor <> 0	then
 			rep.oprc = (tdpur401.oamt / tdpur401.qoor)
 		else
@@ -334,21 +338,59 @@ function domain tcqiv1	 get.additional.qty.from.401(
 				domain	tcpono	in.pono
 					)
 {
-	domain	tcqiv1 ord.qty, app.qty, diff.qty, bac.qty
+| 	domain	tcqiv1 ord.qty, app.qty, diff.qty, bac.qty				|GH495CR000.com.s
+| 	ord.qty = 0
+| 	app.qty = 0
+| 	bac.qty = 0
+| 	diff.qty = 0
+| 	select	q_tdpur401.qoor:ord.qty,
+| 		q_tdpur401.qiap:app.qty,
+| 		q_tdpur401.qibo:bac.qty
+| 	from	tdpur401 q_tdpur401
+| 	where	q_tdpur401._index1 = {:in.orno, :in.pono}
+| 	and	q_tdpur401.oltp = tdgen.oltp.total
+| 	selectdo
+| 		diff.qty = diff.qty + bac.qty - (ord.qty - app.qty)
+| 	endselect
+| 	return(diff.qty)								|GH495CR000.com.e
+
+	domain tcqsl1 ord.qty,app.qty,diff.qty,bac.qty					|GH495CR000.a.s
+	domain tcqsl1 final.rcpt.qnty, non.final.rcpt.qnty	
+	domain tcqsl1	final.rcpt,non.final.rcpt			
 	ord.qty = 0
 	app.qty = 0
 	bac.qty = 0
 	diff.qty = 0
-	select	q_tdpur401.qoor:ord.qty,
-		q_tdpur401.qiap:app.qty,
-		q_tdpur401.qibo:bac.qty
-	from	tdpur401 q_tdpur401
-	where	q_tdpur401._index1 = {:in.orno, :in.pono}
-	and	q_tdpur401.oltp = tdgen.oltp.total
+	non.final.rcpt.qnty = 0	
+	final.rcpt.qnty = 0	
+	
+	select	sum(tdpur401.qidl):final.rcpt.qnty
+	from 	tdpur401 
+	where 	tdpur401._index1 = {:in.orno, :in.pono}
+	and	tdpur401.oltp <> 1		|* Not Total Line Type
+	and	tdpur401.clyn <> tcyesno.yes 	|* Not Consider Cancelled PO Line
 	selectdo
-		diff.qty = diff.qty + bac.qty - (ord.qty - app.qty)
+	selectempty
+		final.rcpt.qnty = 0.00
 	endselect
-	return(diff.qty)
+		
+	select	sum(tdpur401.qidl):non.final.rcpt.qnty,
+		sum(tdpur401.qoor):ord.qty
+	from 	tdpur401 
+	where 	tdpur401._index1 = {:in.orno, :in.pono}
+	and	tdpur401.fire = tcyesno.no
+	and	tdpur401.oltp <> 1		|* Not Total Line Type
+	and	tdpur401.clyn <> tcyesno.yes 	|* Not Consider Cancelled PO Line
+	selectdo
+	selectempty
+		ord.qty = 0.00
+		non.final.rcpt.qnty = 0.00
+	endselect
+	
+	diff.qty = final.rcpt.qnty + (ord.qty - non.final.rcpt.qnty)
+							
+	diff.qty = round(diff.qty,6,2)									
+	return(diff.qty)								|GH495CR000.a.e
 }
 
 function populate.tax.amounts()
