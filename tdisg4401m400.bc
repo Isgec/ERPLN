@@ -1,55 +1,27 @@
 |******************************************************************************
-|* tdisg4401m200  0  VRC B61U a7 isg 
-|* Print PO Delivery Status [Detailed]
+|* tdisg4401m400  0  VRC B61U a7 isg 
+|* Print PO wise Delivery Status
 |* Installation user             
-|* 2014-09-02
+|* 2014-10-28
 |******************************************************************************
 |* Main table tdpur401 Purchase Order Lines, Form Type 4
 |******************************************************************************
-|* ISGECDV001022, IT0205, Arjit Gupta, Dt. 16/09/2014 VRC B61U a7 live 
-|* If record exist in whinh936 then no need to pick from tdpur401 for WH Receipt 
+|* ISGECDV001164, IT0205, Arjit Gupta, VRC B61U a7 live, Dt. 17-11-2014
+|* Add a Column of Consumption Percentage and Filter Record on Basis input
+|* consumption Percentage.
 |*
-|* ISGECDV001027, IT0205, Arjit Gupta, Dt. 17/09/2014 VRC B61U a7 live
-|* Add two columns Supplier Code and Supplier Name
-|*
-|* ISGECDV001031, IT0205, Arjit Gupta, Dt. 19-09-2014, VRC B61U a7 live
-|* Calculate Excise on tdpur401.tase.l and Service on tdpur401.tass.l
-|*
-|* ISGECDV001032, IT0205, Arjit Gupta, Dt. 20-09-2014, VRC B61U a7 live
-|* Calculate Excise on tdpur401.tase.l and Service on tdpur401.tass.l on the basis 
-|* of receipt quantity.
-|*
-|* ISGEC001069, IT0205, Arjit Gupta, Dt. 06-10-2014, VRC B61U a7 live
-|* Add a Column of Delivery Date, buyer name and correct calculation of tax if
-|* Purchase receipt and Warehouse receipt have same Number
-|*
-|* ISGEC001087, IT0205, Arjit Gupta, Dt. 10-10-2014, VRC B61U a7 isg
-|* Add a column PO Status
-|*
-|* ISGEC001125, IT0205, Arjit Gupta, Dt. 27-10-2014, VRC B61U a7 isg
-|* Add a column Balance Receipt Value
-|* 
-|* ISGECDV001176, IT0205, Arjit Gupta, Dt. 24-11-2014, VRC B61U a7 live
-|* Add a column GR Date Transporter Name
-|*
-|* ISGECDV001192, IT0205, Arjit Gupta, Dt. 01-12-2014, VRC B61U a7 live
-|* Add a column Balance Basic Amount.
-|* 
-|* ISGEC001175, IT0205, Arjit Gupta, Dt. 04-12-2014, VRC B61U a7 live
-|* Add a column Balance Basic Amount Correction
+|* ISGECDV001192, IT0205, Arjit Gupta, VRC B61U a7 live, Dt. 01-12-2014
+|* Add a Column Balance Basic Amount.
 |*
 |* ISGEC01072, IT0375, Sandhyarani, Dt. 03-03-2015, VRC B61U a7 live
 |* Modification on Order date
 |
 |* ISGEC015087, IT0302, Ankit Sharma, Dt. 23-02-2016, VRC B61U a7 live
 |* Added currency column in field
-|*
-|* ISGECGST002, IT0386, Saurabh Dubey, 27 May 2017, VRC B61 a7 isg
+|
+|* ISGECGST002, IT0386, Saurabh Dubey, 01 June 2017, VRC B61 a7 isg
 |* GST Related Modifications for Report, Functional : Mrs. Veena(Isgec)
 |* Isgec Onsite Deployment
-|*
-|* GH431CR774, RAvi Kumar, 02-11-2020
-|* Print Warehouse codes in Po Delivery Reports
 |* 
 |* GH495CR000, RAvi Kumar, 17-02-2021
 |* In Project EC0034, PO P83006079 and P83006081 showing incorrect value in Linewise Po delivery status report
@@ -73,10 +45,9 @@ declaration:
 	table	ttfisg001
 	table	ttfisg002
 	table	ttfacp100
-	table	ttccom100				|#ISGECDV001027.n
-	table	ttccom001			|#ISGEC001069.n
-	table	ttfisg003			|#ISGECDV001176.n
-	table	ttdmsl400			|#ISGEC01072.n
+	table	ttccom100				
+	table	ttccom001
+	table	ttdmsl400					|#ISGEC01072.n	
 	table	ttdmsl503	|#ISGECGST002.n
 
 	|*************** Form Variables *******************
@@ -98,6 +69,7 @@ declaration:
 	extern	domain	tppdm.cspa	cspa.t
 	extern	domain	tcemno		emno.f
 	extern	domain	tcemno		emno.t
+	extern	domain	tcperc		cnsm.perc			|#ISGECDV001164.n
 	|*************** File Handling Variables *******************
 	string		str(300), err.file(100), file.name(100), line3(2000), line4(2000)
 	long		ret2, stat.fp
@@ -109,20 +81,26 @@ declaration:
 		domain	tcdate		v.rcdt.f
 		domain	tcdate		v.rcdt.t
 		domain	tcbool		receipt.found
-		domain	tcbool		fwhinh936.found		|#ISGECDV001022.n
-		domain	tcamnt		tmp.oval		|#ISGEC001125.n
-		domain	tcamnt		tmp.obsc		|#ISGEC001175.n
+		domain	tcbool		fwhinh936.found		
+		domain	tcamnt		tmp.oval
+		domain	tcamnt		scr.bval	
+		domain	tcamnt		scr.rcst	
+		domain	tcamnt		scr.rexc	
+		domain	tcamnt		scr.rstx	
+		domain	tcamnt		scr.roch
+		domain	tcamnt		scr.sgst		|#ISGECGST002.sn	
+		domain	tcamnt		scr.cgst	
+		domain	tcamnt		scr.igst		|#ISGECGST002.en
+		domain	tcqiv1		scr.oqnt		
+		domain	tcamnt		scr.obsc		
+		domain	tcamnt		scr.oexc		
+		domain	tcamnt		scr.ocst		
+		domain	tcamnt		scr.ostx		
+		domain	tcamnt		scr.lcst		
+		domain	tcamnt		scr.rbal
 	|************** File Utilization Variables *************************
 	extern	domain	tcorno		rep.orno	
-	extern	domain	tcpono		rep.pono	
 	extern	domain	tcdate		rep.odat	
-	extern	domain	tcitem		rep.item	
-	extern	domain	tcdsca		rep.itdsc	
-	extern	domain	tccprj		rep.cprj	
-	extern	domain	tcdsca		rep.pjdsc	
-	extern	domain	tppdm.cspa	rep.cspa	
-	extern	domain	tcdsca		rep.eldsc	
-	extern	domain	tcqiv1		rep.oqnt	
 	extern	domain	tcpric		rep.oprc	
 	extern	domain	tcamnt		rep.obsc	
 	extern	domain	tcamnt		rep.oexc	
@@ -130,44 +108,36 @@ declaration:
 	extern	domain	tcamnt		rep.ostx	
 	extern	domain	tcamnt		rep.lcst	
 	extern	domain	tcamnt		rep.ogrs
-	extern	domain	tcorno		rep.rcno	
-	extern	domain	tcpono		rep.rcln	
-	extern	domain	tcdate		rep.rcdt
-	extern	domain	tfacp.isup	rep.isup
-	extern	domain	tcmcs.str215m	rep.grno
-	extern	domain	tcmcs.str215m	rep.grdt			|#ISGECDV001176.n	
-	extern	domain	tcmcs.str256m	rep.trnm			|#ISGECDV001176.n
-	extern	domain	tcqiv1		rep.rqnt	
-	extern	domain	tcpric		rep.rprc	
 	extern	domain	tcamnt		rep.rbsc	
 	extern	domain	tcamnt		rep.rexc	
 	extern	domain	tcamnt		rep.rcst	
 	extern	domain	tcamnt		rep.rstx	
 	extern	domain	tcamnt		rep.roch	
-	extern	domain	tcamnt		rep.rgrs	
-	extern	domain	tcmcs.str20	rep.rstt	
-	extern	domain	tcorno		rep.blad	
+	extern	domain	tcamnt		rep.rgrs
+	extern	domain	tcmcs.str10	rep.rstt	
 	extern	domain	tcamnt		rep.bval
-	extern	domain	tccom.bpid	rep.otbp		|#ISGECDV001027.n
-	extern	domain	tcnama		rep.nama		|#ISGECDV001027.n
-	extern	domain	tcemno		rep.buyr		|#ISGEC001069.n
-	extern	domain	tcnama		rep.bynm		|#ISGEC001069.n
-	extern	domain	tcdate		rep.ddta		|#ISGEC001069.n
-	extern	domain	tcmcs.str15	rep.hdst		|#ISGEC001087.n
-	extern	domain	tcamnt		rep.rbal		|#ISGEC001125.n
-	extern	domain	tcamnt		rep.bbal		|#ISGECDV001192.n
-	extern	domain	tcccur		rep.ccur		|#ISGEC015087.n
+	extern	domain	tccom.bpid	rep.otbp		
+	extern	domain	tcnama		rep.nama		
+	extern	domain	tcemno		rep.buyr		
+	extern	domain	tcnama		rep.bynm		
+	extern	domain	tcdate		rep.ddta		
+	extern	domain	tcmcs.str15	rep.hdst		
+	extern	domain	tcamnt		rep.bbal			|#ISGECDV001192.n
+	extern	domain	tcamnt		rep.rbal			
+	extern	domain	tcperc		rep.cnpr		|#ISGECDV001164.n
+	extern	domain	tcccur		rep.ccur		|#ISGEC015087.n	
 	extern	domain	tchsnc.l	rep.hcod	|#ISGECGST002.sn	
+	extern	domain	tcfovn		rep.gstn.b.no		
 	extern	domain	tcamnt		rep.sgst		
 	extern	domain	tcamnt		rep.cgst		
 	extern	domain	tcamnt		rep.igst		
 	extern	domain	tcamnt		rep.rsgst			
 	extern	domain	tcamnt		rep.rcgst			
-	extern	domain	tcamnt		rep.rigst	|#ISGECGST002.en	
-	extern	domain	tccwar		rep.cwar	|GH431CR774.a
+	extern	domain	tcamnt		rep.rigst	|#ISGECGST002.en
 
 |*************** Include **************
 #include<bic_desktop>
+#pragma used dll otctaxdll4100
 |****************************** program section ********************************
 
 
@@ -186,16 +156,6 @@ on.choice:
 field.orno.f:
 when.field.changes:
 	orno.t = orno.f
-before.zoom:
-	str = "tdpur400.orno in ("
-	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 inrange '" &cprj.f&"' and '"&cprj.t&"')"
-	query.extend.where.in.zoom(str)
-	
-field.orno.t:
-before.zoom:
-	str = "tdpur400.orno in ("
-	str = str & "select tdpur401.orno from tdpur401 where tdpur401._index5 inrange '" &cprj.f&"' and '"&cprj.t&"')"
-	query.extend.where.in.zoom(str)
 
 field.odat.f:
 when.field.changes:
@@ -208,14 +168,6 @@ when.field.changes:
 field.emno.f:
 when.field.changes:
 	emno.t = emno.f
-
-field.cprj.f:
-when.field.changes:
-	cprj.t = cprj.f
-
-field.cspa.f:
-when.field.changes:
-	cspa.t = cspa.f
 
 field.ddta.f:
 when.field.changes:
@@ -253,100 +205,114 @@ function read.main.table()
 	get.date.utc(rcdt.f, 00, 00, 00, v.rcdt.f)
 	get.date.utc(rcdt.t, 23, 59, 59, v.rcdt.t)
 	
-	select	tdpur401.*, tdpur400.orno, tdpur400.odat, tdpur400.otbp,	|#ISGECDV001027.n
-		tdpur400.hdst, tdpur400.ccon, tcibd001.dsca, tcmcs052.dsca,					|#ISGECDV001027.n
-		tccom100.nama, tccom001.nama,								|#ISGEC001069.n
+	select	tdpur400.orno, tdpur400.odat, tdpur400.otbp,	
+		tdpur400.hdst, tdpur400.ccon, tdpur400.ddat,
+		tccom100.nama, tccom001.nama,
 		tdpur400.ccur								|#ISGEC015087.n
-	from	tdpur401, tdpur400, tcibd001, tcmcs052, tccom100, tccom001		|#ISGEC001069.n
-	where	tdpur401._index1 inrange {:orno.f}	and	{:orno.t}
-	and	tdpur401._index5 inrange {:cprj.f}	and	{:cprj.t}
-	and	tdpur401.cspa inrange :cspa.f		and	:cspa.t
-	and	tdpur401.ddta inrange :v.ddta.f		and	:v.ddta.t
-	and	tdpur401.orno refers to tdpur400
-	and	tdpur400.odat inrange :v.odat.f		and	:v.odat.t	
+	from	tdpur400, tccom100, tccom001
+	where	tdpur400._index1 inrange {:orno.f}	and	{:orno.t}
+	and	tdpur400.odat inrange :v.odat.f		and	:v.odat.t
+	and	tdpur400.ddat inrange :v.ddta.f		and	:v.ddta.t	
 	and	tdpur400._index2 inrange {:bpid.f}	and	{:bpid.t}	
 	and	tdpur400._index4 inrange {:emno.f}	and	{:emno.t}
-	and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
-	and	tdpur401.item refers to tcibd001
-	and	tdpur401.cprj refers to tcmcs052
-	and	tdpur400.otbp refers to tccom100
-	and	tdpur400.ccon refers to tccom001 Unref Clear				|#ISGEC001069.n
+	and	tdpur400.otbp refers to tccom100 Unref Clear
+	and	tdpur400.ccon refers to tccom001 Unref Clear
 	selectdo
 		Initialize_Variable()
-		get.po.date()
-		rep.orno = tdpur401.orno	
-		rep.pono = tdpur401.pono	
-		rep.cwar = tdpur401.cwar					|GH431CR774.a	
-		rep.item = tdpur401.item	
-		rep.itdsc = tcibd001.dsca	
-		rep.cprj = tdpur401.cprj	
-		rep.pjdsc = tcmcs052.dsca
-		rep.cspa = tdpur401.cspa
-| 		rep.odat = tdpur400.odat		|#ISGEC01072.o
-		rep.otbp = tdpur400.otbp		|#ISGECDV001027.n
-		rep.nama = tccom100.nama		|#ISGECDV001027.n
-		rep.buyr = tdpur400.ccon		|#ISGEC001069.n	
-		rep.bynm = tccom001.nama		|#ISGEC001069.n	
-		rep.ddta = tdpur401.ddta		|#ISGEC001069.n	
-		rep.ccur = tdpur400.ccur		|#ISGEC015087.n	
-		receipt.found = false
-		rep.hdst = enum.descr$("tdpur.hdst", tdpur400.hdst)		|#ISGEC001087.n
+		get.po.date()					|#ISGEC01072.n				
+		rep.orno = tdpur400.orno	
+| 		rep.odat = tdpur400.odat			|#ISGEC01072.o
+		rep.otbp = tdpur400.otbp		
+		rep.nama = tccom100.nama		
+		rep.buyr = tdpur400.ccon		
+		rep.bynm = tccom001.nama		
+		rep.ddta = tdpur400.ddat
+		rep.ccur = tdpur400.ccur		|#ISGEC015087.n
+		rep.hdst = enum.descr$("tdpur.hdst", tdpur400.hdst)
 		
-		select	e_tpptc100.desc:rep.eldsc
-		from	tpptc100 e_tpptc100
-		where	e_tpptc100._index1 = {:tdpur401.cprj, :tdpur401.cspa}
+		select	tdpur401.*								
+		from	tdpur401		
+		where	tdpur401._index1 = {:tdpur400.orno}
+		and	tdpur401.ddta inrange :v.ddta.f		and	:v.ddta.t
+		and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
 		selectdo
-		selectempty
-			rep.eldsc = ""
-		endselect
-					|#ISGECGST002.sn
-		select	tdmsl503.code:rep.hcod
-		from	tdmsl503
-		where	tdmsl503._index1 = {:tdpur401.orno, :tdpur401.pono}
-		selectdo
-		selectempty
-			rep.hcod = ""
-		endselect
-					|#ISGECGST002.en
+			receipt.found = false
+			scr.oqnt = 0		
+			scr.oexc = 0		
+			scr.ocst = 0		
+			scr.ostx = 0		
+			scr.lcst = 0
+			scr.rbal = 0
+			scr.cgst = 0.00	|#ISGECGST002.sn
+			scr.sgst = 0.00
+			scr.igst = 0.00	|#ISGECGST002.en
+| 			scr.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)	|GH495CR000.old
+			scr.oqnt = get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)			|GH495CR000.new
+			if	tdpur401.qoor <> 0	then
+				rep.oprc = (tdpur401.oamt / tdpur401.qoor)
+			else
+				rep.oprc = 0
+			endif	
+						|#ISGECGST002.sn
+			select	tdmsl503.code:rep.hcod
+			from	tdmsl503
+			where	tdmsl503._index1 = {:tdpur401.orno, :tdpur401.pono}
+			selectdo
+			selectempty
+				rep.hcod = ""
+			endselect
 			
-| 		rep.oqnt = tdpur401.qoor + get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)	|GH495CR000.old
-		rep.oqnt = get.additional.qty.from.401(tdpur401.orno, tdpur401.pono)			|GH495CR000.new
-		if	tdpur401.qoor <> 0	then
-			rep.oprc = (tdpur401.oamt / tdpur401.qoor)
-		else
-			rep.oprc = 0
-		endif	
-		rep.obsc = rep.oqnt * rep.oprc
-		tdpur401.oamt = rep.obsc	|#ISGECGST002.n, for multiple sequences
-		tdpur401.tasg.l = rep.oqnt * tdpur401.asvg.l	|#ISGECGST002.n, for multiple sequences
-		populate.tax.amounts()
-		Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
-		rep.ogrs = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst + 
-				rep.cgst + rep.sgst + rep.igst |ISGECGST002.n
-		tmp.oval = 0				|#ISGEC001125.n
-		tmp.oval = rep.ogrs			|#ISGEC001125.n
-		tmp.obsc = 0				|#ISGEC001175.n
-		tmp.obsc = rep.obsc			|#ISGEC001175.n
-		if	not Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
+			if not tctax.dll4100.get.bp.reg.number.based.on.seq.l(	tdpur401.rnsb.l,
+										rep.gstn.b.no) then
+			endif
+			
+						|#ISGECGST002.en			
+			rep.obsc = rep.obsc + (scr.oqnt * rep.oprc)
+			tdpur401.oamt = rep.obsc	|#ISGECGST002.n, for multiple sequences
+			tdpur401.tasg.l = scr.oqnt * tdpur401.asvg.l	|#ISGECGST002.n, for multiple sequences
+			populate.tax.amounts()
+			Get_Landed_Cost(tdpur401.orno, tdpur401.pono)
+			rep.oexc = rep.oexc + scr.oexc
+			rep.ocst = rep.ocst + scr.ocst
+			rep.ostx = rep.ostx + scr.ostx
+			rep.lcst = rep.lcst + scr.lcst
+			rep.cgst = rep.cgst + scr.cgst	|#ISGECGST002.sn
+			rep.sgst = rep.sgst + scr.sgst
+			rep.igst = rep.igst + scr.igst	|#ISGECGST002.en
+			rep.ogrs = rep.obsc + rep.oexc + rep.ocst + rep.ostx + rep.lcst + 
+					rep.cgst + rep.sgst + rep.igst |#ISGECGST002.n
+			tmp.oval = 0				
+			tmp.oval = (scr.oqnt * rep.oprc) + scr.oexc + scr.ocst + scr.ostx + scr.lcst +
+					scr.cgst + scr.sgst + scr.igst
+			if	not Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
+							v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
+							tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		
+							tmp.oval)	then		
+			endif				
+			if	not Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
 						v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
-| 						tdpur401.cvat, tdpur401.tasv.l)	then		|#ISGECDV001031.o
-						tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		|#ISGECDV001031.n
-						tmp.obsc,				|#ISGEC001175.n 
-						tmp.oval)	then		|#ISGEC001125.n
-		endif				
-		if	not Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, rcno.f, rcno.t,
-					v.rcdt.f, v.rcdt.t, tdpur401.qoor, tdpur401.pric, tdpur401.ccty,
-| 					tdpur401.cvat, tdpur401.tasv.l)	then		|#ISGECDV001031.o
-					tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		|#ISGECDV001031.n
-					tmp.obsc,			|#ISGEC001175.n
-					tmp.oval)	then|#ISGEC001125.n
+						tdpur401.cvat, tdpur401.tasv.l, tdpur401.tase.l, tdpur401.tass.l,		
+						tmp.oval)	then
+			endif
+			
+			if	not receipt.found then
+				scr.rbal = (scr.oqnt * rep.oprc) + scr.oexc + scr.ocst + scr.ostx + scr.lcst + scr.cgst + scr.sgst + scr.igst
+			endif
+			rep.rbal = rep.rbal + scr.rbal
+		endselect
+		rep.bbal = rep.obsc - rep.rbsc		|#ISGECDV001192.n
+								|#ISGECDV001164.sn
+		if	rep.ogrs = rep.rbal	then
+			rep.cnpr = 0
+		else
+			if	rep.ogrs <> 0	then
+				rep.cnpr = ((rep.ogrs - rep.rbal)/rep.ogrs) * 100
+			endif
 		endif
-		
-		if	not receipt.found then
-			rep.rbal = rep.ogrs		|#ISGEC001125.n
-			rep.bbal = rep.obsc			|#ISGECDV001192.n
+		if	cnsm.perc <= rep.cnpr	then
+								|#ISGECDV001164.en
 			print.detail()
-		endif	
+		endif						|#ISGECDV001164.n	
 	endselect	
 }
 
@@ -444,7 +410,7 @@ function populate.tax.amounts()
 						tdpur401.tase.l,			| domain tcpric i.asv.excise, 
 						tdpur401.tasv.l,			| domain tcpric i.asv.vat, 
 						tdpur401.tass.l,			| domain tcpric i.asv.service.tax, 
-						tdpur401.tasg.l,			| domain tcpric i.asv.gst,	|#ISGECGST002.n 	
+						tdpur401.tasg.l,			| domain tcpric i.asv.gst,	|#ISGECGST002.n
 						tdpur401.ddta,				| domain tcdate i.ship.or.receive.date, 
 						tcyesno.no,				| domain tcyesno i.as.is.sales, 
 						tcyesno.no,				| domain tcyesno i.yesno.flag, 
@@ -478,27 +444,27 @@ function populate.tax.amounts()
 			case	tctax.indt.l.e.cess.service:			
 			case	tctax.indt.l.hse.cess.excise:
 			case	tctax.indt.l.hse.cess.servic:		
-				rep.oexc = rep.oexc + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.oexc = scr.oexc + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break
 			case	tctax.indt.l.lst:	
 			case	tctax.indt.l.cst:	
 			case	tctax.indt.l.vat:	
 			case	tctax.indt.l.n.a:
-				rep.ocst = rep.ocst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.ocst = scr.ocst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break	
 			case tctax.indt.l.sgst:		|#ISGECGST002.sn
 			case tctax.indt.l.utgst:		
-				rep.sgst = rep.sgst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.sgst = scr.sgst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break
 			case tctax.indt.l.cgst:
-				rep.cgst = rep.cgst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.cgst = scr.cgst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break
 			case tctax.indt.l.igst:
-				rep.igst = rep.igst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.igst = scr.igst + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 				break			
 						|#ISGECGST002.en	
 			default:
-				rep.ostx = rep.ostx + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+				scr.ostx = scr.ostx + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 		endcase
 	endselect
 }
@@ -521,7 +487,7 @@ function Get_Landed_Cost(domain tcorno		im.orno,
 		and	tclct200.borf = :tmp.borf
 		order by tclct200._index1
 		selectdo
-			rep.lcst = rep.lcst + tclct200.lcam
+			scr.lcst = scr.lcst + tclct200.lcam
 		endselect
 	endselect	
 }
@@ -538,10 +504,9 @@ function boolean Get_Warehouse_Receipt(
 			domain	tcccty		in.ccty,
 			domain	tccvat		in.cvat,
 			domain	tcamnt		in.tasv.l,		
-			domain	tcamnt		in.tase.l,			|#ISGECDV001031.n
-			domain	tcamnt		in.tass.l,			|#ISGECDV001031.n
-		ref	domain	tcamnt		in.obsc,			|#ISGEC001175.n	
-		ref	domain	tcamnt		in.ogrs				|#ISGEC001125.n
+			domain	tcamnt		in.tase.l,			
+			domain	tcamnt		in.tass.l,			
+		ref	domain	tcamnt		in.ogrs				
 					)
 {
 	domain	tcpvat	r.eces.per
@@ -556,15 +521,11 @@ function boolean Get_Warehouse_Receipt(
 	domain	tcamnt	v.cess
 	domain	tcamnt	v.serv
 	domain	tcamnt	v.sces
-	domain	tcamnt	tot.rcpt		|#ISGEC001125.n
-	domain	tcamnt	tot.ogrs		|#ISGEC001125.n
-	domain	tcamnt	tot.rbsc		|#ISGEC001175.n
-	domain	tcamnt	tot.obsc		|#ISGEC001175.n
+	domain	tcamnt	tot.rcpt		
+	domain	tcamnt	tot.ogrs		
 	
-	tot.rcpt = 0				|#ISGEC001125.n
-	tot.ogrs = in.ogrs				|#ISGEC001125.n
-	tot.rbsc = 0				|#ISGEC001175.n
-	tot.obsc = in.obsc				|#ISGEC001175.n
+	tot.rcpt = 0				
+	tot.ogrs = in.ogrs				
 	select	whinh312.*, whinh310.stat, whinh310.dino
 	from	whinh312, whinh310
 	where	whinh312._index1 inrange {:in.rcno.f}	and	{:in.rcno.t}
@@ -572,22 +533,15 @@ function boolean Get_Warehouse_Receipt(
 	and	whinh312.ardt inrange :in.rcdt.f	and	:in.rcdt.t
 	and	whinh312.rcno refers to whinh310
 	selectdo
-		rep.rcno = whinh312.rcno
-		rep.rcln = whinh312.rcln
-		rep.rcdt = whinh312.ardt
-		rep.rqnt = whinh312.qrcr
-		rep.rbsc = in.pric * whinh312.qrcr
-		rep.rprc = in.pric
+		rep.rbsc = rep.rbsc + (in.pric * whinh312.qrcr)
+		scr.bval = 0
 		select	whisg312.inrq
 		from	whisg312
 		where	whisg312._index1 = {:whinh312.rcno, :whinh312.rcln}
 		selectdo
-			rep.blad = whisg312.inrq
-			get.billing.value(whisg312.inrq, whinh312.rcno, whinh312.rcln, rep.bval)
-		selectempty
-			rep.blad = ""
-			rep.bval = 0
+			get.billing.value(whisg312.inrq, whinh312.rcno, whinh312.rcln, scr.bval)
 		endselect
+		rep.bval = rep.bval + scr.bval
 			
 		r.eces.per = 0
 		r.cess.per = 0
@@ -601,33 +555,33 @@ function boolean Get_Warehouse_Receipt(
 		v.cess = 0
 		v.serv = 0
 		v.sces = 0
-		fwhinh936.found = false		|#ISGECDV001022.n
-| 		Get_GR_Supp_Invn(whinh310.dino, rep.isup, rep.grno)		|#ISGECDV001176.o
-		Get_GR_Supp_Invn(whinh310.dino, rep.isup, rep.grno, rep.grdt, rep.trnm)		|#ISGECDV001176.n
-		Calculate_Other_Charge(whinh312.rcno, whinh312.rcln, rep.roch)
-		
+		fwhinh936.found = false	
+		scr.roch = 0
+		scr.rexc = 0	
+		scr.rcst = 0	
+		scr.rstx = 0
+		scr.sgst = 0.00	|#ISGECGST002.sn
+		scr.cgst = 0.00
+		scr.igst = 0.00	|#ISGECGST002.en
+			
+		Calculate_Other_Charge(whinh312.rcno, whinh312.rcln, scr.roch)
+		rep.roch = rep.roch + scr.roch
 		on case whinh310.stat
 			case whinh.rhst.confirmed:
 				rep.rstt = "Confirmed"
-| 				get.tax.from.tfacp935(whinh312.rcno, whinh312.rcln, rep.rexc, rep.rcst, rep.rstx)	|#ISGEC001069.o
-														|#ISGEC001069.sn
 				get.tax.from.tfacp935(whinh312.rcno, whinh312.rcln, whinh312.orno, whinh312.pono,
-								whinh312.seqn, rep.rexc, rep.rcst, rep.rstx,
-								rep.rsgst, rep.rcgst, rep.rigst)	|#ISGECGST002.n
-														|#ISGEC001069.en
+								whinh312.seqn, scr.rexc, scr.rcst, scr.rstx,
+								scr.sgst, scr.cgst, scr.igst)	|#ISGECGST002.n
 				break
 			case whinh.rhst.open:
-				fwhinh936.found = false		|#ISGECDV001022.n
+				fwhinh936.found = false		
 				rep.rstt = "Open"
-				get.tax.from.whinh936(whinh312.rcno, whinh312.rcln, rep.rexc, rep.rcst, rep.rstx,
-							rep.rsgst, rep.rcgst, rep.rigst)	|#ISGECGST002.n
-| 				if	rep.rcst = 0	and	rep.rexc = 0	and	rep.rstx = 0	then		|#ISGECDV001022.o
-				if	fwhinh936.found = false		then		|#ISGECDV001022.n
+				get.tax.from.whinh936(whinh312.rcno, whinh312.rcln, scr.rexc, scr.rcst, scr.rstx,
+							scr.sgst, scr.cgst, scr.igst)	|#ISGECGST002.n
+				if	fwhinh936.found = false		then		
 					get.tax.rate(in.ccty, in.cvat, whinh312.ardt, r.eces.per, r.cess.per, r.cst.per, r.ser.per, r.sces.per,
-					r.sgst.per, r.cgst.per, r.igst.per)	|#ISGECGST002.n
+							r.sgst.per, r.cgst.per, r.igst.per)	|#ISGECGST002.n
 					|Excise
-| 					v.eces =  ((rep.rbsc * r.eces.per) / 100 )		|#ISGECDV001031.o
-												|#ISGECDV001032.sn
 					if	in.qoor <> 0	then
 						in.tase.l = (in.tase.l/in.qoor)* whinh312.qrcr
 						in.tass.l = (in.tass.l/in.qoor)* whinh312.qrcr
@@ -637,83 +591,72 @@ function boolean Get_Warehouse_Receipt(
 						in.tass.l = 0
 						tdpur401.tasg.l = 0.00
 					endif
-												|#ISGECDV001032.en
-					v.eces =  ((in.tase.l * r.eces.per) / 100 )		|#ISGECDV001031.n	
+					v.eces =  ((in.tase.l * r.eces.per) / 100 )			
 					v.cess = ((v.eces * r.cess.per) / 100) 
-					rep.rexc = rep.rexc + (v.eces + v.cess)
+					scr.rexc = scr.rexc + (v.eces + v.cess)
 					|Service
-| 					v.serv = ((rep.rbsc * r.ser.per) / 100)			|#ISGECDV001031.o
-					v.serv = ((in.tass.l * r.ser.per) / 100)		|#ISGECDV001031.n
+					v.serv = ((in.tass.l * r.ser.per) / 100)		
 					v.sces = ((v.serv * r.sces.per) / 100)
-					rep.rstx = rep.rstx + (v.serv + v.sces)
+					scr.rstx = scr.rstx + (v.serv + v.sces)
 					|CST / VAT				
 					if	in.qoor <> 0	then
 						in.tasv.l = (in.tasv.l/in.qoor)* whinh312.qrcr
 					else
 						in.tasv.l = 0
 					endif	
-					rep.rcst = ((in.tasv.l + rep.rexc) * r.cst.per) / 100
-					rep.rsgst = (rep.rsgst * r.sgst.per) / 100	|#ISGECGST002.sn
-					rep.rcgst = (rep.rcgst * r.cgst.per) / 100
-					rep.rigst = (rep.rigst * r.igst.per) / 100	|#ISGECGST002.en
+					scr.rcst = ((in.tasv.l + scr.rexc) * r.cst.per) / 100
+					scr.sgst = (scr.sgst * r.sgst.per) / 100	|#ISGECGST002.sn
+					scr.cgst = (scr.cgst * r.cgst.per) / 100
+					scr.igst = (scr.igst * r.igst.per) / 100	|#ISGECGST002.en
 				endif	
 				break	
 			default:
 				rep.rstt = "Open"
 				get.tax.rate(in.ccty, in.cvat, whinh312.ardt, r.eces.per, r.cess.per, r.cst.per, r.ser.per, r.sces.per,
-						r.sgst.per, r.cgst.per, r.igst.per)	|#ISGECGST002.n
+						scr.sgst, scr.cgst, scr.igst)	|#ISGECGST002.n
 				|Excise
-| 				v.eces =  ((rep.rbsc * r.eces.per) / 100 )		|#ISGECDV001031.o
-												|#ISGECDV001032.sn
 				if	in.qoor <> 0	then
 					in.tase.l = (in.tase.l/in.qoor)* whinh312.qrcr
 					in.tass.l = (in.tass.l/in.qoor)* whinh312.qrcr
-					tdpur401.tasg.l = (tdpur401.tasg.l/in.qoor)* tdpur406.qiap
+					tdpur401.tasg.l = (tdpur401.tasg.l/in.qoor)* whinh312.qrcr
 				else
 					in.tase.l = 0
 					in.tass.l = 0
 					tdpur401.tasg.l = 0.00
 				endif
-												|#ISGECDV001032.en
-				v.eces =  ((in.tase.l * r.eces.per) / 100 )		|#ISGECDV001031.n
+				v.eces =  ((in.tase.l * r.eces.per) / 100 )		
 				v.cess = ((v.eces * r.cess.per) / 100) 
-				rep.rexc = rep.rexc + (v.eces + v.cess)
+				scr.rexc = scr.rexc + (v.eces + v.cess)
 				|Service
-| 				v.serv = ((rep.rbsc * r.ser.per) / 100)			|#ISGECDV001031.o
-				v.serv = ((in.tass.l * r.ser.per) / 100)		|#ISGECDV001031.n
+				v.serv = ((in.tass.l * r.ser.per) / 100)		
 				v.sces = ((v.serv * r.sces.per) / 100)
-				rep.rstx = rep.rstx + (v.serv + v.sces)
+				scr.rstx = scr.rstx + (v.serv + v.sces)
 				|CST / VAT				
 				if	in.qoor <> 0	then
 					in.tasv.l = (in.tasv.l/in.qoor)* whinh312.qrcr
 				else
 					in.tasv.l = 0
 				endif	
-				rep.rcst = ((in.tasv.l + rep.rexc) * r.cst.per) / 100
-				rep.rsgst = (rep.rsgst * r.sgst.per) / 100	|#ISGECGST002.sn
-				rep.rcgst = (rep.rcgst * r.cgst.per) / 100
-				rep.rigst = (rep.rigst * r.igst.per) / 100	|#ISGECGST002.en
-		ENDCASE	
+				scr.rcst = ((in.tasv.l + scr.rexc) * r.cst.per) / 100
+				scr.sgst = (scr.sgst * r.sgst.per) / 100	|#ISGECGST002.sn
+				scr.cgst = (scr.cgst * r.cgst.per) / 100
+				scr.igst = (scr.igst * r.igst.per) / 100	|#ISGECGST002.en
+		ENDCASE
+		rep.rexc = rep.rexc + scr.rexc	
+		rep.rcst = rep.rcst + scr.rcst	
+		rep.rstx = rep.rstx + scr.rstx	
+		rep.rsgst = rep.rsgst + scr.sgst	|#ISGECGST002.sn
+		rep.rcgst = rep.rcgst + scr.cgst
+		rep.rigst = rep.rigst + scr.igst	|#ISGECGST002.en
 		rep.rgrs = (rep.rbsc + rep.roch + rep.rexc + rep.rcst + rep.rstx + rep.rcgst + rep.rsgst + rep.rigst)
 		
-							|#ISGEC001125.sn
-		if	rep.rgrs <> 0	then
-			tot.rcpt = tot.rcpt + rep.rgrs
-		endif
-		rep.rbal = tot.ogrs -  tot.rcpt	
-		in.ogrs = rep.rbal
-							|#ISGEC001125.en
-							|#ISGEC001175.sn
-		if	rep.rbsc <> 0	then
-			tot.rbsc = tot.rbsc + rep.rbsc
-		endif
-		rep.bbal = tot.obsc -  tot.rbsc	
-		in.obsc = rep.bbal
-							|#ISGEC001175.en
-| 		rep.bbal = rep.obsc - rep.rbsc			|#ISGECDV001192.n	|#ISGEC001175.o	
-		print.detail()
+		tot.rcpt = tot.rcpt + (in.pric * whinh312.qrcr) + scr.roch + scr.rexc + scr.rcst 
+				+ scr.rstx + rep.rcgst + rep.rsgst + rep.rigst
+		
+		scr.rbal = tot.ogrs -  tot.rcpt	
+		in.ogrs = scr.rbal
+				
 		receipt.found = true
-		Initialize_Variable_Multi_Receipt()
 	selectempty
 		return(false)	
 	endselect
@@ -732,10 +675,9 @@ function boolean Get_Purchase_Receipt(
 			domain	tcccty		in.ccty,
 			domain	tccvat		in.cvat,
 			domain	tcamnt		in.tasv.l,		
-			domain	tcamnt		in.tase.l,			|#ISGECDV001031.n
-			domain	tcamnt		in.tass.l,			|#ISGECDV001031.n
-		ref	domain	tcamnt		in.obsc, 			|#ISGEC001175.n		
-		ref	domain	tcamnt		in.ogrs				|#ISGEC001125.n
+			domain	tcamnt		in.tase.l,			
+			domain	tcamnt		in.tass.l,			
+		ref	domain	tcamnt		in.ogrs				
 					)
 {
 	domain	tcpvat	r.eces.per
@@ -750,15 +692,11 @@ function boolean Get_Purchase_Receipt(
 	domain	tcamnt	v.cess
 	domain	tcamnt	v.serv
 	domain	tcamnt	v.sces
-	domain	tcamnt	tot.rcpt		|#ISGEC001125.n
-	domain	tcamnt	tot.ogrs		|#ISGEC001125.n
-	domain	tcamnt	tot.rbsc		|#ISGEC001175.n
-	domain	tcamnt	tot.obsc		|#ISGEC001175.n
+	domain	tcamnt	tot.rcpt		
+	domain	tcamnt	tot.ogrs		
 	
-	tot.rcpt = 0			|#ISGEC001125.n
-	tot.ogrs = in.ogrs			|#ISGEC001125.n
-	tot.rbsc = 0				|#ISGEC001175.n
-	tot.obsc = in.obsc			|#ISGEC001175.n
+	tot.rcpt = 0			
+	tot.ogrs = in.ogrs			
 	select	tdpur406.*
 	from	tdpur406
 	where	tdpur406._index2 inrange {:in.rcno.f} and	{:in.rcno.t}
@@ -769,24 +707,14 @@ function boolean Get_Purchase_Receipt(
 					and	whinh312._index1 inrange {:in.rcno.f} and	{:in.rcno.t}
 					and	whinh312.ardt inrange	:in.rcdt.f	and	:in.rcdt.t)
 	selectdo	
-		rep.rcno = tdpur406.rcno	
-		rep.rcln = tdpur406.rseq
-		rep.rcdt = tdpur406.ddte
-		rep.rqnt = tdpur406.qiap	
+		scr.bval = 0	
 		select	whisg312.inrq
 		from	whisg312
 		where	whisg312._index1 = {:tdpur406.rcno, :tdpur406.rseq}
 		selectdo
-			rep.blad = whisg312.inrq
-			get.billing.value(whisg312.inrq, tdpur406.rcno, tdpur406.rseq, rep.bval)
-		selectempty
-			rep.blad = ""
-			rep.bval = 0
+			get.billing.value(whisg312.inrq, tdpur406.rcno, tdpur406.rseq, scr.bval)
 		endselect
-		
-		
-| 		Get_GR_Supp_Invn(tdpur406.dino, rep.isup, rep.grno)		|#ISGECDV001176.o
-		Get_GR_Supp_Invn(tdpur406.dino, rep.isup, rep.grno, rep.grdt, rep.trnm)		|#ISGECDV001176.n
+		rep.bval = rep.bval + scr.bval
 		v.eces = 0
 		v.cess = 0
 		r.eces.per = 0
@@ -800,25 +728,27 @@ function boolean Get_Purchase_Receipt(
 		v.serv = 0
 		v.sces = 0
 		
-		rep.rbsc = (tdpur406.qiap * in.pric)
-		rep.rprc = in.pric
-		Calculate_Other_Charge(tdpur406.rcno, tdpur406.rseq, rep.roch)
+		rep.rbsc = rep.rbsc + (tdpur406.qiap * in.pric)
+		
+		scr.roch = 0
+		scr.rexc = 0
+		scr.rcst = 0
+		scr.rstx = 0
+		scr.sgst = 0.00	|#ISGECGST002.sn
+		scr.cgst = 0.00
+		scr.igst = 0.00	|#ISGECGST002.en
+		Calculate_Other_Charge(tdpur406.rcno, tdpur406.rseq, scr.roch)
+		rep.roch = rep.roch + scr.roch
 		
 		if	tdpur406.conf = tcyesno.yes	then
 			rep.rstt = "Confirmed"
-| 			get.tax.from.tfacp935(tdpur406.rcno, tdpur406.rseq, rep.rexc, rep.rcst, rep.rstx)	|#ISGEC001069.o
-												|#ISGEC001069.sn
 			get.tax.from.tfacp935(tdpur406.rcno, tdpur406.rseq, tdpur406.orno,
-						tdpur406.pono, tdpur406.sqnb, rep.rexc, rep.rcst, rep.rstx,
-						rep.rsgst, rep.rcgst, rep.rigst)		|#ISGECGST002.n
-												|#ISGEC001069.en
+						tdpur406.pono, tdpur406.sqnb, scr.rexc, scr.rcst, scr.rstx,
+						scr.rexc, scr.rexc, scr.rexc)	|#ISGECGST002.n
 		else
 			rep.rstt = "Open"
 			get.tax.rate(in.ccty, in.cvat, tdpur406.ddte, r.eces.per, r.cess.per, r.vat.per, r.ser.per, r.sces.per,
 					r.sgst.per, r.cgst.per, r.igst.per)	|#ISGECGST002.n
-				
-| 			v.eces =  ( (rep.rbsc * r.eces.per) / 100 )		|#ISGECDV001031.o
-								|#ISGECDV001032.sn
 			if	in.qoor <> 0	then
 				in.tase.l = (in.tase.l/in.qoor)* tdpur406.qiap
 				in.tass.l = (in.tass.l/in.qoor)* tdpur406.qiap
@@ -826,51 +756,40 @@ function boolean Get_Purchase_Receipt(
 			else
 				in.tase.l = 0
 				in.tass.l = 0
-				tdpur401.tasg.l = 0
+				tdpur401.tasg.l = 0.00
 			endif
-										|#ISGECDV001032.en
-			v.eces =  ( (in.tase.l * r.eces.per) / 100 )		|#ISGECDV001031.n
+			v.eces =  ( (in.tase.l * r.eces.per) / 100 )		
 			v.cess = (v.eces * r.cess.per) / 100 
-			rep.rexc = rep.rexc + (v.eces + v.cess)
-			
-| 			v.serv = ((rep.rbsc * r.ser.per) /100)			|#ISGECDV001031.o
-			v.serv = ((in.tass.l * r.ser.per) /100)			|#ISGECDV001031.n
+			scr.rexc = scr.rexc + (v.eces + v.cess)
+
+			v.serv = ((in.tass.l * r.ser.per) /100)			
 			v.sces = ((v.serv * r.sces.per) /100)
-			rep.rstx = rep.rstx + (v.serv + v.sces)
+			scr.rstx = scr.rstx + (v.serv + v.sces)
 					
 			if	in.qoor <> 0	then
 				in.tasv.l = (in.tasv.l/in.qoor) * tdpur406.qiap
 			else
 				in.tasv.l = 0
 			endif	
-			rep.rcst = ((in.tasv.l + rep.rexc) * r.vat.per) / 100
-			
-			rep.rsgst = (rep.rsgst * r.sgst.per) / 100	|#ISGECGST002.sn
-			rep.rcgst = (rep.rcgst * r.cgst.per) / 100
-			rep.rigst = (rep.rigst * r.igst.per) / 100	|#ISGECGST002.en
+			scr.rcst = ((in.tasv.l + scr.rexc) * r.vat.per) / 100
+			scr.sgst = (scr.sgst * r.sgst.per) / 100	|#ISGECGST002.sn
+			scr.cgst = (scr.cgst * r.cgst.per) / 100
+			scr.igst = (scr.igst * r.igst.per) / 100	|#ISGECGST002.en
 		endif	
+		rep.rexc = rep.rexc + scr.rexc
+		rep.rcst = rep.rcst + scr.rcst
+		rep.rstx = rep.rstx + scr.rstx
+		rep.rsgst = rep.rsgst + scr.sgst	|#ISGECGST002.sn
+		rep.rcgst = rep.rcgst + scr.cgst
+		rep.rigst = rep.rigst + scr.igst	|#ISGECGST002.en
 		
-		rep.rgrs = (rep.rbsc + rep.rexc + rep.rcst + rep.roch + rep.rstx + 
-				rep.rsgst + rep.rcgst + rep.rigst)	|#ISGECGST002.n
-			
-							|#ISGEC001125.sn
-		if	rep.rgrs <> 0	then
-			tot.rcpt = tot.rcpt + rep.rgrs
-		endif
-		rep.rbal = tot.ogrs -  tot.rcpt
-		in.ogrs = rep.rbal	
-							|#ISGEC001125.en
-							|#ISGEC001175.sn
-		if	rep.rbsc <> 0	then
-			tot.rbsc = tot.rbsc + rep.rbsc
-		endif
-		rep.bbal = tot.obsc -  tot.rbsc
-		in.obsc = rep.bbal	
-							|#ISGEC001175.en
-| 		rep.bbal = rep.obsc - rep.rbsc			|#ISGECDV001192.n	|#ISGEC001175.n
-		print.detail()
-		receipt.found = true
-		Initialize_Variable_Multi_Receipt()	
+		rep.rgrs = (rep.rbsc + rep.rexc + rep.rcst + rep.roch + rep.rstx + rep.rcgst + rep.rsgst + rep.rigst)
+		tot.rcpt = tot.rcpt + (tdpur406.qiap * in.pric) + scr.roch + scr.rexc + scr.rcst + 
+				scr.rstx + scr.cgst + scr.sgst + scr.igst
+		
+		scr.rbal = tot.ogrs -  tot.rcpt
+		in.ogrs = scr.rbal	
+		receipt.found = true	
 	selectempty
 		return(false)
 	endselect
@@ -906,9 +825,9 @@ function get.tax.rate(
 		ref	domain	tcpvat	o.vat.per,
 		ref	domain	tcpvat	o.serv.per,
 		ref	domain	tcpvat	o.sces.per,
-		ref	domain	tcpvat	o.sgst.per,	|#ISGECGST002.sn
+		ref	domain	tcpvat	o.sgst.per,
 		ref	domain	tcpvat	o.cgst.per,
-		ref	domain	tcpvat	o.igst.per	|#ISGECGST002.en
+		ref	domain	tcpvat	o.igst.per
 			)
 {
 	o.eces.per = 0 
@@ -917,7 +836,7 @@ function get.tax.rate(
 	o.serv.per = 0
 	o.sces.per = 0
 	o.sgst.per = 0.00	|#ISGECGST002.sn
-	o.cgst.per = 0.00
+	o.cgst.per = 0.00	
 	o.igst.per = 0.00	|#ISGECGST002.en
 	
 	select 	tctax941.ccty, tctax941.cvat
@@ -959,7 +878,7 @@ function get.tax.rate(
 					break
 				case tctax.indt.l.igst:	
 					o.igst.per = o.igst.per + get.rate.from.tcmcs032(tcmcs036.ccty, tcmcs036.cvat, i.ddte)
-					break			|#ISGECGST002.en
+					break			|#ISGECGST002.en	
 			ENDCASE		
 		endselect
 	endselect	
@@ -992,9 +911,9 @@ function domain tcpvat get.rate.from.tcmcs032(
 function get.tax.from.tfacp935(
 			domain	tcorno	i.rcno,
 			domain	tcpono	i.rcln,
-			domain	tcorno	i.orno,			|#ISGEC001069.n
-			domain	tcpono	i.pono,			|#ISGEC001069.n
-			domain	tcpono	i.sqnb,			|#ISGEC001069.n
+			domain	tcorno	i.orno,			
+			domain	tcpono	i.pono,			
+			domain	tcpono	i.sqnb,			
 		ref	domain	tcamnt	o.rexc.amnt,
 		ref	domain	tcamnt	o.rcst.amnt,
 		ref	domain	tcamnt	o.ser.amnt,
@@ -1017,9 +936,9 @@ function get.tax.from.tfacp935(
 	from	tfacp935
 	where	tfacp935.rcno = :i.rcno
 	and	tfacp935.rseq = :i.rcln
-	and	tfacp935.orno = :i.orno			|#ISGEC001069.n
-	and	tfacp935.pono = :i.pono			|#ISGEC001069.n
-	and	tfacp935.sqnb = :i.sqnb			|#ISGEC001069.n
+	and	tfacp935.orno = :i.orno			
+	and	tfacp935.pono = :i.pono			
+	and	tfacp935.sqnb = :i.sqnb			
 	group by tfacp935.ccty, tfacp935.cvat
 	selectdo
 		select	tcmcs036.indt.l
@@ -1059,7 +978,7 @@ function get.tax.from.tfacp935(
 				case 42:			|IGST
 					o.rigst = o.rigst + amount
 					break			
-									|#ISGECGST002.en
+									|#ISGECGST002.en	
 			endcase
 		endselect
 	endselect
@@ -1108,7 +1027,7 @@ function get.tax.from.whinh936(
 	where	whinh936._index1 = {:in.rcno, :in.rcln}
 	group by whinh936.rcno,whinh936.taxc,whinh936.pvat
 	selectdo
-		fwhinh936.found = true		|#ISGECDV001022.n
+		fwhinh936.found = true		
 		select	tcmcs036.indt.l
 		from	tcmcs036
 		where	tcmcs036._index1 = {"IN", :whinh936.taxc}
@@ -1119,7 +1038,7 @@ function get.tax.from.whinh936(
 				case 10:			|Countervailing Duty
 				case 14:			|ECess CVD
 				case 15:			|ECess on Custom
-				case 17:			|Ecess on Excise
+				case 17:			|Ecess on ExcExcise
 				case 19:			|SHE Cess on CVD
 				case 20:			|SHE Cess on Excise
 				case 22:			|SHE Cess on Custom
@@ -1152,134 +1071,42 @@ function get.tax.from.whinh936(
 	endselect
 }
 
-function Get_GR_Supp_Invn(
-			domain	tcibd.sern	in.dino,
-		ref	domain	tfacp.isup	ot.isup,
-		ref	domain	tcmcs.str215m	ot.grno,
-		ref	domain	tcmcs.str215m	ot.grdt,		|#ISGECDV001176.n
-		ref	domain	tcmcs.str256m	ot.trnm			|#ISGECDV001176.n
-			)
-{
-	long	cnt.rec
-	ot.isup = ""
-	ot.grno = ""
-	ot.grdt = ""			|#ISGECDV001176.n
-	ot.trnm = ""			|#ISGECDV001176.n
-	
-	select	tfisg001.irno, tfacp100.isup
-	from	tfisg001, tfacp100
-	where	tfisg001._index1 = {:1}
-	and	tfisg001.irno refers to tfacp100 Unref Clear
-	as set with 1 rows
-	wherebind(1, lval(in.dino))
-	selectdo
-		ot.isup = trim$(tfacp100.isup)
-		cnt.rec  = 0
-		select	tfisg002.grno,
-			tfisg002.grdt, tfisg003.otbp, tfisg003.bpnm, tfisg003.bpid		|#ISGECDV001176.n
-		from	tfisg002, tfisg003				|#ISGECDV001176.n
-		where	tfisg002._index1 = {:tfisg001.irno}
-		and	tfisg002.cmbb refers to tfisg003 		|#ISGECDV001176.n
-		selectdo
-			cnt.rec = cnt.rec + 1
-			if	cnt.rec = 1	then
-				ot.grno = trim$(tfisg002.grno)
-												|#ISGECDV001176.sn
-				ot.grdt = sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt)
-				if	tfisg003.otbp = tcyesno.yes	then
-					ot.trnm = trim$(tfisg003.bpnm)
-				else
-					ot.trnm = trim$(Get_BP_Name(tfisg003.bpid))
-				endif	
-												||#ISGECDV001176.en
-			else
-				ot.grno = trim$(ot.grno) & ", " & trim$(tfisg002.grno)
-															|#ISGECDV001176.sn
-				ot.grdt = trim$(ot.grdt) & ", " & trim$(sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt))
-				if	tfisg003.otbp = tcyesno.yes	then
-					ot.trnm = trim$(ot.trnm) & ", " & trim$(tfisg003.bpnm)
-				else
-					ot.trnm = trim$(ot.trnm) & ", " & trim$(Get_BP_Name(tfisg003.bpid))
-				endif
-															|#ISGECDV001176.en
-			endif	
-		endselect
-	endselect
-}
-
-						|#ISGECDV001176.sn
-function domain tcnama Get_BP_Name(
-				domain	tcnama	i.bpid
-				)
-{
-	domain	tcnama	tbp.nama
-	
-	tbp.nama = ""
-	select	bp_tccom100.nama:tbp.nama
-	from	tccom100 bp_tccom100
-	where	bp_tccom100._index1 = {:i.bpid}
-	selectdo
-	endselect
-	
-	return(tbp.nama)
-}
-						|#ISGECDV001176.en
 
 function	generate.header()
 {
 	line4 =	concat$("	",
 		sprintf$("PO Number"),					|1		
-		sprintf$("Supplier"),					|2		|#ISGECDV001027.n
-		sprintf$("Name"),					|3		|#ISGECDV001027.n
-		sprintf$("Buyer"),					|4		|#ISGEC001069.n
-		sprintf$("Buyer Name"),				|5		|#ISGEC001069.n
-		sprintf$("Position"),					|6
-		sprintf$("Warehouse"),					|6.1		|GH431CR774.a
-		sprintf$("Order Date"),				|7
-		sprintf$("Currency"),					|7.1		|#ISGEC015087.n
-		sprintf$("Order Status"),				|8		|#ISGEC001087.n
-		sprintf$("Delivery Date"),				|9		|#ISGEC001069.n
-		sprintf$("Item"),					|10
-		sprintf$("Description"),		  		|11
-		sprintf$("HSN/SAC Code"),		  		|11.A	|#ISGECGST002.n
-		sprintf$("Project"),					|12
-		sprintf$("Description"),			  	|13
-		sprintf$("Element"),					|14
-		sprintf$("Description"),			        |15
-		sprintf$("Quantity"),					|16
-		sprintf$("Price"),					|17
-		sprintf$("Basic Value"),				|18
-		sprintf$("Excise"),					|19	
-		sprintf$("CST/VAT"),					|20
-		sprintf$("S. Tax"),					|21
-		sprintf$("IGST"),					|21.A	|#ISGECGST002.sn
-		sprintf$("CGST"),					|21.B
-		sprintf$("SGST/UTGST"),				|21.C	|#ISGECGST002.en
-		sprintf$("Landed Cost"),				|22
-		sprintf$("Gross Value"),				|23
-		sprintf$("Receipt No."),				|24
-		sprintf$("Receipt Position"),				|25
-		sprintf$("Receipt Date"),				|26
-		sprintf$("Supplier Invoice"),				|27
-		sprintf$("GR Number"),					|28
-		sprintf$("GR Date"),					|29			|#ISGECDV001176.n
-		sprintf$("Transporter Name"),				|30			|#ISGECDV001176.n
-		sprintf$("Receipt Quantity"),				|31	
-		sprintf$("Receipt Price"),				|32	
-		sprintf$("Receipt Basic Amount"),			|33
-		sprintf$("Excise Duty"),				|34
-		sprintf$("CST/VAT"),					|35
-		sprintf$("Service Tax"),				|36
-		sprintf$("Receipt IGST"),				|36.A	|#ISGECGST002.sn
-		sprintf$("Receipt CGST"),				|36.B	
-		sprintf$("Receipt SGST/UTGST"),			|36.C	|#ISGECGST002.en
-		sprintf$("Other Charge"),				|37
-		sprintf$("Gross Amount"),				|38
-		sprintf$("Basic Balance Amount"),			|39			|#ISGECDV001192.n
-		sprintf$("Receipt Balance Amount"),			|40			|#ISGEC001125.n
-		sprintf$("Receipt Status"),				|41
-		sprintf$("Billing Advice"),				|42
-		sprintf$("Billing Value"))				|43											
+		sprintf$("Supplier"),					|2		
+		sprintf$("Name"),					|3		
+		sprintf$("Supplier GSTIN"),				|3.A	|#ISGECGST002.n		
+		sprintf$("Buyer"),					|4		
+		sprintf$("Buyer Name"),				|5		
+		sprintf$("Order Date"),				|6
+		sprintf$("Currency"),					|7.1		|#ISGEC015087.n		
+		sprintf$("Order Status"),				|7
+		sprintf$("Delivery Date"),				|8		
+		sprintf$("Basic Value"),				|9
+		sprintf$("Excise"),					|10	
+		sprintf$("CST/VAT"),					|11
+		sprintf$("S. Tax"),					|12
+		sprintf$("IGST"),					|12.A	|#ISGECGST002.sn
+		sprintf$("CGST"),					|12.B
+		sprintf$("SGST/UTGST"),				|12.C	|#ISGECGST002.en
+		sprintf$("Landed Cost"),				|13
+		sprintf$("Gross Value"),				|14
+		sprintf$("Receipt Basic Amount"),			|15
+		sprintf$("Excise Duty"),				|16
+		sprintf$("CST/VAT"),					|17
+		sprintf$("Service Tax"),				|18
+		sprintf$("Receipt IGST"),				|18.A	|#ISGECGST002.sn
+		sprintf$("Receipt CGST"),				|18.B	
+		sprintf$("Receipt SGST/UTGST"),			|18.C	|#ISGECGST002.en
+		sprintf$("Other Charge"),				|19
+		sprintf$("Gross Amount"),				|20
+		sprintf$("PO Basic Balance Amount"),			|21		|#ISGECDV001192.n			
+		sprintf$("PO Balance Amount"),				|22			
+		sprintf$("Billing Value"),				|23											
+		sprintf$("Consumption Percentage"))			|24		|#ISGECDV001164.n											
 		
 	line4 = strip$(shiftl$(line4))		
 	seq.puts(line4, stat.fp)	
@@ -1289,57 +1116,37 @@ function	print.detail()
 {	
 	line3 =	concat$("	",
 		sprintf$("%s", rep.orno),				|1
-		sprintf$("%s", rep.otbp),				|2				|#ISGECDV001027.n
-		sprintf$("%s", rep.nama),				|3				|#ISGECDV001027.n
-		sprintf$("%s", rep.buyr),				|4				|#ISGEC001069.n
-		sprintf$("%s", rep.bynm),				|5				|#ISGEC001069.n
-		sprintf$("%d", rep.pono),				|6
-		sprintf$("%s", rep.cwar),				|6.1				|GH431CR774.a
-		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|7
-		sprintf$("%s", rep.ccur),				|7.1				|# ISGEC015087.n
-		sprintf$("%s", rep.hdst),				|8				|#ISGEC001087.n
-		sprintf$("%u(%02d/%02m/%04Y)", rep.ddta),		|9				|#ISGEC001069.n
-		sprintf$("%s", rep.item),				|10
-		sprintf$("%s", rep.itdsc),				|11
-		sprintf$("%s", rep.hcod),				|11.A	|#ISGECGST002.n
-		sprintf$("%s", rep.cprj),				|12	
-		sprintf$("%s", rep.pjdsc),				|13
-		sprintf$("%s", rep.cspa),				|14
-		sprintf$("%s", rep.eldsc),				|15
-		sprintf$("%f", rep.oqnt),				|16
-		sprintf$("%f", rep.oprc),				|17
-		sprintf$("%f", rep.obsc),				|18
-		sprintf$("%f", rep.oexc),				|19
-		sprintf$("%f", rep.ocst),				|20
-		sprintf$("%f", rep.ostx),				|21
-		sprintf$("%f", rep.igst),				|21.A	|#ISGECGST002.sn
-		sprintf$("%f", rep.cgst),				|21.B	
-		sprintf$("%f", rep.sgst),				|21.C	|#ISGECGST002.en
-		sprintf$("%f", rep.lcst),				|22
-		sprintf$("%f", rep.ogrs),				|23
-		sprintf$("%s", rep.rcno),				|24
-		sprintf$("%d", rep.rcln),				|25
-		sprintf$("%u(%02d/%02m/%04Y)", rep.rcdt),		|26
-		sprintf$("%s", rep.isup),				|27
-		sprintf$("%s", rep.grno),				|28
-		sprintf$("%s", rep.grdt),				|29		|#ISGECDV001176.n
-		sprintf$("%s", rep.trnm),				|30		|#ISGECDV001176.n
-		sprintf$("%f", rep.rqnt),				|31
-		sprintf$("%f", rep.rprc),				|32
-		sprintf$("%f", rep.rbsc),				|33
-		sprintf$("%f", rep.rexc),				|34
-		sprintf$("%f", rep.rcst),				|35
-		sprintf$("%f", rep.rstx),				|36
-		sprintf$("%f", rep.rigst),				|36.A	|#ISGECGST002.sn
-		sprintf$("%f", rep.rcgst),				|36.B	
-		sprintf$("%f", rep.rsgst),				|36.C	|#ISGECGST002.en
-		sprintf$("%f", rep.roch),				|37
-		sprintf$("%f", rep.rgrs),				|38
-		sprintf$("%f", rep.bbal),				|39			|#ISGECDV001192.n
-		sprintf$("%f", rep.rbal),				|40			|#ISGEC001125.n
-		sprintf$("%s", rep.rstt),				|41
-		sprintf$("%s", rep.blad),				|42
-		sprintf$("%f", rep.bval))				|43
+		sprintf$("%s", rep.otbp),				|2				
+		sprintf$("%s", rep.nama),				|3				
+		sprintf$("%s", rep.gstn.b.no),				|3.A	|#ISGECGST002.n				
+		sprintf$("%s", rep.buyr),				|4				
+		sprintf$("%s", rep.bynm),				|5				
+		sprintf$("%u(%02d/%02m/%04Y)", rep.odat),		|6
+		sprintf$("%s", rep.ccur),				|7.1				|# ISGEC015087.n		
+		sprintf$("%s", rep.hdst),				|7
+		sprintf$("%u(%02d/%02m/%04Y)", rep.ddta),		|8				
+		sprintf$("%f", rep.obsc),				|9
+		sprintf$("%f", rep.oexc),				|10
+		sprintf$("%f", rep.ocst),				|11
+		sprintf$("%f", rep.ostx),				|12
+		sprintf$("%f", rep.igst),				|12.A	|#ISGECGST002.sn
+		sprintf$("%f", rep.cgst),				|12.B	
+		sprintf$("%f", rep.sgst),				|12.C	|#ISGECGST002.en
+		sprintf$("%f", rep.lcst),				|13
+		sprintf$("%f", rep.ogrs),				|14
+		sprintf$("%f", rep.rbsc),				|15
+		sprintf$("%f", rep.rexc),				|16
+		sprintf$("%f", rep.rcst),				|17
+		sprintf$("%f", rep.rstx),				|18
+		sprintf$("%f", rep.rigst),				|18.A	|#ISGECGST002.sn
+		sprintf$("%f", rep.rcgst),				|18.B	
+		sprintf$("%f", rep.rsgst),				|18.C	|#ISGECGST002.en
+		sprintf$("%f", rep.roch),				|19
+		sprintf$("%f", rep.rgrs),				|20
+		sprintf$("%f", rep.bbal),				|21		|#ISGECDV001192.n			
+		sprintf$("%f", rep.rbal),				|22			
+		sprintf$("%f", rep.bval),				|23
+		sprintf$("%f", rep.cnpr))				|24
 	
 		line3 = strip$(shiftl$(line3))
 		seq.puts(line3, stat.fp)
@@ -1348,89 +1155,31 @@ function	print.detail()
 function Initialize_Variable()
 {
 	rep.orno = ""				|1
-	rep.otbp = ""				|2				|#ISGECDV001027.n
-	rep.nama = ""				|3				|#ISGECDV001027.n
-	rep.buyr = ""				|4				|#ISGEC001069.n
-	rep.bynm = ""				|5				|#ISGEC001069.n
-	rep.pono = 0				|6
-	rep.cwar = ""				|6.1				|GH431CR774.a
-	rep.odat = 0				|7
-	rep.ccur = ""				|7.1				|#ISGEC015087.n
-	rep.hdst = ""				|8				|#ISGEC001087.n
-	rep.ddta = 0				|9				|#ISGEC001069.n
-	rep.item = ""				|10
-	rep.itdsc = ""				|11
-	rep.cprj = ""				|12	
-	rep.pjdsc = ""				|13
-	rep.cspa = ""				|14
-	rep.eldsc = ""				|15
-	rep.oqnt = 0				|16
-	rep.oprc = 0				|17
-	rep.obsc = 0				|18
-	rep.oexc = 0				|19
-	rep.ocst = 0				|20
-	rep.ostx = 0				|21
-	rep.lcst = 0				|22
-	rep.ogrs = 0				|23
-	rep.rcno = ""				|24
-	rep.rcln = 0				|25
-	rep.rcdt = 0				|26
-	rep.isup = ""				|27
-	rep.grno = ""				|28
-	rep.grdt = ""				|29			|#ISGECDV001176.n
-	rep.trnm = ""				|30			|#ISGECDV001176.n
-	rep.rqnt = 0				|31
-	rep.rprc = 0				|32
-	rep.rbsc = 0				|33
-	rep.rexc = 0				|34
-	rep.rcst = 0				|35
-	rep.rstx = 0				|36
-	rep.roch = 0				|37
-	rep.rgrs = 0				|38
-	rep.bbal = 0				|39			|#ISGECDV001192.n
-	rep.rbal = 0				|40			|#ISGEC001125.n
-	rep.rstt = ""				|41
-	rep.blad = ""				|42
-	rep.bval = 0				|43
-	rep.sgst = 0.00		|#ISGECGST002.sn
-	rep.cgst = 0.00
-	rep.igst = 0.00
-	rep.rsgst = 0.00
-	rep.rcgst = 0.00
-	rep.rigst = 0.00	|#ISGECGST002.en
-}
-
-function Initialize_Variable_Multi_Receipt()
-{
-	rep.oqnt = 0				|16
-	rep.oprc = 0				|17
-	rep.obsc = 0				|18
-	rep.oexc = 0				|19
-	rep.ocst = 0				|20
-	rep.ostx = 0				|21
-	rep.lcst = 0				|22
-	rep.ogrs = 0				|23
-	rep.rcno = ""				|24
-	rep.rcln = 0				|25
-	rep.rcdt = 0				|26
-	rep.isup = ""				|27
-	rep.grno = ""				|28
-	rep.grdt = ""				|29			|#ISGECDV001176.n
-	rep.trnm = ""				|30			|#ISGECDV001176.n
-	rep.rqnt = 0				|31
-	rep.rprc = 0				|32
-	rep.rbsc = 0				|33
-	rep.rexc = 0				|34
-	rep.rcst = 0				|35
-	rep.rstx = 0				|36
-	rep.roch = 0				|37
-	rep.rgrs = 0				|38
-	rep.bbal = 0				|39			|#ISGECDV001192.n
-	rep.rbal = 0				|40			|#ISGEC001125.n
-	rep.rstt = ""				|41
-	rep.blad = ""				|42
-	rep.bval = 0				|43
-	
+	rep.otbp = ""				|2				
+	rep.nama = ""				|3				
+	rep.buyr = ""				|4				
+	rep.bynm = ""				|5				
+	rep.odat = 0				|6
+	rep.hdst = ""				|7
+	rep.ccur = ""				|7.1				|#ISGEC015087.n	
+	rep.ddta = 0				|8				
+	rep.oprc = 0				|
+	rep.obsc = 0				|9
+	rep.oexc = 0				|10
+	rep.ocst = 0				|11
+	rep.ostx = 0				|12
+	rep.lcst = 0				|13
+	rep.ogrs = 0				|14
+	rep.rbsc = 0				|15
+	rep.rexc = 0				|16
+	rep.rcst = 0				|17
+	rep.rstx = 0				|18
+	rep.roch = 0				|19
+	rep.rgrs = 0				|20
+	rep.bbal = 0				|21			|#ISGECDV001192.n			
+	rep.rbal = 0				|22			
+	rep.bval = 0				|23
+	rep.cnpr = 0				|24
 	rep.sgst = 0.00		|#ISGECGST002.sn
 	rep.cgst = 0.00
 	rep.igst = 0.00
@@ -1475,7 +1224,7 @@ function close.file()
 	ret2 = app_start(file.name,"c:","","","")
 }
 
-function get.po.date()								|#ISGEC01072.sn
+function get.po.date()							|#ISGEC01072.sn
 {
 	select	tdmsl400.apdt
 	from	tdmsl400
@@ -1485,4 +1234,4 @@ function get.po.date()								|#ISGEC01072.sn
 	selectempty
 		tdmsl400.apdt = 0
 	endselect	
-}										|#ISGEC01072.en
+}									|#ISGEC01072.en
