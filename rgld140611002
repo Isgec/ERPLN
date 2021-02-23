@@ -216,6 +216,8 @@
 |* Initialize the variable former.prod when the ledger account changes.
 |* Otherwise the detail.2 (with the opening balance) will only be printed for
 |* the first ledger account in the range.
+|* MERINO001001-76066-16-12-2020,Sanjeev kumar, added Shorting of tfgld106.dcdt on 6th seq in input field
+|* correction for balances of each records.
 |******************************* DECLARATION SECTION **************************
 declaration:
 								|#BRQ001113.so
@@ -280,7 +282,6 @@ before.program:
 	where	tcemm170._index1 = :comp
 	selectdo
 	endselect
-	
 |**************************** before.tfgld106.leac.10 *************************
 |before.tfgld106.leac.1:					|#BRQ001113.o
 before.tfgld106.leac.10:					|#BRQ001113.n
@@ -319,7 +320,15 @@ before.layout:
 	else
 		tot.year.cr = tot.year.cr + abs(open.bal)
 	endif
-
+	
+	if lattr.break then					|#MERINO001001.sn
+		balance = (open.bal)
+	endif
+	if balance >= 0 then
+		debit.credit1 = "Dr"
+	else
+		debit.credit1 = "Cr"
+	endif							|#MERINO001001.en
 |**************************** before.tfgld106.leac.30 *************************
 								|#BRQ001113.so
 |before.tfgld106.leac.3:					|#201116.sn
@@ -339,6 +348,9 @@ before.layout:
 	i = 0			|Mk.n
 	k = 0 
 	j = 0
+	if lattr.break then					|#MERINO001001.sn
+		balance = (open.bal)
+	endif							|#MERINO001001.en
 
 after.layout:
 |	if hold.leac <> tfgld106.leac then			|#226274.o
@@ -372,6 +384,14 @@ before.layout:
 	else
 		tot.year.cr = tot.year.cr + abs(open.bal)
 	endif							|#Gen_Nor.en
+	if lattr.break then					|#MERINO001001.sn
+		balance = (open.bal)
+	endif
+	if balance >= 0 then
+		debit.credit1 = "Dr"
+	else
+		debit.credit1 = "Cr"
+	endif							|#MERINO001001.en
 	
 |**************************** before.tfgld106.leac.50 *************************
 								|#BRQ001113.so
@@ -510,7 +530,7 @@ before.layout:
 	close.bal.credit = open.bal.credit + amntcr.upto.curr + amntcr.curr
 
  	close.bal = close.bal.debit - close.bal.credit		|#226274.en
-
+	
 |******************************** detail.20 ***********************************
 								|#BRQ001113.so
 |detail.2:							|#223936.sn
@@ -741,17 +761,24 @@ before.layout:
 	selectdo
 		if tfgld106.dbcr = tfgld.dbcr.debit then			
 			v.debit = tfgld106.amth(1)
-			balance = abs(balance) - v.debit
+| 			balance = abs(balance) - v.debit	|#MERINO001001.o
+			balance = (balance) + v.debit		|#MERINO001001.n
 		else
 			v.credit = tfgld106.amth(1)
-			balance = abs(balance) + v.credit
+| 			balance = abs(balance) + v.credit	|#MERINO001001.o
+			balance = (balance) - v.credit		|#MERINO001001.n
 		endif
-		if balance < 0 then
+| 		if balance < 0 then				|#MERINO001001.so
+| 			debit.credit = "Dr"
+| 		else
+| 			debit.credit = "Cr"
+| 		endif						|#MERINO001001.eo
+		if balance > 0 then				|#MERINO001001.sn
 			debit.credit = "Dr"
 		else
 			debit.credit = "Cr"
-		endif
-		balance = abs(balance)
+		endif						|#MERINO001001.en
+| 		balance = abs(balance)				|#MERINO001001.o
 	endselect				
 			
 detail.41:
@@ -1341,11 +1368,16 @@ functions:
 
 function set.debit.credit()
 {
-	if balance < 0 then
+| 	if balance < 0 then			|#MERINO001001.so
+| 		debit.credit = "Dr"
+| 	else
+| 		debit.credit = "Cr"
+| 	endif					|#MERINO001001.eo
+	if balance > 0 then			|#MERINO001001.sn
 		debit.credit = "Dr"
 	else
 		debit.credit = "Cr"
-	endif
+	endif					|#MERINO001001.en
 }
 
 function set.company()
@@ -1376,10 +1408,12 @@ function fin_nonfin()
 
 	if tfgld106.dbcr = tfgld.dbcr.debit then			
 		v.debit = tfgld106.amth(el.no)
-		balance = abs(balance) - v.debit
+| 		balance = abs(balance) - v.debit		|#MERINO001001.o
+		balance = (balance) + v.debit			|#MERINO001001.n
 	else
 		v.credit = tfgld106.amth(el.no)
-		balance = abs(balance) + v.credit
+| 		balance = abs(balance) + v.credit		|#MERINO001001.o
+		balance = (balance) - v.credit			|#MERINO001001.n
 	endif
 | 	balance = v.debit - v.credit
 | 	if balance = 0.0 then
