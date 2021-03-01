@@ -47,7 +47,9 @@
 |*
 |* ID: GH331CR625, RAvi Kumar, 02-06-2020
 |* Modification in Payment detail IR wise - Add nonfinalised option
-
+|* 
+|* GH499CR834, RAvi Kumar, 19-02-2021
+|* FOC and FIM Transaction type of Billing assignments to reflect in two reports
 |****************************** declaration section ***************************
 declaration:
 #include<bic_desktop>
@@ -80,6 +82,7 @@ declaration:
   table		ttccom122				|GH316CR617.a
   table		ttcemm030				|GH331CR625.a
   table		ttccom001				|GH331CR625.a
+  table		ttdisg832				|GH331CR625.a
   
 	extern	domain	tccom.bpid	bpid.f
 	extern	domain	tccom.bpid	bpid.t
@@ -309,7 +312,8 @@ function generate.header()
 			sprintf$("Cheque/RTGS"),				|20
 			sprintf$("Cheque/RTGS Date"),			|21
 			sprintf$("Processor"),				|22		|GH310CR610.a
-			sprintf$("Processor Name"))			|23		|GH331CR625.a
+			sprintf$("Processor Name"),			|23		|GH331CR625.a
+			sprintf$("FOC/FIM"))				|24		|GH499CR834.a
 		line = strip$(shiftl$(line))
 		seq.puts(line, stat.fp)
 	endif
@@ -420,7 +424,8 @@ function write.data()
 		sprintf$("%u(%02d/%02m/%04Y) %U(%02h%x%02m%x%02s %a)",tfcmg100.rdat,tfcmg100.rdat),	|21	Cheque Date
 | 		sprintf$("%s",tccom122.cpay))								|22
 		sprintf$("%s",trim$(tfisg207.proc)),								|22	|GH310CR610.a
-		sprintf$("%s",trim$(tccom001.nama)))								|23	|GH331CR625.a
+		sprintf$("%s",trim$(tccom001.nama)),								|23	|GH331CR625.a
+		sprintf$("%s",trim$(tdisg832.reas)))								|24	|GH499CR834.a
 		
 		
 		line = strip$(shiftl$(line))
@@ -679,6 +684,15 @@ function read.main.table()
 		|********
 		|* When tfacp200.tpay = 1 or 4
 		|********
+		
+		select	tdisg832.reas					|GH499CR834.a.s
+		from	tdisg832
+		where	tdisg832._index4 = {:tfisg001.rcno, :tfisg001.rcln}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tdisg832.reas = ""
+		endselect						|GH499CR834.a.e
 		
 		select tfacp200.ttyp,
 			tfacp200.ninv,
