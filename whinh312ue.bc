@@ -164,8 +164,10 @@ function extern long ue.before.before.save.object(long mode)
 	
 	domain	tcamnt		o.total.amnt
 	domain	tfgld.sess	calling.prog	|#ISGEC001082.sn
+	domain	tclogn	curr.logn				|RAvi.a.26022021
 	long flag				
 	flag = 0
+	curr.logn = logname$					|RAvi.a.26022021
 	on case mode
 	case DAL_NEW :
 													|ISGEC018001.sn
@@ -213,6 +215,17 @@ function extern long ue.before.before.save.object(long mode)
 						|#ISGEC00165.en
 		break
 	case DAL_UPDATE :
+		get.var(pid,"prog.name$",calling.prog)
+		if calling.prog = "whinh3121s000" then						|RAvi.a.2602201
+			if 	curr.logn = "9583" or		|* Pankaj Sir
+				curr.logn = "0330"	or	|* Veena Mam
+				curr.logn = "3776"	then	|* RAvi
+			else
+				dal.set.error.message("@Receipt Can't be Correct, Please contact Baan Support")
+				return(DALHOOKERROR)
+			endif
+				
+		endif										|RAvi.e.2602201
 													|ISGEC018001.sn
 		select	whinh310.cwar
 		from	whinh310
@@ -258,7 +271,7 @@ function extern long ue.before.before.save.object(long mode)
 		endif
 		
 					|#ISGEC001082.sn
-		get.var(pid,"prog.name$",calling.prog)
+| 		get.var(pid,"prog.name$",calling.prog)
 		
 							
 		if calling.prog = "whinh3122m000" then
