@@ -21,6 +21,9 @@
 |* ID: GH301CR601, RAvi Kumar, 12-04-2020
 |* New col added - PO approval Date and Indent Approval Date
 |*
+|* ID GH375CR000, RAvi Kumar, 22-07-2020
+|* Receipted qty more than engg qty in Child item tracking history
+|*
 |* GH421CR76, RAvi Kumar, 17-10-2020
 |* Delivery date on Child Item Tracking History
 |****************************** declaration section ***************************
@@ -179,16 +182,19 @@ function read.main.table()
 		rep.idsc = tcisg004.desc
 		rep.stat	=	tcisg004.stat			|#ISGEC016009.n
 		
-| 		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
+| 		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,			|GH375CR000.s
 | 				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.pono, rep.vrsn,
 | 				rep.odat, rep.crqt)
 				
-		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
+		Get_PO_BOM_Detail(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item, tcisg004.docn, tcisg004.rvid,
 				rep.qnty, rep.cuni, rep.twgt, rep.bpid, rep.bpnm, rep.orno, rep.pono, rep.vrsn,
 				rep.odat, rep.crqt, rep.ddta)						|GH421CR76.a.rep.ddta
 		
-		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
-				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.rqln, rep.indt)
+| 		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item,
+| 				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.rqln, rep.indt)
+				
+		Get_Indent(tcisg004.proj, tcisg004.elmt, tcisg004.itmh, tcisg004.item, tcisg004.docn, tcisg004.rvid,
+				rep.qnty, rep.cuni, rep.twgt, rep.rqno, rep.rqln, rep.indt)					|GH375CR000.e
 				
 		Get_Dates(rep.orno, rep.vrsn, rep.rqno, rep.trtd, rep.podt)		|GH301CR601.a	
 		
@@ -236,6 +242,8 @@ function Get_PO_BOM_Detail(
 			domain	tppdm.cspa	in.elmt,	|Element
 			domain	tcitem		in.loti,	|Lot Item
 			domain	tcitem		in.item,	|Child Item
+			domain	dmdoc.docid	in.docn,	|Document No.			|GH375CR000.a
+			domain	dmdoc.revv	in.rvid,	|Revision No.			|GH375CR000.a
 		ref	domain	tcqiv1		ot.qnty,	|Quantity
 		ref	domain	tccuni		ot.cuni,	|Unit
 		ref	domain	tcqiv1		ot.twgt,	|Total Weight
@@ -285,6 +293,8 @@ function Get_PO_BOM_Detail(
 			select	tdisg002.wght, tdisg002.qnty, tdisg002.quom
 			from	tdisg002
 			where	tdisg002._index1 = {:tdpur401.orno, :tdpur401.pono, :in.item}
+			and	tdisg002.docn = :in.docn						|GH375CR000.a
+			and	tdisg002.revi = :in.rvid						|GH375CR000.a
 			selectdo
 			selectempty
 				tdisg002.wght = 0
@@ -312,6 +322,8 @@ function Get_Indent(
 		domain	tppdm.cspa	in.elmt,	|Element
 		domain	tcitem		in.loti,	|Lot Item
 		domain	tcitem		in.item,	|Child Item 
+		domain	dmdoc.docid	in.docn,	|Document No.					|GH375CR000.a
+		domain	dmdoc.revv	in.rvid,	|Revision No.					|GH375CR000.a
 	ref	domain	tcqiv1		ot.qnty,	|Quantity
 	ref	domain	tccuni		ot.cuni,	|Unit
 	ref	domain	tcqiv1		ot.twgt,	|Total Weight
@@ -341,6 +353,8 @@ function Get_Indent(
 		select	tdisg003.wght, tdisg003.qnty, tdisg003.quom
 		from	tdisg003
 		where	tdisg003._index1 = {:tcisg005.orno, :tcisg005.pono, :in.item}
+		and	tdisg003.docn = :in.docn							|GH375CR000.a
+		and	tdisg003.revi = :in.rvid							|GH375CR000.a
 		selectdo
 		selectempty
 			tdisg003.wght = 0
