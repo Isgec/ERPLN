@@ -93,6 +93,9 @@
 |******************************************************************************
 |* ID ISGEC01200, Arun Chauhan, Date - 05-09-2019,
 |* add logic tax amount and buffer
+|*
+|* GH503CR000, RAvi Kumar, 05-03-2021
+|* Remove delete and cancel option from Purchase Order
 |******************************************************************************
 
 #ident "@(#)ISG001001	GAURAV TYAGI 11/02/2014 VRC B61U a7 live"
@@ -268,7 +271,7 @@ function extern long ue.before.before.save.object(long mode)
 |ISGEC01101.sn
 		get.var(pid,"prog.name$",i.calling.session)		|#ISGEC017018.sn
 		if trim$(i.calling.session) = "tdpur4101m200" or trim$(i.calling.session) = "tdpur4101m000"then
-			if not (tdpur400.orno = "P10132380" or tdpur400.orno = "P10132381" or tdpur400.orno = "P82001308") then	|TEMP.BHARTI.09-01-19
+			if not (tdpur400.orno = "P10132380" or tdpur400.orno = "P10132381" or tdpur400.orno = "P82001308" or tdpur400.orno = "P70100591") then	|TEMP.BHARTI.09-01-19
 			if not check_po_balance_new()	then	|#ISGEC017018.sn		|#MM.sn				|* Temporarily Commented till GST Solution Uploaded 
 				dal.set.error.message("@PO cannot be modified below amount "& str$(int(total.balance.amount)) & 	|* on live. To be uncommented later.
 					", Receipt amount = "& str$(int(invoice.amount)) &
@@ -296,10 +299,26 @@ function extern long ue.before.before.save.object(long mode)
 	case DAL_UPDATE:
 		delete.case = 0						|ISGEC01200.n						
 		get.var(pid,"prog.name$",i.calling.session)		|#ISGEC017018.sn
+		
+		if trim$(i.calling.session) = "tdpur4201s300" then	|GH503CR000.a.s
+| 			if tdpur401.clyn = tcyesno.yes then
+				select	tdpur400.hdst					
+				from	tdpur400
+				where	tdpur400._index1 = {:tdpur401.orno}
+				as set with 1 rows
+				selectdo
+					if tdpur400.hdst <> tdpur.hdst.created then
+						dal.set.error.message("@Option not available!")
+						return(DALHOOKERROR)
+					endif
+				endselect
+| 			endif
+		endif							|GH503CR000.a.e
+		
 		if trim$(i.calling.session) = "tdpur4101m200" or trim$(i.calling.session) = "tdpur4101m000"then
 			if not (tdpur400.orno = "P10127792" or tdpur400.orno = "P20114455" or tdpur400.orno = "P20114475" or 
 				tdpur400.orno = "P30107495" or tdpur400.orno = "P50103614" or tdpur400.orno = "P50103615" or 
-				tdpur400.orno = "P10132380" or tdpur400.orno = "P10132381" or tdpur400.orno = "P82001308" ) then  |temp.bharti
+				tdpur400.orno = "P10132380" or tdpur400.orno = "P10132381" or tdpur400.orno = "P82001308" or tdpur400.orno = "P70100591") then  |temp.bharti
 				if not check_po_balance()	then	|#ISGEC017018.sn		|#MM.sn		|* Temporarily Commented till GST Solution Uploaded 
 					 dal.set.error.message("@PO cannot be modified below amount "& str$(int(total.balance.amount)) &  |* on live. To be uncommented later.
 						", Receipt amount = "& str$(int(invoice.amount)) &
@@ -544,11 +563,27 @@ function extern long ue.before.before.save.object(long mode)
 
 function extern long ue.after.before.save.object(long mode)
 {
+	domain	tfgld.sess		i.calling.session
+	get.var(pid,"prog.name$",i.calling.session)
 	on case mode
 	case DAL_NEW:
 		break
 	case DAL_UPDATE:
 		|ISGEC001231.sn
+		if trim$(i.calling.session) = "tdpur4201s300" then	|GH503CR000.a.s
+| 			if tdpur401.clyn = tcyesno.yes then
+				select	tdpur400.hdst					
+				from	tdpur400
+				where	tdpur400._index1 = {:tdpur401.orno}
+				as set with 1 rows
+				selectdo
+					if tdpur400.hdst <> tdpur.hdst.created then
+						dal.set.error.message("@Option not available!")
+						return(DALHOOKERROR)
+					endif
+				endselect
+| 			endif
+		endif							|GH503CR000.a.e
 		
 		get_purchase_rate(tdpur401.orno, curr.ratp)			|#ISGEC01170.sn
 		curr.oamt = tdpur401.oamt * curr.ratp		
@@ -714,6 +749,18 @@ function extern long ue.before.before.destroy.object()
 	delete.case = 1						|ISGEC01200.n
 	domain	tcorno	bind.orno	|#ISGEC017006.sn
 	domain	tfgld.sess		i.calling.session	|ISGEC01200.n
+	
+	select	tdpur400.hdst					|GH503CR000.a.s
+	from	tdpur400
+	where	tdpur400._index1 = {:tdpur401.orno}
+	as set with 1 rows
+	selectdo
+		if tdpur400.hdst <> tdpur.hdst.created then
+			dal.set.error.message("@Option not available!")
+			return(DALHOOKERROR)
+		endif
+	endselect						|GH503CR000.a.e
+	
 	if tdpur401.oltp = tdgen.oltp.orderline then
 		select	tdmsl503.orno:bind.orno
 		from	tdmsl503
@@ -726,7 +773,7 @@ function extern long ue.before.before.destroy.object()
 					|#ISGEC017006.en
 	tcisgdll0003.Modify.Order_Bill_of_Material(tdpur401.orno,tdpur401.pono,
 			tdpur401.cprj,tdpur401.cspa,tdpur401.item)
-			
+	
 	get.var(pid,"prog.name$",i.calling.session)		|ISGEC01200.sn
 	if trim$(i.calling.session) = "tdpur4101m200" or trim$(i.calling.session) = "tdpur4101m000"then
 		if not (tdpur400.orno = "P10127792" or tdpur400.orno = "P20114455" or tdpur400.orno = "P20114475" or 
@@ -751,6 +798,7 @@ function extern long ue.before.before.destroy.object()
 			endif					
 		endif		
 	endif							|ISGEC01200.en	
+	
 	return(0)
 }
 
