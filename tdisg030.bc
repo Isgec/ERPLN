@@ -5,11 +5,16 @@
 |* 18-06-11 [15:01]
 |******************************************************************************
 |* Script Type: DAL
+|*
+|* GH501CR000, RAvi Kumar, 04-03-2021
+|* Quantity check in mtr/sqm in delivery challan assignment
 |******************************************************************************
                                                                                 
 #include <bic_dal2>
 table	ttdisg030
 table	ttdisg027
+table	twhisg312
+table	ttcibd001
 
 extern	domain	tcqiv1	issue.qty
 
@@ -63,6 +68,33 @@ function extern void tdisg030.aqty.update()
 |*tdisg030.iqty
 function extern boolean tdisg030.iqty.is.valid()
 {
+	select	tdisg027.rcno,									|GH501CR000.a.s
+		tdisg027.recl
+	from	tdisg027
+	where	tdisg027._index2 = {:tdisg030.orno, :tdisg030.pono}
+	and	tdisg027.rcno = :tdisg030.srcn
+	and	tdisg027.srpo = :tdisg030.svpo
+	selectdo
+		select	whisg312.item
+		from	whisg312
+		where	whisg312._index1 = {:tdisg027.rcno, :tdisg027.recl}
+		as set with 1 rows
+		selectdo
+			select	tcibd001.cuni
+			from	tcibd001
+			where	tcibd001._index1 = {:whisg312.item}
+			as set with 1 rows
+			selectdo
+				if tcibd001.cuni = "mtr" or tcibd001.cuni = "m" or tcibd001.cuni = "sqm" then
+					if tdisg030.iqty < 0.01 then
+						dal.set.error.message("@ Meter/Square meter Quantity should be greater then 0.01")
+						return(dalhookerror)
+					endif
+				endif
+			endselect
+		endselect
+	endselect										|GH501CR000.a.e
+	
 	if tdisg030.iqty <= 0	then
 		return(false)
 	else 
