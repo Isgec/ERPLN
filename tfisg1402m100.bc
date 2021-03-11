@@ -1206,7 +1206,8 @@ function get.pay.due.date(domain tfgld.ttyp i.ttyp, domain tfgld.docn i.ninv, do
 	from	tcisg001
 	where	tcisg001._index1 	=	{:o.orno}
 	and 	tcisg001.catg		= 	tcisg.catg.running.payment
-	and 	tcisg001._compnr 	=	200
+| 	and 	tcisg001._compnr 	=	200
+	and 	tcisg001._compnr 	=	:tcemm030.lcmp			|GH515CR000.a.Ravi
 	selectdo
 	endselect
 	
