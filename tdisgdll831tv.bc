@@ -4,6 +4,9 @@
 |* baan
 |* 2020-03-17 [14:43]
 |******************************************************************************
+|* 
+|* GH489CR000, RAvi Kumar, 11-02-2021
+|* 169703-Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-2
 |******************************************************************************
 |Custom Invoice Report Tables *************************************************
 	table   	ttdisg831 | Export Dispatch Request Data
@@ -565,7 +568,8 @@ function extern tdisgdll831tv.custom_invoice
 			tpisg122.orno = ""
 		endselect
 
-		tctax.dll9140.get.own.reg.number.based.on.seq(tpisg122.gstn.c, gstn.c.no)
+| 		tctax.dll9140.get.own.reg.number.based.on.seq(tpisg122.gstn.c, gstn.c.no)			|GH489CR000.com
+		tctax.dll9140.get.own.reg.number.based.on.seq(tdisg831.rnso.l, gstn.c.no)			|GH489CR000.new
 		
 		description()
 		select tccom130.*
@@ -3173,7 +3177,8 @@ function get.tax.data()
 	tctax.dll9141.determine.aggregate.tax.amounts.per.line( 
 					tdisg831.ccty,				| domain tcccty i.tax.country, 
 | 					tdisg832.cvat,				| domain tccvat i.aggregate.tax.code, 
-					tdisg831.cvat,				| domain tccvat i.aggregate.tax.code, 
+| 					tdisg831.cvat,				| domain tccvat i.aggregate.tax.code,  	|GH489CR000.o
+					tdisg831.ccvt,				| domain tccvat i.aggregate.tax.code, 	|GH489CR000.n
 					utc.num(),				| domain tcdate i.tax.date, 
 					assv.val,				| domain tcamnt i.order.line.price, 
 					assv.val,				| domain tcamnt i.customs.value, 
@@ -3209,7 +3214,8 @@ function get.tax.data()
 	select	tctax941.cvat,tctax941.layr,tctax941.seqn
 	from	tctax941
 | 	where	tctax941._index1 = {:tdisg831.ccty, :tdisg832.cvat}
-	where	tctax941._index1 = {:tdisg831.ccty, :tdisg831.cvat}
+| 	where	tctax941._index1 = {:tdisg831.ccty, :tdisg831.cvat}		|GH489CR000.o
+	where	tctax941._index1 = {:tdisg831.ccty, :tdisg831.ccvt}		|GH489CR000.n
 	and	tctax941.amor = tctax.amor.l.not.appl
 	selectdo
 		if not tcmcs.dll0036.get.indirect.tax.l(	tdisg831.ccty, 

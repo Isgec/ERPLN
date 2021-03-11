@@ -187,26 +187,26 @@ before.display.object:
 	
 								|#ISGEC001169.en
 					|#ISGEC017006.sn
-	if tdisg831.stat <> tdisg.stat.freeze then
-		select	tpisg122.gstn.b:tdisg831.rnsb.l,
-			tpisg122.stad,
-			tpisg122.btad,
-			tpisg122.gstn.c:tdisg831.rnso.l,
-			tpisg122.gstn.s:tdisg831.gstn.s
-		from	tpisg122
-		where	tpisg122._index1 = {:tdisg831.cprj}
-		selectdo
-		selectempty
-			tdisg831.rnsb.l = 0
-			tdisg831.rnso.l = 0
-			tdisg831.gstn.s = 0
-			tpisg122.stad = ""
-		endselect
-		
-		get.and.display.registration.details()
-	else		
-		get.and.display.registration.details()		
-	endif
+| 	if tdisg831.stat <> tdisg.stat.freeze then
+| 		select	tpisg122.gstn.b:tdisg831.rnsb.l,
+| 			tpisg122.stad,
+| 			tpisg122.btad,
+| 			tpisg122.gstn.c:tdisg831.rnso.l,
+| 			tpisg122.gstn.s:tdisg831.gstn.s
+| 		from	tpisg122
+| 		where	tpisg122._index1 = {:tdisg831.cprj}
+| 		selectdo
+| 		selectempty
+| 			tdisg831.rnsb.l = 0
+| 			tdisg831.rnso.l = 0
+| 			tdisg831.gstn.s = 0
+| 			tpisg122.stad = ""
+| 		endselect
+| 		
+| 		get.and.display.registration.details()
+| 	else		
+| 		get.and.display.registration.details()		
+| 	endif
 						
 					|#ISGEC017006.en	
 		

@@ -7,6 +7,9 @@
 |* Script Type: DAL
 |* GH446CR000, RAvi Kumar, 23-11-2020
 |* Checks on Custom inv selection in exports dr cr note
+|* 
+|* GH489CR000, RAvi Kumar, 11022021
+|* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
 |******************************************************************************
                   
 	table	ttdisg045
@@ -90,16 +93,19 @@ function extern tdisg045.note.update()
 
 function extern tdisg045.cvat.update()
 {
-	select	tdisg831.cvat
+| 	select	tdisg831.cvat
+	select	tdisg831.ccvt					|GH489CR000.a
 	from	tdisg831
 	where	tdisg831._index2 = {:tdisg045.invn}
 	as set with 1 rows
 	selectdo
 	selectempty
-		tdisg831.cvat = ""
+| 		tdisg831.cvat = ""
+		tdisg831.ccvt = ""				|GH489CR000.a	
 	endselect
 	
-	tdisg045.cvat = tdisg831.cvat
+| 	tdisg045.cvat = tdisg831.cvat
+	tdisg045.cvat = tdisg831.ccvt				|GH489CR000.a
 }
 
 function extern boolean tdisg045.invn.is.valid(long type)

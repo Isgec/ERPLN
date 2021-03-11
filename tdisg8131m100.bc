@@ -36,6 +36,9 @@
 |* 
 |* GH480CR000, RAvi Kumar, 29-01-2021
 |* Issue in freeze custom invoice against Generation of Commercial Invoice with Cr Note
+|* 
+|* GH489CR000, RAvi Kumar, 11022021
+|* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
 |****************************** declaration section ***************************
 declaration:
 #ident "@(#)ISG001016, Yoshita Kundwani, IT0177, 31-05-2014 , VRC B61U "
@@ -192,31 +195,31 @@ before.display.object:
 | 			message("E-Invoice already generated, Cannot Sent Back to Project")
 | 			choice.again()
 			disable.commands("isg.sent.proj")
-			disable.fields("tdisg831.cvat", actual.occ, "tdisg831.eist", actual.occ, "tdisg831.lcod", actual.occ, "tdisg831.rate", actual.occ)
+			disable.fields("tdisg831.cvat", actual.occ, "tdisg831.ccvt", actual.occ, "tdisg831.eist", actual.occ, "tdisg831.lcod", actual.occ, "tdisg831.rate", actual.occ)
 		endif
 	endselect	
 										|GH418CR752.a.e
 	
-	if tdisg831.stat <> tdisg.stat.freeze then
-		select	tpisg122.gstn.b:tdisg831.rnsb.l,
-			tpisg122.stad,
-			tpisg122.btad,
-			tpisg122.gstn.c:tdisg831.rnso.l,
-			tpisg122.gstn.s:tdisg831.gstn.s
-		from	tpisg122
-		where	tpisg122._index1 = {:tdisg831.cprj}
-		selectdo
-		selectempty
-			tdisg831.rnsb.l = 0
-			tdisg831.rnso.l = 0
-			tdisg831.gstn.s = 0
-			tpisg122.stad = ""
-		endselect
-		
-		get.and.display.registration.details()
-	else		
-		get.and.display.registration.details()	
-	endif
+| 	if tdisg831.stat <> tdisg.stat.freeze then				|GH489CR000.a.s
+| 		select	tpisg122.gstn.b:tdisg831.rnsb.l,
+| 			tpisg122.stad,
+| 			tpisg122.btad,
+| 			tpisg122.gstn.c:tdisg831.rnso.l,
+| 			tpisg122.gstn.s:tdisg831.gstn.s
+| 		from	tpisg122
+| 		where	tpisg122._index1 = {:tdisg831.cprj}
+| 		selectdo
+| 		selectempty
+| 			tdisg831.rnsb.l = 0
+| 			tdisg831.rnso.l = 0
+| 			tdisg831.gstn.s = 0
+| 			tpisg122.stad = ""
+| 		endselect
+| 		
+| 		get.and.display.registration.details()
+| 	else		
+| 		get.and.display.registration.details()	
+| 	endif									|GH489CR000.a.e
 						
 					|#ISGEC017006.en	
 	

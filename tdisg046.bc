@@ -278,15 +278,23 @@ function extern boolean tdisg046.amnt.is.valid(long mode)
 function extern	tdisg046.cvat.update()
 {
 	invn.edrn = get.edrn()
-	select	tdisg832.rcno,
-		tdisg832.rcln,
-		tdisg832.cvat
-	from	tdisg832
-	where	tdisg832._index1 = {:invn.edrn, :tdisg046.rcno, :tdisg046.rcln}
+| 	select	tdisg832.rcno,								|GH489CR000.a.s
+| 		tdisg832.rcln,
+| 		tdisg832.cvat
+| 	from	tdisg832
+| 	where	tdisg832._index1 = {:invn.edrn, :tdisg046.rcno, :tdisg046.rcln}
+| 	as set with 1 rows
+| 	selectdo
+| 		tdisg046.cvat = tdisg832.cvat
+| 	endselect
+	
+	select	tdisg045.cvat
+	from	tdisg045
+	where	tdisg045._index1 = {:tdisg046.rqno}
 	as set with 1 rows
 	selectdo
-		tdisg046.cvat = tdisg832.cvat
-	endselect
+		tdisg046.cvat = tdisg045.cvat
+	endselect								|GH489CR000.a.e
 }
 
 function domain	tcorno	get.edrn()

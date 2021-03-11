@@ -25,6 +25,9 @@
 |*
 |* GH426CR749, RAvi Kumar, 27-10-2020
 |* Manual Invoice, Debit Note, Credit Note should appear in GSTR1
+|* 
+|* GH489CR000, RAvi Kumar, 11022021
+|* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
 |****************************** declaration section ***************************
 declaration:
 
@@ -532,7 +535,7 @@ function read.main.table.export(domain tdisg.advice i.advice, domain tfgld.date 
 		tdisg831.gstn.s, tdisg831.invd, tdisg831.invn,
 		tdisg831.sbno, tdisg831.shdt,
 		tdisg831.etyp, tdisg831.cind, tdisg831.cinv,				
-		tdisg831.cprj, tdisg831.lcno, tdisg831.cvat				|RAvi.a.28122020						
+		tdisg831.cprj, tdisg831.lcno, tdisg831.cvat, tdisg831.ccvt		|GH489CR000.a						
 	from 	tdisg831
 	where  	tdisg831.invd = :i.date							|#ISGEC01043.n
 	and	tdisg831.type = tdisg.type.export
@@ -680,7 +683,12 @@ function read.main.table.export(domain tdisg.advice i.advice, domain tfgld.date 
 				bill.to.city = ""
 				bill.to.code = ""
 				
-				tdisg832.cvat = tdisg831.cvat						|GH455.RAvi.a.28122020
+				if tdisg831.etyp = tdisg.advice.supply then	
+| 					tdisg832.cvat = tdisg831.cvat						|GH489CR000.a
+					tdisg832.cvat = tdisg831.ccvt						|GH489CR000.a
+				else
+					tdisg832.cvat = tdisg831.ccvt
+				endif
 				get.tax.data()
 				ship.to.code = "NA"
 				get.advance.data.and.print.report()					|#ISGEC01043.o
