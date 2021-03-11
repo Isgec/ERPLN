@@ -151,7 +151,7 @@ function extern boolean dmisg135.idoc.is.valid()
 				dmisg140.cprj
 			from	dmisg140
 			where	dmisg140.docn = :tdisg002.docn
-			and	dmisg140.revn = :tdisg002.revi
+| 			and	dmisg140.revn = :tdisg002.revi
 			as set with 1 rows
 			selectdo
 | 				if trim$(dmisg140.docn) = trim$(dmisg135.idoc) then
