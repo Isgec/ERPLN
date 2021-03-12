@@ -51,6 +51,9 @@
 |* 
 |* GH489CR000, RAvi Kumar, 11022021
 |* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
+|*
+|* GH516CR000, RAvi Kumar, 13-03-2021
+|* Modification in Billing Advice(Projects ) session to consider Exports DR/CR Notes amount in LC Balance
 |****************************** declaration section ***************************
 declaration:
 
@@ -93,6 +96,7 @@ declaration:
 	table	ttdisg030				|#ISGEC01170.en
 	table	tciisg800			
 	table	tciisg801			
+	table	ttdisg045			
 	
 	extern	domain	tcdsca		var.temp		|#ISGECDV001062.n
 	extern	domain	tcdesc		v.comp
@@ -205,7 +209,7 @@ before.display.object:
 | 			tpisg122.stad = ""
 | 		endselect
 | 		
-| 		get.and.display.registration.details()
+		get.and.display.registration.details()
 | 	else		
 | 		get.and.display.registration.details()	
 | 	endif									|GH489CR000.a.e
@@ -1268,10 +1272,12 @@ function domain tcamnt get.lc.bal.amnt
 	domain	tcamnt	tmp.tlmt
 	domain	tcamnt	tmp.clmt
 	domain	tcamnt	tmp.blmt
+	domain	tcamnt	tmp.crdb				|GH516CR000.a
 	
 	tmp.tlmt = 0
 	tmp.clmt = 0
 	tmp.blmt = 0
+	tmp.crdb = 0 						|GH516CR000.a
 	select 	sum(tdisg841.amnt):tmp.tlmt
 	from	tdisg841
 	where	tdisg841._index1 = {:i.lcno}
@@ -1286,7 +1292,9 @@ function domain tcamnt get.lc.bal.amnt
 	selectdo
 	endselect
 	
-	tmp.blmt = tmp.tlmt - tmp.clmt
+	tmp.crdb = calculate.lc.credit.debitnote(i.cprj, i.lcno)		|GH516CR000.a
+	
+	tmp.blmt = tmp.tlmt - tmp.clmt + tmp.crdb				|GH516CR000.cng
 	
 	return(tmp.blmt)
 }
@@ -1849,4 +1857,45 @@ function update.quantity.in.tdisg873()
 	update.quantity.in.tdisg873()
 	
 }											|#ISGEC01170.en
+
+function domain	tcamnt	calculate.lc.credit.debitnote(	domain	tccprj	i.cprj,		|GH516CR000.a.s
+							domain	tcorno	i.lcno)
+{
+	domain	tcamnt	credit.debit, credit.note, debit.note, sum.c, sum.d
+	credit.debit = 0
+	credit.note = 0
+	debit.note = 0
+	sum.c = 0
+	sum.d = 0
+	
+	select	sum(tdisg046.amnt):credit.note
+	from	tdisg045, tdisg046, tdisg831
+	where	tdisg831.cprj = :i.cprj
+	and	tdisg831.lcno = :i.lcno
+	and	tdisg045.note = tdisg.notes.credit
+	and	tdisg045.rqno = tdisg046.rqno
+	and	tdisg045.invn = tdisg831.invn
+	selectdo
+	selectempty
+		credit.note = 0
+	endselect
+	
+	select	sum(tdisg046.amnt):debit.note
+	from	tdisg045, tdisg046, tdisg831
+	where	tdisg831.cprj = :i.cprj
+	and	tdisg831.lcno = :i.lcno
+	and	tdisg045.rqno = tdisg046.rqno
+	and	tdisg831.invn = tdisg045.invn
+	and	tdisg045.note = tdisg.notes.debit
+	selectdo
+	selectempty
+		debit.note = 0
+	endselect
+	
+	credit.debit = debit.note - credit.note
+	return(credit.debit)
+}
+											|GH516CR000a.e
+
+
 
