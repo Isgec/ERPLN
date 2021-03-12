@@ -216,7 +216,7 @@ before.display.object:
 | 			tpisg122.stad = ""
 | 		endselect
 | 		
-| 		get.and.display.registration.details()
+		get.and.display.registration.details()
 | 	else		
 | 		get.and.display.registration.details()	
 | 	endif									|GH489CR000.a.e
