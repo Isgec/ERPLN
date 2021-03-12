@@ -1294,7 +1294,7 @@ function domain tcamnt get.lc.bal.amnt
 	
 	tmp.crdb = calculate.lc.credit.debitnote(i.cprj, i.lcno)		|GH516CR000.a
 	
-	tmp.blmt = tmp.tlmt - tmp.clmt + tmp.crdb				|GH516CR000.cng
+	tmp.blmt = tmp.tlmt - (tmp.clmt + tmp.crdb)				|GH516CR000.cng
 	
 	return(tmp.blmt)
 }
