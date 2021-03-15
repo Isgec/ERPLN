@@ -24,6 +24,9 @@
 |* 
 |* GH495CR000, RAvi Kumar, 17-02-2021
 |* In Project EC0034, PO P83006079 and P83006081 showing incorrect value in Linewise Po delivery status report
+|*
+|* GH509CR861, RAvi Kumar, 12-03-2021
+|* Statement for Import Purchase Orders
 |****************************** declaration section ***************************
 declaration:
 
@@ -137,6 +140,8 @@ declaration:
 	extern	domain	tcamnt		rep.rcgst			
 	extern	domain	tcamnt		rep.rigst	|#ISGECGST002.en		
 	extern	domain	tccwar		rep.cwar	|GH431CR774.a	
+	extern	domain	tcyesno		import.only				|GH509CR861.a
+	extern	domain	tcyesno		import.f, import.t			|GH509CR861.a
 
 
 |*************** Include **************
@@ -217,6 +222,15 @@ function read.main.table()
 {
 	rcdt.f = 0
 	rcdt.t = utc.num()
+	
+	if import.only = tcyesno.no then						|GH509CR861.a.s
+		import.f = tcyesno.yes
+		import.t = tcyesno.no
+	else
+		import.f = tcyesno.yes
+		import.t = tcyesno.yes
+	endif										|GH509CR861.a.e
+	
 	set.fmin(rcno.f)
 	set.fmax(rcno.t)
 	get.date.utc(odat.f, 00, 00, 00, v.odat.f)
@@ -240,6 +254,7 @@ function read.main.table()
 	and	tdpur400._index2 inrange {:bpid.f}	and	{:bpid.t}	
 	and	tdpur400._index4 inrange {:emno.f}	and	{:emno.t}
 	and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
+	and	tdpur400.impo.l inrange :import.f and :import.t			|GH509CR861.a
 	and	tdpur401.item refers to tcibd001
 	and	tdpur401.cprj refers to tcmcs052
 	and	tdpur400.otbp refers to tccom100
