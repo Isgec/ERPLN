@@ -60,6 +60,9 @@
 |*
 | GH467CR000, RAvi Kumar, 04-01-2020
 |* Billing advice line cannot be delete after done Custom invoice and E-Invoicing
+|*
+|* GH521CR000, RAvi Kumar, 15-03-2021
+|* Modification in Billing Advice Projects session lines to consider exports DR CR amt while calculating balance billing amount
 | *********************************************************************************
 
 #include <bic_dal2>
@@ -1113,6 +1116,7 @@ function extern boolean tdisg832.bivl.is.valid()
 	domain	tppdm.aalc	o.tpisg039.rval
 	domain	tcamnt		o.tdisg832.bivl
 	domain	tcamnt		tot.lc.amti
+	domain	tcamnt		tot.cre.deb		|GH521CR000.a
 	
 	
 	if tdisg832.nins <> 0 then	
@@ -1155,8 +1159,9 @@ function extern boolean tdisg832.bivl.is.valid()
 					tdisg832.rcno,tdisg832.rcln,o.tdisg832.bivl)
 	
 		tot.used.lc = get.lcno.amount(tdisg831.lcno,tdisg831.cprj)
-		
-		tot.used.lc = tot.used.lc + tdisg832.bivl - o.tdisg832.bivl
+		tot.cre.deb = tdisgdll0000.calculate.lc.credit.debitnote(tdisg831.cprj, tdisg831.lcno)		|GH521CR000.a
+| 		tot.used.lc = tot.used.lc + tdisg832.bivl - o.tdisg832.bivl					|GH521CR000.com
+		tot.used.lc = tot.used.lc + (tdisg832.bivl + tot.cre.deb) - o.tdisg832.bivl			|GH521CR000.a
 		
 		select 	sum(tdisg841.amnt):o.tdisg841.amnt
 		from	tdisg841
@@ -1189,8 +1194,10 @@ function extern boolean tdisg832.bivl.is.valid()
 		selectdo
 		endselect
 		
-		if  (tot.lc.amti + tdisg832.bivl - o.tdisg832.bivl) > tdisg825.valu then
-			dal.set.error.message("tdisg832.001",(tot.lc.amti + tdisg832.bivl - o.tdisg832.bivl),tdisg825.valu)	
+| 		if  (tot.lc.amti + tdisg832.bivl - o.tdisg832.bivl) > tdisg825.valu then			|GH521CR000.com
+		if  (tot.lc.amti + (tdisg832.bivl + tot.cre.deb) - o.tdisg832.bivl) > tdisg825.valu then	|GH521CR000.a
+| 			dal.set.error.message("tdisg832.001",(tot.lc.amti + tdisg832.bivl - o.tdisg832.bivl),tdisg825.valu)		|GH521CR000.com
+			dal.set.error.message("tdisg832.001",(tot.lc.amti + (tdisg832.bivl + tot.cre.deb) - o.tdisg832.bivl),tdisg825.valu)	|GH521CR000.a
 			return(DALHOOKERROR)
 		endif
 	endif
