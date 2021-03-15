@@ -5,6 +5,9 @@
 |* 2020-02-17
 |******************************************************************************
 |* Main table tdisg030 Assign Delivery Challan Quantity, Form Type 4
+|*
+|* GH522CR000, RAvi Kumar, 15-03-2021
+|* Add PO No filter in Delivery challan Assigned Qty report
 |******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
@@ -15,6 +18,7 @@ declaration:
 
    extern  domain  whinh.shpm       srcn.f    fixed
    extern  domain  whinh.shpm       srcn.t    fixed
+   extern	domain	tcorno	pono.f, pono.t
    extern	domain	tcqiv1	qty, total.qty
 
 |****************************** program section ********************************
@@ -47,7 +51,9 @@ field.srcn.f:
 when.field.changes:
    srcn.t = srcn.f
 
-
+field.pono.f:
+when.field.changes:
+   pono.t = pono.f
 |****************************** function section ******************************
 
 functions:
@@ -59,6 +65,7 @@ function read.main.table()
 	select	tdisg030.*
 	from	tdisg030
 	where	tdisg030.srcn inrange {:srcn.f} and {:srcn.t}
+	and	tdisg030.orno inrange {:pono.f} and {:pono.t}
 	order by tdisg030._index2
 	selectdo
 		select	tdisg027.dech
