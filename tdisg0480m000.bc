@@ -27,6 +27,9 @@
 |*
 |* GH438CR778, RAvi Kumar, 13-11-2020
 |* Correction in PO Register for Audit
+|* 
+|* GH494CR000, RAvi Kumar, 17-02-2021
+|* All Reasons and Remarks not appearing in report Print Audit Purchase Order Register
 |****************************** declaration section ***************************
 declaration:
 
@@ -93,9 +96,13 @@ declaration:
 	extern	domain	tcdsca		rep.dvdc		|#ISGECDV001160.n
 	extern	domain	tcmcs.str15	rep.real		|#ISGECDV001160.n
 	extern	domain	tcmcs.str50m	rep.rerm		|#ISGECDV001160.n
-	extern domain  tcmcs.str256m   rej.rem,rej.var,new.var,app.rem,app.var,new.app
+| 	extern domain  tcmcs.str256m   rej.rem,rej.var,new.var,app.rem,app.var,new.app	|GH494CR000.com
+	extern domain  tcmcs.str256m   rej.rem,new.var,app.rem,new.app
 	extern domain  tcpono          rej.len , app.len				|ISGEC01082.n
 	extern domain  tcdsca          po.stat
+	
+	
+	extern	string	rej.var(10000), app.var(10000)					|GH494CR000.a
 |*************** Include **************
 #include<bic_desktop>	
 
@@ -209,31 +216,32 @@ function read.main.table()
 			where  tdisg087._index1 = {:tdisg086.orno,:tdisg086.revi}
 			and    tdisg087.reas refers to tdisg085
 			selectdo
-				new.var = shiftl$(strip$(tdisg085.desc))		|ISGEC01082.sn
-				new.app = shiftl$(strip$(tdisg087.rema))
-				
-				rej.var = (new.var)&","&(rej.rem)
-				app.var = (app.rem)&","&(new.app)
-				
-				rej.rem = shiftl$(strip$(tdisg085.desc))
-				app.rem = shiftl$(strip$(tdisg087.rema))
-				
-				if new.var = "" and rej.rem = "" then
-					rej.var = ""
-				endif
+| 				new.var = shiftl$(strip$(tdisg085.desc))		|ISGEC01082.sn	|GH494CR000.com.s
+| 				new.app = shiftl$(strip$(tdisg087.rema))
+| 				
+| 				rej.var = (new.var)&","&(rej.rem)
+| 				app.var = (app.rem)&","&(new.app)
+| 				
+| 				rej.rem = shiftl$(strip$(tdisg085.desc))
+| 				app.rem = shiftl$(strip$(tdisg087.rema))
+| 				
+| 				if new.var = "" and rej.rem = "" then
+| 					rej.var = ""
+| 				endif
 
-				if app.rem = "" and new.app = "" then
-					app.var = ""
-				endif						|ISGEC01082.en
-
+| 				if app.rem = "" and new.app = "" then
+| 					app.var = ""
+| 				endif						|ISGEC01082.en		|GH494CR000.com.e
+				rej.var = rej.var & ", " & shiftl$(strip$(tdisg085.desc))		|GH494CR000.a	
+				app.var = app.var & ", " & trim$(tdisg087.rema)		|GH494CR000.a
 				
-			selectempty
-				new.var = ""
-				new.app = ""
-				rej.var = ""
-				app.var = ""
-				rej.rem = ""
-				app.rem = ""
+| 			selectempty
+| 				new.var = ""
+| 				new.app = ""
+| 				rej.var = ""
+| 				app.var = ""
+| 				rej.rem = ""
+| 				app.rem = ""
 			endselect
 		endselect
 									|ISGEC01067.en
