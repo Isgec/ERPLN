@@ -6,13 +6,18 @@
 |******************************************************************************
 |* Main table tdisg045 Custom Invoice Debit/Credit Note, Form Type 1
 |******************************************************************************
-                                                                                
+|*
+|* GH517CR000, RAvi Kumar, 12-03-2021
+|* Modification in Billing Plan session to consider Export DR/CR note while calculation balance to be assigned value                                                                              
 |****************************** declaration section ***************************
 declaration:
 
   table   ttdisg045 | Custom Invoice Debit/Credit Note
   table   tciisg801 
   table   tciisg800 
+  table   ttdisg046
+  table   ttdisg831
+  table   ttppin020
 	
 	string	query.str(500)
 	extern	domain	tfgld.docn	idoc
@@ -62,6 +67,37 @@ on.choice:
 		db.update(ttdisg045, db.retry)
 		commit.transaction()
 	endselect
+
+	select	tdisg045.rqno,					|GH517CR000.a.s
+		tdisg045.invn			
+	from	tdisg045
+	where	tdisg045._index1 = {:tdisg045.rqno}
+	selectdo
+		select	tdisg046.nins
+		from	tdisg046
+		where	tdisg046._index1 = {:tdisg045.rqno}
+		selectdo
+			select	tdisg831.cprj, 
+				tdisg831.ofbp
+			from	tdisg831
+			where	tdisg831._index2 = {:tdisg045.invn}
+			selectdo
+				select	tppin020.insa, 
+					tppin020.cdf_insa
+				from	tppin020 for update
+				where	tppin020._index1 = {:tdisg831.cprj, :tdisg831.ofbp, :tdisg046.nins}
+				selectdo
+					put.var(pid,"tppin020.cdf_insa",tppin020.insa)
+					db.update(ttppin020, db.retry)
+					commit.transaction()
+				selectempty
+				endselect
+			selectempty
+			endselect
+		selectempty
+		endselect
+	selectempty
+	endselect						|GH517CR000.a.e
 
 |****************************** field section **********************************
 field.tdisg045.rqno:
