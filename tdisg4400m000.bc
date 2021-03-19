@@ -159,6 +159,9 @@
 |* 
 |* GH487CR000, RAvi Kumar, 09-02-2021
 |* ISSUE IN CALCULATING TAX VALUE IN PO PRINTOUT DUE TO RECEIVED QTY IS MORE THAN ORDER QTY.
+|*
+|* GH523CR000, RAvi kumar 17-03-2021
+|* Please check IGST amount showing is not correct in PO Printout due to Back order qty increase
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -1021,10 +1024,11 @@ function read.main.table()
 					tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
 					tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
 					tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-					if add.qty > tdpur401.qoor then							|GH487CR000.a
-					else
-						tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-					endif
+| 					if add.qty > tdpur401.qoor then							|GH487CR000.a	|GH523CR000.a.s
+| 					else
+| 						tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+| 					endif
+					tdpur401.tasg.l = tdpur401.oamt							|GH523CR000.a.e
 		| 			tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
 					tdpur401.qoor = add.qty			|#ISGEC017006.n
 				endif
@@ -1724,10 +1728,11 @@ function get.po.totals()
 				tdpur401.tase.l = (tdpur401.tase.l / tdpur401.qoor ) * (add.qty)
 				tdpur401.tasv.l = (tdpur401.tasv.l / tdpur401.qoor ) * (add.qty)
 				tdpur401.tass.l = (tdpur401.tass.l / tdpur401.qoor ) * (add.qty)
-				if add.qty > tdpur401.qoor then							|GH487CR000.a
-				else
-					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
-				endif
+| 				if add.qty > tdpur401.qoor then							|GH487CR000.a	|GH523CR000.a.s
+| 				else
+| 					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
+| 				endifendif
+				tdpur401.tasg.l = tdpur401.oamt							|GH523CR000.a.e
 		| 		tdpur401.qoor = tdpur401.qoor + add.qty	|#ISGEC017006.o
 				tdpur401.qoor = add.qty			|#ISGEC017006.n
 			endif
