@@ -7,6 +7,9 @@
 |* 
 |* GH489CR000, RAvi Kumar, 11-02-2021
 |* 169703-Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-2
+|*
+|* GH524CR000, RAvi Kumar, 17-03-2021
+|* Due to limitation of character limit in BaaN, please allow to print full name of company  in "Annexure to export Invoice No
 |******************************************************************************
 |Custom Invoice Report Tables *************************************************
 	table   	ttdisg831 | Export Dispatch Request Data
@@ -411,6 +414,7 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 		domain	tfgld.docn	docn.orno		|RAvi.a.18112020
 		domain	tcorno		docn.orno.str		|RAvi.a.18112020
 		domain	tfgld.ttyp	ityp			|RAvi.a.18112020
+	extern	domain	tcmcs.str100m	vender.name.cadr		|GH524CR000.a
 #include<bic_desktop>
 #include <bic_text>
 	
@@ -966,7 +970,7 @@ function print.annexure()
 			ninv.array(m) = g.ninv
 			
 			select	tfacp100.isup, tfacp100.invd, tfacp100.ifbp,
-				tccom100.nama, tfacp100.cdf_gstr
+				tccom100.nama, tfacp100.cdf_gstr, tccom100.cadr			|GH524CR000.a
 			from	tfacp100, tccom100
 			where	tfacp100._index1 = {:g.ninv}
 			and	tfacp100.ifbp refers to tccom100 UNREF CLEAR
@@ -1006,7 +1010,17 @@ function print.annexure()
 				endif 
 				i.vhno = i.vhno + 1
 			endselect
-													
+					
+			select	tccom130.nama,						|GH524CR000.a.s
+				tccom130.namb
+			from	tccom130
+			where	tccom130._index1 = {:tccom100.cadr}
+			as set with 1 rows
+			selectdo
+				vender.name.cadr = trim$(tccom130.nama) & " " & trim$(tccom130.namb)
+			selectempty
+				vender.name.cadr = ""
+			endselect							|GH524CR000.a.e
 | 			brp.ready(brp.id)
 			create.annexure.export.line()
 		endselect
@@ -3294,7 +3308,8 @@ function create.annexure.export.line()
 		ann.line.cal = ann.line.cal + 1
 		seq.puts("<tr>",fp)
 			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">" & str$(o.srno) & "</td>", fp)
-			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(tccom100.nama) & "</td>",fp)
+| 			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(tccom100.nama) & "</td>",fp)	|GH524CR000.com
+			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(vender.name.cadr) & "</td>",fp)	|GH524CR000.a
 			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(gstn.b.no) & "</td>",fp)
 			seq.puts("<td colspan=4 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& trim$(tfacp100.isup) & "</td>",fp)
 			seq.puts("<td colspan=2 class="&chr$(34)&"bl bt  br fta"&chr$(34)&">"& sprintf$("%D(%02d/%02m/%04Y)",tfacp100.invd) & "</td>",fp)

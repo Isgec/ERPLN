@@ -65,6 +65,12 @@
 |*
 |* ID: GH324CR636, RAvi Kumar, 29-05-2020
 |* Change Drawback Declaration Text in custom Invoice
+|* 
+|* ID: GH482CR792, RAvi Kumar, 04-02-2021
+|* Modification in Commercial Invoice Print format based Custom Debit/Credit Notes
+|*
+|* GH524CR000, RAvi Kumar, 17-03-2021
+|* Due to limitation of character limit in BaaN, please allow to print full name of company  in "Annexure to export Invoice No
 |******************************************************************************
 |Custom Invoice Report Tables *************************************************
   table   	ttdisg831 | Export Dispatch Request Data
@@ -139,6 +145,7 @@ table   tdmisg133
 table   ttfisg405
 table   ttdisg045
 table   ttdisg046
+						
 						|# ISGEC004011.en
 table	ttccom120				|#ISGEC016026.n						
 
@@ -214,7 +221,7 @@ extern	domain	tcmcs.str50	consignee1,consignee2,consignee3,consignee4,consignee5
 extern	domain	tcdsca		label1,label2,label3,label4,label5,report_desc,
 				port_discharge,port_loading
 extern	domain	tcwght		gross_weight
-extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2, meis.des3
+extern	domain	tcmcs.str100	package_no,dbk_des1,dbk_des2,dbk_des3,dbk_des4,dbk_des5,term_delivery, meis.des1, meis.des2, meis.des3	|RAvi.a.04012021
 extern domain	tcmcs.str100 	dbk_des6,dbk_des7, dbk_des8	|ISGEC01158.n		|GH324CR636.a
 extern	domain	tcamnt		amnt.inr
 extern	domain	tcmcs.str5	i.rev
@@ -297,7 +304,8 @@ extern	domain	tcorno		invoice.no	|#ISGEC017006.n
 extern	domain	tcamnt		tot.amnt	|#ISGEC017006.n
 	extern	long	curr.comp						|RAvi.a.GH177CR495
 							|# ISGEC004011.en
-	extern	domain	tfgld.date	date.280520			|GH324CR636.a
+	extern	domain	tfgld.date	date.280520
+	extern	domain	tcmcs.str100m	vender.name.cadr		|GH524CR000.a
 
 #pragma used dll ottstpapihand
 |COMMERCIAL INVOICE VARIABLE DECLARATION END *************************************
@@ -967,7 +975,7 @@ function extern tdisgdll831rep.custom_invoice
 			dbk_des6 = "WE HEREBY REQUEST CUSTOMS DEPARTMENT TO RELEASE DUTY DRAWBACK AS PER GOVERNMENT POLICY AND"		
 			dbk_des7 = "RULES OF DUTY DRAWBACK SCHEME APPLICABLE TO US. FURTHER DECLARE WE DO NOT HAVE ANY"			
 			dbk_des8 = "OBJECTION IF DBK AMOUNT IS RESTRICTED UNDER ANY PROVISION OF DBK RULES."				
-		endif													||GH324CR636.e
+		endif													|GH324CR636.a.e
 	else										
 		dbk_des1 = ""
 		dbk_des2 = ""
@@ -978,11 +986,11 @@ function extern tdisgdll831rep.custom_invoice
 	endif	
 	
 	if tdisg832.efms = tcyesno.yes then
-| 		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER MERCHANDISE EXPORTS FROM INDIA SCHEME (MEIS)"	|RAvi.a.s.04122021
+| 		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER MERCHANDISE EXPORTS FROM INDIA SCHEME (MEIS)"			|RAvi.a.s.04012021
 | 		meis.des2 = "ALSO REWARD SCHEME MUST BE TICKED YES"
 		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER REMISSION OF DUTIES AND TAXES ON EXPORTED"
-		meis.des2 = " PRODUCTS(RoDTEP) SCHEME."			
-		meis.des3 = "ALSO REWARD SCHEME MUST BE TICKED YES"						|RAvi.a.e.04122021
+		meis.des2 = "PRODUCTS(RoDTEP) SCHEME."					
+		meis.des3 = "ALSO REWARD SCHEME MUST BE TICKED YES"								|RAvi.a.s.04122021
 	else
 		meis.des1 = ""
 		meis.des2 = ""
@@ -1346,7 +1354,7 @@ function print.annexure()
 			ninv.array(m) = g.ninv
 			
 			select	tfacp100.isup, tfacp100.invd, tfacp100.ifbp,
-				tccom100.nama, tfacp100.cdf_gstr
+				tccom100.nama, tfacp100.cdf_gstr, tccom100.cadr			|GH524CR000.a
 			from	tfacp100, tccom100
 			where	tfacp100._index1 = {:g.ninv}
 			and	tfacp100.ifbp refers to tccom100 UNREF CLEAR
@@ -1387,6 +1395,16 @@ function print.annexure()
 				i.vhno = i.vhno + 1
 			endselect
 														|#CR458.en
+			select	tccom130.nama,						|GH524CR000.a.s
+				tccom130.namb
+			from	tccom130
+			where	tccom130._index1 = {:tccom100.cadr}
+			as set with 1 rows
+			selectdo
+				vender.name.cadr = trim$(tccom130.nama) & " " & trim$(tccom130.namb)
+			selectempty
+				vender.name.cadr = ""
+			endselect							|GH524CR000.a.e
 			brp.ready(brp.id)
 		endselect
 		IR.is.printed = false  		|#ISGEC01140.n    
@@ -2332,7 +2350,7 @@ function extern tdisgdll831rep_commercial_invoice
 	select	tdisg831.bpid,tdisg831.cprj,tdisg831.invn,
 		tdisg831.fovv,tdisg831.frgt,tdisg831.insu,
 		tdisg831.ofbp,tdisg831.cinv,tdisg831.lcno,
-		tdisg831.motp,tdisg831.xref, tdisg831.invn                                |RAvi.a.06112020
+		tdisg831.motp,tdisg831.xref, tdisg831.invn				|RAvi.a.06112020
 	from	tdisg831
 | 	where	tdisg831._index3 = {:tdisg831.cinv}
 	where	tdisg831._index3 = {:i.cinv}
@@ -2493,7 +2511,7 @@ function extern tdisgdll831rep_commercial_invoice
 	select	tdisg832.qnty,tdisg832.slrt,tdisg832.bivl,
 		tdisg832.pkgn,tdisg832.item,tdisg832.ninc,
 		tdisg832.nwgt,tdisg832.gwgt,tdisg832.pqty,tdisg832.dsca,
-		tdisg832.pcun,tcibd001.dsca,
+		tdisg832.pcun,tcibd001.dsca, tdisg832.rcno, tdisg832.rcln,			|RAvi.a.06112020
 		tcibd001.cuni
 	from	tdisg832,tcibd001
 	where	tdisg832._index3 = {:tdisg831.cinv}
@@ -2820,7 +2838,7 @@ function extern commercial_invoice_annexure
 	tot_gwgt = 0
 	tot_nwgt = 0
 	
-	select	tdisg831.cprj, tdisg831.lcno, tdisg831.cinv, tdisg831.ofbp
+	select	tdisg831.cprj, tdisg831.lcno, tdisg831.cinv, tdisg831.ofbp, tdisg831.invn		|GH482CR792.a
 	from	tdisg831
 	where	tdisg831._index3 = {:i.cinv}
 	selectdo
@@ -2856,6 +2874,26 @@ function extern commercial_invoice_annexure
 	where  tdisg832._index3 = {:i.cinv}
 	and	tdisg832.bivl <> 0
 	selectdo
+		select	tdisg045.*								|GH482CR792.s
+		from	tdisg045
+		where	tdisg045.invn = {:tdisg831.invn}
+		selectdo
+			select	tdisg046.*
+			from	tdisg046
+			where	tdisg046._index1 = {:tdisg045.rqno, :tdisg832.rcno, :tdisg832.rcln}
+			as set with 1 rows
+			selectdo
+				if tdisg045.note = tdisg.notes.credit then
+					tdisg832.pqty = tdisg832.pqty - tdisg046.qnty
+				else
+					if tdisg045.note = tdisg.notes.debit then
+						tdisg832.pqty = tdisg832.pqty + tdisg046.qnty
+						tdisg832.pcun = tdisg046.cuni
+					endif
+				endif
+			endselect
+		endselect									|GH482CR792.e
+		
 		tot_nwgt = tot_nwgt + tdisg832.nwgt
 		tot_gwgt = tot_gwgt + tdisg832.gwgt
 		select	tcibd001.cuni
@@ -3934,6 +3972,25 @@ function extern tdisgdll831rep_bill_of_lading_summary
 			where	tdisg831._index3 = {:tdisg831.cinv}		|#ISGEC001077.n
 			and	tdisg831.cinv <> "         "			|#ISGEC001077.n
 			selectdo
+				select	tdisg045.*								|GH482CR792.s
+				from	tdisg045
+				where	tdisg045.invn = {:tdisg831.invn}
+				selectdo
+					select	tdisg046.*
+					from	tdisg046
+					where	tdisg046._index1 = {:tdisg045.rqno}
+					as set with 1 rows
+					selectdo
+						if tdisg045.note = tdisg.notes.credit then
+							tdisg831.amti = tdisg831.amti - tdisg046.amnt
+						else
+							if tdisg045.note = tdisg.notes.debit then
+								tdisg831.amti = tdisg831.amti + tdisg046.amnt
+							endif
+						endif
+					endselect
+				endselect									|GH482CR792.e
+		
 				select	tdisg825.bkcn
 				from	tdisg825
 				where	tdisg825._index1 = {:tdisg831.lcno}
@@ -4008,6 +4065,24 @@ function 	tdisgdll831rep_bill_of_lading_detail()
 			where	tdisg831._index3 = {:tdisg831.cinv}		|#ISGEC001077.n
 			and	tdisg831.cinv <> "         "			|#ISGEC001077.n		
 			selectdo
+				select	tdisg045.*								|GH482CR792.s
+				from	tdisg045
+				where	tdisg045.invn = {:tdisg831.invn}
+				selectdo
+					select	tdisg046.*
+					from	tdisg046
+					where	tdisg046._index1 = {:tdisg045.rqno}
+					as set with 1 rows
+					selectdo
+						if tdisg045.note = tdisg.notes.credit then
+							tdisg831.amti = tdisg831.amti - tdisg046.amnt
+						else
+							if tdisg045.note = tdisg.notes.debit then
+								tdisg831.amti = tdisg831.amti + tdisg046.amnt
+							endif
+						endif
+					endselect
+				endselect									|GH482CR792.e
 				
 				select	tdisg845.cadt
 				from	tdisg845
