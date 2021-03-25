@@ -7,6 +7,9 @@
 |* 
 |* GH412CR741, RAvi Kumar, 30092020
 |* TCS on Sale Invoice
+|* 
+|* GH530CR000, RAvi Kumar, 25-03-2021
+|* 174937-Text is not fully getting printed on HTML Sale invoice
 |******************************************************************************
 
 	table	ttctax940
@@ -174,7 +177,7 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 							       | text
 	string 	opwd(15) 				       | Text window
 	string 	txtg(8)  				       | Text group
-	long	txt.pntr, txt.pntr1, txt.pntr2, txt.pntr3, ret
+	long	txt.pntr, txt.pntr1, txt.pntr2, txt.pntr3, ret, ret1		|GH530CR000.a.ret1
 	string	temp.text1(999), temp.text(999), get.text(999), get.text1(900)
 	extern domain	tcorno	str.idoc
 	extern	domain	tcmcs.long	report2.flag
@@ -184,6 +187,8 @@ extern domain tcmcs.str100	r.str	|#GH185CR501.n
 	extern	domain	tcmcs.str132m	tcs.label1, tcs.label2, tcs.label3			|GH412CR741.a
 	extern			long	tcs.flag						|GH412CR741.a
 	extern			long	cal.gr.line						|GH412CR741.a
+				string	text1(2000, 100),line1(5000)				|GH530CR000.a
+				long	line.no							|GH530CR000.a
 #include<bic_desktop>
 #include <bic_text>
 	
@@ -2664,17 +2669,33 @@ function create.html.invoice.header()
 			endif
 		seq.puts("</td>",fp)
 	seq.puts("</tr>",fp)
-	
-	if tpisg045.txt1 > 0 then
-		temp.text = creat.tmp.file$(bse.tmp.dir$())
-		text.read( "tpisg045.txt1", "2",
-			       kw1, kw2, kw3, kw4, txtg, opwd, temp.text, 0)
-		txt.pntr = seq.open(temp.text, "r")
-		txt.pntr1 = seq.gets (get.text, 2048,txt.pntr )
+		
+| 	if tpisg045.txt1 > 0 then								|GH530CR000.s.com
+| 		temp.text = creat.tmp.file$(bse.tmp.dir$())
+| 		text.read( "tpisg045.txt1", "2",
+| 			       kw1, kw2, kw3, kw4, txtg, opwd, temp.text, 0)
+| 		txt.pntr = seq.open(temp.text, "r")
+| 		txt.pntr1 = seq.gets (get.text, 2048,txt.pntr )
+| 		seq.puts("<tr>",fp)
+| 		seq.puts("<td colspan=14 class="&chr$(34)&"bb fta"&chr$(34)&"><br>"& trim$(get.text)&"</td>",fp)
+| 		seq.puts("</tr>",fp)
+| 	endif											|GH530CR000.e.com
+
+	if tpisg045.txt1 > 0 then								|GH530CR000.a.s
 		seq.puts("<tr>",fp)
-		seq.puts("<td colspan=14 class="&chr$(34)&"bb fta"&chr$(34)&"><br>"& trim$(get.text)&"</td>",fp)
+		ret1 = text.to.buf("tpisg045.txt1", "2", 100, text1)
+		if ret1 then
+			for i = 1 to ret1
+				text1(1, i) = str.replace$(text1(1, i), "	", " ")
+				line1 = strip$(line1) & " " & trim$(text1(1, i)) & "<br>"
+
+			endfor
+		else 
+			line1 = strip$(line1) & "	" & ""
+		endif
+		seq.puts("<td colspan=14 class="&chr$(34)&"bb fta"&chr$(34)&"><br>"& trim$(line1)&"</td>",fp)
 		seq.puts("</tr>",fp)
-	endif
+	endif											|GH530CR000.a.e
 		
 	seq.puts("<tr>",fp)
 		seq.puts("<td colspan=4  class="&chr$(34)&"bt fta"&chr$(34)&"></td>",fp)
