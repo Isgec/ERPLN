@@ -9,7 +9,9 @@
 |*
 |* GH437CR794, RAvi Kumar, 09-11-2020
 |* Modification in Accounts Credit Note E Invoicing functionality
-                                                                                
+|*
+|* GH525CR000, RAvi Kumar, 22-03-2021
+|* Modification in E-invoicing of DR/CR Note/Manual Invoicing session	                                                                                
 |****************************** declaration section ***************************
 declaration:
 	
@@ -33,6 +35,7 @@ declaration:
 	table	ttfgld106		|RAvi.a
 	table	ttctax400		|RAvi.a
 	table	tciisg800		|RAvi.a
+	table	ttpisg039		|RAvi.a
 	
 
 	extern	domain	tcncmp		curr.comp	
@@ -767,8 +770,15 @@ on.choice:
 	
 
 field.ciisg805.docn:
-before.field:
-	tfgld018.ttyp = ciisg805.tran
+| before.field:							|GH525CR000.com
+| 	tfgld018.ttyp = ciisg805.tran		
+	
+before.zoom:						|GH525CR000.a.s
+	switch.to.company(ciisg805.comp)
+	query.extend.where.in.zoom("tfgld018.ttyp = " & quoted.string(ciisg805.tran))
+	
+after.zoom:
+	switch.to.company(curr.comp)			|GH525CR000.a.e
 	
 when.field.changes:
 	select	tfacr200.rnsb.l
@@ -1322,6 +1332,7 @@ function insert.data.ciisg800()
 			dal.set.field("ciisg800.fcur",Exp_ForCur)
 			dal.set.field("ciisg800.ccty",Exp_CntCode)
 			dal.set.field("ciisg800.rpst",ciisg.rpst.free)
+| 			dal.set.field("ciisg800.rpst",ciisg.rpst.error)
 			if dal.save.object("ciisg800") = 0 then
 				commit.transaction()
 			else
@@ -1466,8 +1477,43 @@ function insert.data.ciisg803()
 	domain	tcmcs.str1	isse.in						|RAvi.a.s.24092020
 	isse.in = ""
 	
-	
-	isse.in = "N"
+| 	if ciisg805.dbcr = ciisg.dcmi.crdt then
+| 		select	tfacr200.ttyp,
+| 			tfacr200.ninv
+| 		from	tfacr200
+| 		where	tfacr200.tdoc = :ciisg805.tran
+| 		and	tfacr200.docn = :ciisg805.docn
+| 		and	tfacr200.ttyp <> :ciisg805.tran
+| 		and	tfacr200.ninv <> :ciisg805.docn
+| 		and	tfacr200._compnr = :ciisg805.comp
+| 		as set with 1 rows
+| 		selectdo
+| 			select	tpisg039.edrn
+| 			from	tpisg039
+| 			where	tpisg039._index3 = {:tfacr200.ttyp, :tfacr200.ninv}
+| 			as set with 1 rows
+| 			selectdo
+| 				select	tdisg832.ityp
+| 				from	tdisg832
+| 				where	tdisg832._index1 = {:tpisg039.edrn}
+| 				and	tdisg832.ityp = tpisg.cont.typ.goods
+| 				as set with 1 rows
+| 				selectdo
+| 					isse.in = "N"
+| 				selectempty
+| 					isse.in = "Y"
+| 				endselect
+| 			endselect
+| 		endselect
+| 	else
+| 		isse.in = "N"
+| 	endif
+
+	if ciisg804.ityp = tpisg.cont.typ.goods then
+		isse.in = "N"
+	else
+		isse.in = "Y"
+	endif
 										|RAvi.a.e.24092020
 	str.doc = str$(ciisg804.docn)
 
@@ -1932,7 +1978,7 @@ function attachment.status()									|RAvi.a.s.28092020
 	
 | 	handle.string =  "EINV_INVPDF_" & str$(ciisg800.comp)
 	handle.string =  "EINV_INVPDF_200"
-	pass.string = trim$(str$(ciisg800.comp)) & "_" &trim$(ityp) & "_" & trim$(Str$(docn.orno.str))
+	pass.string = trim$(str$(ciisg805.comp)) & "_" &trim$(ityp) & "_" & trim$(Str$(docn.orno.str))
 	
 | 	p.char = (whinh312.lsta  = whinh.lstc.confirmed) ? "n":"y"
 	p.char = "n"
