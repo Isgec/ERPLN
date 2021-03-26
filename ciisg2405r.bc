@@ -2680,7 +2680,7 @@ function create.html.invoice.header()
 | 		seq.puts("<td colspan=14 class="&chr$(34)&"bb fta"&chr$(34)&"><br>"& trim$(get.text)&"</td>",fp)
 | 		seq.puts("</tr>",fp)
 | 	endif											|GH530CR000.e.com
-
+	line1 = ""
 	if tpisg045.txt1 > 0 then								|GH530CR000.a.s
 		seq.puts("<tr>",fp)
 		ret1 = text.to.buf("tpisg045.txt1", "2", 100, text1)
