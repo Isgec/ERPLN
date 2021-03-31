@@ -31,6 +31,8 @@
 |* ISGEC016036, Manish Manchanda, 2016-11-10
 |* Modifications - new field added in table to be update on commercial invoice generation
 |*
+|* GH535CR000, RAvi Kumar, 31-03-2021
+|* In Generate commercial Invoice session E-Invoicing  check to be applied 
 |****************************** declaration section ***************************
 declaration:
 
@@ -136,6 +138,7 @@ before.choice:
 		endif	
 	endif	
 	check_receipt_confirmation_date()	|#ISGEC002022
+	check.supply.invoicing.custom()		|GH535CR000.a
 	check.einvoicing.responce.data()			|#TV Tanuj & Amit
 
 on.choice:
@@ -540,7 +543,9 @@ function check.einvoicing.responce.data()
 				| if ein.rdata = 1 then
 					select	ciisg801.ninv, ciisg801.errm, ciisg801.cdte
 					from	ciisg801
-					where	ciisg801._index1 = {:curr.comp, :tran, :docn}
+| 					where	ciisg801._index1 = {:curr.comp, :tran, :docn}
+					where	ciisg801.tran = :tran
+					and	ciisg801.docn = :docn
 					and ciisg801.ninv <> ""
 					and ciisg801.errm = ""
 					and ciisg801.cdte = 0
@@ -558,3 +563,30 @@ function check.einvoicing.responce.data()
 	endselect
 
 }
+
+function check.supply.invoicing.custom()					|GH535CR000.a.s
+{
+	domain	tfgld.ttyp tran
+	domain	tcorno	docn
+	
+	tran = tdisg831.invn(1;3)
+	docn = tdisg831.invn(4;6)
+	if tdisg831.octy = "IN " and tdisg831.etyp = tdisg.advice.supply then
+		select	ciisg801.ninv,
+			ciisg801.errm,
+			ciisg801.cdte
+		from	ciisg801
+		where	ciisg801.tran = :tran
+		and	ciisg801.docn = :docn
+		and	ciisg801.ninv <> ""
+		and	ciisg801.errm = ""
+		and	ciisg801.cdte = 0
+		selectdo
+		selectempty
+			message("E_Invoice of Custom Invoice %s not done",tdisg831.invn)
+			choice.again()
+		endselect
+	endif
+}
+										|GH535CR000.a.e
+
