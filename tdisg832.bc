@@ -63,6 +63,9 @@
 |*
 |* GH521CR000, RAvi Kumar, 15-03-2021
 |* Modification in Billing Advice Projects session lines to consider exports DR CR amt while calculating balance billing amount
+|* 
+|* GH536CR883, RAvi Kumar, 01-04-2021
+|* Minimum 6 digit HSN code to be made mandatory in Domestic Billing Advice
 | *********************************************************************************
 
 #include <bic_dal2>
@@ -1752,7 +1755,22 @@ function extern boolean tdisg832.code.is.valid(long type)
 				dal.set.error.message("@HSN Code Should be of 8 Digits in Case of Exports....")
 				return(false)
 			endif
+		endif		
+		
+		if bind.edrn.type = tdisg.type.domestic then					|GH536CR883.a.s
+			if len(trim$(tdisg832.code)) < 5 then
+				dal.set.error.message("@HSN Code Should be minimum 6 Digits in Case of Domestic...")
+				return(false)
+			endif
+		endif										
+		
+		if bind.edrn.type = tdisg.type.export and tdisg832.ityp = tpisg.cont.typ.services then		
+			if len(trim$(tdisg832.code)) < 5 then
+				dal.set.error.message("@HSN Code Should be minimum 6 Digits in Case of Exports...")
+				return(false)
+			endif
 		endif	
+												|GH536CR883.a.e
 	endif
 	
 	return(true)
