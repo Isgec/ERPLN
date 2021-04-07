@@ -1,14 +1,14 @@
 |******************************************************************************
-|* tfisg1201m000  0  VRC B61U a7 isg 
+|* tfisg1201m000  0  VRC B61U a7 isg
 |* Purchase Order Invoice Processing
-|* Merino1                       
+|* Merino1
 |* 2015-12-17
 |******************************************************************************
 |* Form Type 4
 |******************************************************************************
-|* ID ISGEC002017, Manish Manchanda, 2015-12-17                                                                                
-|*         
-|* ID ISGEC01149, Vishal Anand, 2016-01-11  
+|* ID ISGEC002017, Manish Manchanda, 2015-12-17
+|*
+|* ID ISGEC01149, Vishal Anand, 2016-01-11
 |*
 |* ISGECFIN009, IT0386, Saurabh Dubey, 30 May 2016, VRC B61U a7 isg
 |* Modification in logic of diference calculation
@@ -27,19 +27,19 @@
 |*
 |* ID: GH325CR000, RAvi Kumar, 30-05-2020
 |* IR142243-wrong batch no. display in session Purchase Order Invoice Processing
-|* 
+|*
 |* ID: GH322CR628, RAvi Kumar, 02-06-2020
 |* Open Entries from Purchase Order Invoice Processing
 |*
 |* ID: GH334CR629, RAvi Kumar, 04-06-2020
 |* Display IR extension for Purchase Order Invoice Processing
-|* 
+|*
 |* ID GH336CR627, RAvi Kumar, 05-06-2020
 |* FInalisation option in  Purchase Order Invoice Processing
 |*
 |* ID GH342CR632, RAvi Kumar, 13-06-2020
 |* Auto print of batch from Purchase Order Invoice Processing
-|* 
+|*
 |* ID GH376CR000, RAvi Kumar, 22-07-2020
 |* Issue after finalisation through Quick PTR
 |*
@@ -48,6 +48,8 @@
 |*
 |* TV13440,Sanjeev Kumar, 09-09-2020 : 09:50
 |* Update tfacp200 with project and purchase order no.
+|* TV13476-sanjeev-27-07-2020 commented-SN
+|* Price difference amount and ledger comes automatically after matching. Batch generated is also not balanced
 |*
 |****************************** declaration section ***************************
 declaration:
@@ -61,7 +63,7 @@ declaration:
 	table	ttfisg001	| IR Details
 	table	ttfacp200	| Open Items(Purchase Invoices &amp; Payments)
 	table	ttfgld017	| Transaction Type Series
-	table	ttcmcs036	| Tax Codes by Country	
+	table	ttcmcs036	| Tax Codes by Country
 	table	ttctax940	| Registration Numbers by Financial Company
 	table	ttfisg000	| Finance Customize Parameter
 	table	ttfgld100	| Financial Batch
@@ -71,7 +73,7 @@ declaration:
 	table	ttdmsl400	| Purchase Order ION Tracking
 	table	ttfgld025
 	table	ttfgld100
-	
+
 	table	twhinh310	|#ISGECFIN009.n
 	table	twhinh312	|#ISGECFIN009.n
 	table	ttdpur406
@@ -79,7 +81,9 @@ declaration:
 	table	ttfgld102	|#ISGEC016014.n
 	table	ttfgld107	|#ISGEC016014.n
 	table	ttfgld109	|GH336CR627.a
-	
+	table	ttfisg231	|#TV Tanuj
+	table	ttfacp500	|#TV Tanuj
+
 |****************************** form fields ************************************
 	extern	domain	tfgld.amnt	v.amnt, v.pric, v.tdsa
 	extern	domain	tfgld.docn	v.docn
@@ -88,20 +92,20 @@ declaration:
 	extern	domain	tcorno		v.orno
 	extern	domain	tccprj		v.cprj
 	extern	domain	tccvat		v.cvat
-	extern	domain	tcmcs.str1	labl.1, labl.2, labl.3, labl.4, labl.5, labl.6, 
-					labl.7, labl.8, labl.9, labl.10, labl.11, v.matc, 
+	extern	domain	tcmcs.str1	labl.1, labl.2, labl.3, labl.4, labl.5, labl.6,
+					labl.7, labl.8, labl.9, labl.10, labl.11, v.matc,
 					v.appr, v.uppr, v.fina, v.umat, print.batch
 	extern	domain	tcnama		v.user
 	extern	domain	tfgld.leac	v.pdif
 	extern	domain	tfgld.btno	c.btno
 	extern	domain	tfgld.ttyp	i.ttyp, i.tapr
 	extern	domain	tfgld.docn	i.ninv, i.dapr
-	
+
 |****************************** global variables *******************************
 	extern	domain	tfgld.year	c.year
 	extern	domain	tcncmp		i.ncmp
 	extern	domain	tccom.bpid	i.ifbp
-	
+
 	extern	domain	tcamnt		rep.rgrs	|#ISGECFIN009.n
 	extern	domain	whinh.pksp	str.docn	fixed	|#ISGECFIN009.n
 
@@ -112,28 +116,29 @@ declaration:
 		domain	tcccty		i.ccty
 		domain	tcmcs.str4	v.year
 		domain	tcmcs.str6	v.btno
-	
+
 		domain	tcmcs.str10	v.ninv
 		domain	whinh.pksp	temp.docn
 		domain	tfgld.amnt	v.damt, v.vamt, p.actm, n.actm
 		domain	tctax.seqn	i.rnso
 		domain	tfgld.amnt	i.pric
 		string	str(300)
-		
+
 	extern	domain	tcdsca		cprj.dsca
 	extern	domain	tccom.bpid	bpid.f
 	extern	domain	tcnama		bpid.nama
 	extern	domain	tcsern		i.vrsn
-	
+	extern  domain tcmcs.str1 test		|#TV Tanuj
+
 	extern	domain	tcmcs.str1	f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12		|sh.n
 	#pragma used dll ottstpapihand
 	#include<bic_dam>
-	
+
 #define TRANSACTION_TYPE "PTR"
 |****************************** program section ********************************
 
 before.program:
- 	
+
 	v.logn	=	logname$
 	select	tccom001.nama
 	from	tccom001
@@ -142,14 +147,14 @@ before.program:
 	selectempty
 		tccom001.nama	=	""
 	endselect
-	
+
 	v.user	=	v.logn&" "&trim$(tccom001.nama)
 	i.ncmp	=	get.compnr()
 
 	tcmcs.dll0095.read.parm("tfisg000")
 before.display.object:
 	handle.enable.disable()
-| 	disable.commands("finalize.process")	|#ISGECFIN009.n			|GH336CR627.com		
+| 	disable.commands("finalize.process")	|#ISGECFIN009.n			|GH336CR627.com
 |****************************** group section **********************************
 
 group.1:
@@ -164,15 +169,15 @@ before.choice:
 choice.end.program:
 before.choice:
 	check.process.completion.status()
-	
+
 |****************************** field section **********************************
 field.v.docn:
 before.zoom:
 	query.extend.where.in.zoom("tfacp100.stin = "&str$(1))
-	
+
 check.input:
-	
-	select	tfacp100.cdf_pono:v.orno, 
+
+	select	tfacp100.cdf_pono:v.orno,
 		tfacp100.cdf_cprj:v.cprj,
 		tfacp100.amth,
 		tfacp100.ccur:v.ccur,
@@ -182,25 +187,25 @@ check.input:
 	where	tfacp100._index1	=	{:v.docn}
 	as set with 1 rows
 	selectdo
-		
-		
-			
-		
+
+
+
+
 		select 	tcmcs052.dsca:cprj.dsca
 		from	tcmcs052
 		where 	tcmcs052._index1 = {:v.cprj}
 		as set with 1 rows
 		selectdo
 		endselect
-		
-		
+
+
 		select 	tfisg001.ncmp
 		from	tfisg001
 		where	tfisg001._index1 = {:v.docn}
 		as set with 1 rows
 		selectdo
 		endselect
-		
+
 		if i.ncmp <> 700 then				|ISGEC01070.n
 			select 	tdpur400.otbp:bpid.f,
 				tccom100.nama:bpid.nama
@@ -222,19 +227,19 @@ check.input:
 			selectdo
 			endselect					|ISGEC01070.en
 		endif
-			
+
 		display("bpid.f")
 		display("bpid.nama")
-		
-		
+
+
 	endselect
-	
+
 | 	if tfacp100.stin = tfacp.stin.copied then
 | 		message("IR Status is Copied, Choose another IR")
 | 		set.input.error("",e)
 | 		choice.again()
 | 	endif
-	
+
 	if tfisg001.ncmp <> i.ncmp then
 		message("IR belongs to %d Company",tfisg001.ncmp)
 		set.input.error("",e)
@@ -243,7 +248,7 @@ check.input:
 
 
 when.field.changes:
-	
+
 	v.orno	=	""
 	v.cprj	=	""
 	v.ccur	=	""
@@ -257,9 +262,9 @@ when.field.changes:
 	i.tapr = ""
 	i.dapr = 0
 	v.pdif = ""
-	
-	
-	select	tfacp100.cdf_pono:v.orno, 
+
+
+	select	tfacp100.cdf_pono:v.orno,
 		tfacp100.cdf_cprj:v.cprj,
 		tfacp100.amth,
 		tfacp100.ccur:v.ccur,
@@ -269,22 +274,22 @@ when.field.changes:
 	where	tfacp100._index1	=	{:v.docn}
 	as set with 1 rows
 	selectdo
-		
+
 		select 	tcmcs052.dsca:cprj.dsca
 		from	tcmcs052
 		where 	tcmcs052._index1 = {:v.cprj}
 		as set with 1 rows
 		selectdo
 		endselect
-		
-		
+
+
 		select 	tfisg001.ncmp
 		from	tfisg001
 		where	tfisg001._index1 = {:v.docn}
 		as set with 1 rows
 		selectdo
 		endselect
-		
+
 		if i.ncmp <> 700 then
 			select 	tdpur400.otbp:bpid.f,
 				tccom100.nama:bpid.nama
@@ -305,23 +310,23 @@ when.field.changes:
 			as set with 1 rows
 			selectdo
 			endselect					|ISGEC01070.en
-		endif		
-		
-			
+		endif
+
+
 		display("bpid.f")
 		display("bpid.nama")
-		
-		
+
+
 	endselect
-	
+
 | 	if tfisg001.ncmp <> i.ncmp then
 | 		message("IR belongs to %d Company",tfisg001.ncmp)
 | 		set.input.error("",e)
 | 		choice.again()
 | 	endif
-	
+
 	get.document.details()
-	
+
 | 	if	c.btno	<>	0	then			|#20160608.o
 		display("c.btno")
 		display("i.ttyp")
@@ -329,20 +334,20 @@ when.field.changes:
 		display("i.tapr")
 		display("i.dapr")
 | 	endif							|#20160608.o
-	
+
 	handle.enable.disable()
-	
+
 	v.amnt	=	tfacp100.amth(1)
 	display("v.amnt")
-	
+
 	v.damt	=	0
 	v.vamt	=	0
 	p.actm	=	0
 	n.actm	=	0
 	v.tdsa  = 0
-	if	v.docn	<>	0	then		
+	if	v.docn	<>	0	then
 		temp.docn	=	str$(v.docn)
-		
+
 		select	tfacp245.orno,
 			tfacp245.pono,
 			tfacp245.sqnb,
@@ -363,17 +368,17 @@ when.field.changes:
 			and	tdpur401._compnr = :tfacp245.loco
 			as set with 1 rows
 			selectdo
-			
+
 				v.damt	=	v.damt	+	(tdpur401.damt)| * tfacp245.rqty)
 				v.tdsa = v.tdsa + (tdpur401.pric * tdpur401.qiap)
 			endselect
-			
+
 		endselect
-		
-		
-		
+
+
+
 		display("v.tdsa")
-		select	tfisg001.rcno, 
+		select	tfisg001.rcno,
 			tfisg001.rcln
 		from	tfisg001
 		where	tfisg001._index1	=	{:v.docn}
@@ -384,7 +389,7 @@ when.field.changes:
 			tfisg001.rcno	=	""
 			tfisg001.rcln	=	0
 		endselect
-		
+
 		select	tclct200.lcam
 		from	tclct200
 		where	tclct200._index3	=	{:tfisg001.rcno,:tfisg001.rcln}
@@ -393,7 +398,7 @@ when.field.changes:
 		selectempty
 			tclct200.lcam	=	0
 		endselect
-		
+
 		select	sum(tfacp935.vamt):v.vamt
 		from	tfacp935
 | 		where	tfacp935._index1	=	{:i.ncmp,tfacp.otyp.purchase,:v.orno}			|#20160608.o
@@ -401,9 +406,9 @@ when.field.changes:
 		and	tfacp935.rcno		=	:tfisg001.rcno
 		selectdo
 		endselect
-		
+
 		select	tfacp935.orno,
-			tfisg184.actm, 
+			tfisg184.actm,
 			tfisg184.vamt
 		from	tfacp935, tfisg184
 		where	tfacp935._index1	=	{:i.ncmp,tfacp.otyp.purchase,:v.orno}
@@ -416,37 +421,37 @@ when.field.changes:
 				n.actm	=	n.actm	+	tfisg184.actm
 			endif
 		endselect
-		
+
 | 		v.pric	=	(v.damt + tclct200.lcam + v.vamt) - v.amnt |+ p.actm - n.actm	|#ISGECFIN009.o
 		i.pric	=	(v.damt + tclct200.lcam + v.vamt) - v.amnt |+ p.actm - n.actm
-		
+
 						|#ISGECFIN009.sn
-					
-		str.docn = str$(v.docn)				
-		get.amount.diff()	
+
+		str.docn = str$(v.docn)
+		get.amount.diff()
 		v.pric = rep.rgrs - v.amnt
 		v.pric = round(v.pric, 2, 0)
 		i.pric = round(v.pric, 2, 0)	|#ISGECFIN009.en
-	
-		
+
+
 		display("v.pric")
 		insert.tfisg184()
 	endif
-	
+
 							|#ISGEC016014.sn
 field.v.amnt:
 check.input:
-	v.pric	=	rep.rgrs - v.amnt					
+	v.pric	=	rep.rgrs - v.amnt
 							|#ISGEC016014.en
-							
+
 field.v.cvat:
 before.zoom:
 	i.ccty	=	"IN"
 	str	=	"tcmcs037.cvat in(select tcmcs036.cvat from tcmcs036 where tcmcs036._index1 = '"&i.ccty&"'"
 	str	=	str&" and tcmcs036.gtax = "&str$(1)&" and tcmcs036.appr = "&str$(1)&")"
 	query.extend.where.in.zoom(str)
-	
-	
+
+
 | check.input:
 | 	if	not	isspace(v.cvat)	then
 | 		v.tdsa	=	tfacp100.amth(1)
@@ -456,7 +461,7 @@ before.zoom:
 | 	endif
 
 field.v.pric:
-check.input:	
+check.input:
 	if	v.pric	<>	0	then
 		enable.fields("v.pdif")
 	else
@@ -464,13 +469,13 @@ check.input:
 		v.pdif	=	""
 	endif
 								|#sujeet20160603.so
-	
+
 | 	if	v.pric	<>	i.pric	then
 | 		message("Amount cannot be modified.")
 | 		set.input.error("",e)
 | 	endif
-								|#sujeet20160603.eo	
-	
+								|#sujeet20160603.eo
+
 field.v.pdif:
 before.zoom:
 	str	=	"tfgld008.leac = '"&str$(6110115)&"' or tfgld008.leac = '"&str$(6130014)&"' or tfgld008.leac = '"&str$(6130053)&"' or tfgld008.leac = '"&str$(6130131)&"'"
@@ -499,10 +504,10 @@ functions:
 function	extern	purchase.order.no()
 {
 	domain tcncmp company
-	company =  get.compnr()	|ISGEC01070.n 
-	
+	company =  get.compnr()	|ISGEC01070.n
+
 	i.vrsn	=	0
-	
+
 	if company = 700 then				|ISGEC01070.sn
 		select	tdmsl400.vrsn:i.vrsn
 		from	tdmsl400
@@ -516,8 +521,8 @@ function	extern	purchase.order.no()
 	| 		"v.orno", "tdpur400.orno")
 
 							|ISGEC01070.en
-	else	
-	
+	else
+
 		select	tdmsl400.vrsn:i.vrsn
 		from	tdmsl400
 		where	tdmsl400._index1	=	{:v.orno}
@@ -531,13 +536,13 @@ function	extern	purchase.order.no()
 	| 		"v.orno", "tdpur400.orno")
 
 		switch.to.company(200)					|#20160608.n
-	
+
 	endif
 
 	export("v.orno",v.orno)
 	export("i.vrsn",i.vrsn)
 	start.session(MODAL,"tdisg4400m000","","")
-| 	
+|
 | 	ret_val	=	stpapi.find("tdisg4400m000",i.erro)
 | 	if	ret_val	=	1	then
 | 		stpapi.put.field("tdisg4400m000","i.orno",v.orno)
@@ -546,7 +551,7 @@ function	extern	purchase.order.no()
 | 		stpapi.print.report("tdisg4400m000",i.erro)
 | 	endif
 | 	stpapi.end.session("tdisg4400m000")
-	
+
 	switch.to.company(i.ncmp)					|#20160608.n
 }
 
@@ -565,12 +570,12 @@ function	extern	purchase.order.summary()
 	if i.ncmp <> 700 then			|ISGEC01070.n
 		switch.to.company(200)
 	endif
-	
+
 	export("v.cprj",v.cprj)
 	export("i.ifbp",i.ifbp)
 	export("v.orno",v.orno)
 	start.session(MODAL,"tfisg2400m100","","")
-	
+
 | 	ret_val	=	stpapi.find("tfisg2400m100",i.erro)
 | 	if	ret_val	=	1	then
 | 		stpapi.put.field("tfisg2400m100","proj.f",v.cprj)
@@ -584,7 +589,7 @@ function	extern	purchase.order.summary()
 | 	endif
 | 	stpapi.end.session("tfisg2400m100")
 	switch.to.company(i.ncmp)
-	
+
 }
 
 function	extern	batch.no()
@@ -648,7 +653,7 @@ function	extern	print.outstanding.unalloc()
 		switch.to.company(200)
 	endif
 	start.session(MODAL,"tfisg2400m001","","")
-	
+
 | 	ret_val	=	stpapi.find("tfisg2400m001", i.erro)
 | 	if	ret_val	=	1	then
 | 		stpapi.put.field("tfisg2400m001","cono.f",str$(i.ncmp))
@@ -675,9 +680,9 @@ function	extern	print.oustanding.advance()
 	export("i.ifbp",i.ifbp)
 	export("v.orno",v.orno)
 	export("v.cprj",v.cprj)
-	
+
 	start.session(MODAL,"tfisg2400m002","","")
-	
+
 
 | 	ret_val	=	stpapi.find("tfisg2400m002", i.erro)
 | 	if	ret_val	=	1	then
@@ -691,8 +696,8 @@ function	extern	print.oustanding.advance()
 | 		stpapi.set.report("tfisg2400m002","rtfisg24000102n","D",i.erro)
 | 		stpapi.print.report("tfisg2400m002", i.erro)
 | 	endif
-| 	stpapi.end.session("tfisg2400m002")	
-	
+| 	stpapi.end.session("tfisg2400m002")
+
 	switch.to.company(i.ncmp)
 }
 
@@ -704,9 +709,9 @@ function	extern	print.outstanding.pdn.adj()
 	export("i.ifbp",i.ifbp)
 	export("v.orno",v.orno)
 	export("v.cprj",v.cprj)
-	
+
 	start.session(MODAL,"tfisg2400m000","","")
-	
+
 | 	ret_val	=	stpapi.find("tfisg2400m000", i.erro)
 | 	if	ret_val	=	1	then
 | 		stpapi.put.field("tfisg2400m000","otbp.f",str$(i.ifbp))
@@ -726,17 +731,17 @@ function	extern	print.outstanding.pdn.adj()
 function	extern	unadjusted.purchase.inv()
 {
 	session.zoomindex = 2							|GH322CR628.a.s
-	start.synchronized.child.with(FIND.DATA)			
+	start.synchronized.child.with(FIND.DATA)
 	start.synchronized.child ("tfacp2520m000",
 		"i.ifbp", "tfacp200.ifbp")
 										|GH322CR628.a.e
 | 	start.session(MODAL,"tfacp2520m000","","")				|GH322CR628.com
 | 	switch.to.company(200)
-| 	
+|
 | 	export("i.ifbp",i.ifbp)
 | 	export("v.orno",v.orno)
 | 	export("i.ninv",i.ninv)
-| 	
+|
 | 	start.session(MODAL,"tfisg2400m400","","")
 
 | 	ret_val	=	stpapi.find("tfisg2400m400", i.erro)
@@ -752,17 +757,17 @@ function	extern	unadjusted.purchase.inv()
 | 		stpapi.set.report("tfisg2400m400","rtfisg240004001","D",i.erro)
 | 		stpapi.print.report("tfisg2400m400", i.erro)
 | 	endif
-| 	stpapi.end.session("tfisg2400m400")	
+| 	stpapi.end.session("tfisg2400m400")
 
 | 	switch.to.company(i.ncmp)
-	
+
 }
 
 function	extern	match.process()
 {
 	domain	tcmcs.long	c.day, c.month
 	domain	tfgld.date	temp.date
-	
+
 	select	tfacp245.rcno
 	from	tfacp245
 	where	tfacp245._index1	=	{:temp.docn}
@@ -771,8 +776,8 @@ function	extern	match.process()
 		message("Receipt is not confirmed yet/May be purchase order doesn't belongs to same financial company.")
 		choice.again()
 	endselect
-		
-	
+
+
 	if	tfacp100.stin	<>	tfacp.stin.open	then
 		message("IR is already linked with Invoice.")
 		choice.again()
@@ -783,12 +788,12 @@ function	extern	match.process()
 		message("Ledger Code is mandatory")
 		choice.again()
 	endif
-	
+
 | 	num.to.date(date.num(),c.year,c.month,c.day)		|#ISGEC017005.o
 	num.to.date(v.docd,c.year,c.month,c.day)		|#ISGEC017005.n
-	
+
 	temp.date	=	date.to.num(c.year,c.month,1)
-	
+
 	select	tfgld005.year, tfgld005.prno
 	from	tfgld005
 	where	tfgld005._index2	=	{tfgld.ptyp.financial,:temp.date}	|#ISGEC017005.o
@@ -804,12 +809,12 @@ function	extern	match.process()
 			tfgld005.year,
 			c.btno
 			)
-	handle.enable.disable()	
+	handle.enable.disable()
 	get.document.details()
 	update.tfacp200()			|#TV13440-Sanjeev-09-09-2020
 	display("i.ttyp")
 	display("i.ninv")
-	display("c.btno")	
+	display("c.btno")
 }
 
 function	extern	unmatch.process()
@@ -819,7 +824,7 @@ function	extern	unmatch.process()
 			2,
 			c.year,
 			c.btno
-			)	
+			)
 	v.orno	=	""
 	v.cprj	=	""
 	v.ccur	=	""
@@ -833,15 +838,15 @@ function	extern	unmatch.process()
 	i.tapr = ""
 	i.dapr = 0
 	v.pdif = ""
-	
+
 	tfacp100.stin = tfacp.stin.open
-	handle.enable.disable()	
+	handle.enable.disable()
 	get.document.details()
-	
-	
+
+
 	display("i.ttyp")
 	display("i.ninv")
-	display("c.btno")	
+	display("c.btno")
 }
 
 function	extern	approve.process()
@@ -852,7 +857,7 @@ function	extern	approve.process()
 			c.year,
 			c.btno
 			)
-	handle.enable.disable()	
+	handle.enable.disable()
 	get.document.details()
 	display("i.tapr")
 	display("i.dapr")
@@ -866,18 +871,18 @@ function	extern	unapprove.process()
 			c.year,
 			c.btno
 			)
-	handle.enable.disable()	
+	handle.enable.disable()
 	get.document.details()
 	display("i.tapr")
 	display("i.dapr")
 }
 
 function	extern	finalize.process()
-{	
+{
 	long		get_error
 	get_error = 0
-	
-| 	select	tfgld100.user										|GH336CR627.a.s				
+
+| 	select	tfgld100.user										|GH336CR627.a.s
 | 	from	tfgld100
 | 	where	tfgld100._index1 = {:c.year,:c.btno}
 | 	and	tfgld100.user = :v.logn
@@ -892,16 +897,16 @@ function	extern	finalize.process()
 | 			get_error = 1
 | 		endselect
 | 	endselect
-| 	
+|
 | 	if get_error = 0 then
 | 		get.document.details()
 | 		afs.process(
 | 				5,
 | 				c.year,
 | 				c.btno
-| 				)	
-| 		handle.enable.disable()	
-| 	endif	
+| 				)
+| 		handle.enable.disable()
+| 	endif
 	select	tfgld025.susr
 	from	tfgld025
 	where	tfgld025._index1 = {:v.logn}
@@ -930,13 +935,13 @@ function	afs.process(
 	endif
 	on	case	i.pntr
 	case	1:
-		
+
 		if not start.match.process(i.pntr,i.year,i.btno) then
 			message("Completed")
 		endif
-		
-		
-| 		
+
+
+|
 | 		ret_val	=	stpapi.find("tfgld1101m000", i.erro)
 | 		stpapi.put.field("tfgld1101m000","tfgld100.tedt",str$(date.num()))
 | 		stpapi.put.field("tfgld1101m000","tfgld100.year",str$(i.year))
@@ -984,20 +989,20 @@ function	afs.process(
 | 								)
 | 				stpapi.get.field("tfacp1110s000","tfacp200.ttyp",i.ttyp)
 | 				stpapi.get.field("tfacp1110s000","tfacp200.ninv",v.ninv)
-| 				i.ninv	=	val(v.ninv)				
+| 				i.ninv	=	val(v.ninv)
 | 				if	i.ninv	<>	0	then
 | 	| 					suspend(1000)
 | 					update.received.purchase.invoices(
 | 										i.ttyp,
 | 										i.ninv
 | 										)
-| 	| 					suspend(1000)					
-| 				endif						
+| 	| 					suspend(1000)
+| 				endif
 | 				stpapi.form.command("tfacp1110s000",5,"exec.user.4", i.erro)
 | 				stpapi.handle.subproc("tfacp1110s000","tfacp2544m000","modify")
 | 	| 				stpapi.browse.set("tfacp2544m000","first.set")
 | 				domain	whinh.pksp		o.shpm
-| 				
+|
 | 				o.shpm = str$(v.docn)
 
 | 				select 	tfacp245.shpm,
@@ -1012,7 +1017,7 @@ function	afs.process(
 | 				as set with 1 rows
 | 				selectdo
 | 				endselect
-| 				
+|
 | 	| 				stpapi.put.field("tfacp2544m000","tfacp245.shpm", str$(v.docn))
 | 				stpapi.put.field("tfacp2544m000","tfacp245.shpm", tfacp245.shpm)
 | 				stpapi.put.field("tfacp2544m000","tfacp245.orno",tfacp245.orno)
@@ -1022,7 +1027,7 @@ function	afs.process(
 | 				stpapi.put.field("tfacp2544m000","tfacp245.rcno",tfacp245.rcno)
 | 				stpapi.put.field("tfacp2544m000","tfacp245.rseq",str$(tfacp245.rseq))
 | 				ret_val	=	stpapi.find("tfacp2544m000", i.erro)
-| 				
+|
 | 				if	ret_val	=	1	then
 | 					stpapi.mark("tfacp2544m000", i.erro)
 | 					if	i.pric	<=	0	then
@@ -1064,7 +1069,7 @@ function	afs.process(
 | 							stpapi.end.session("tfacp9136m00l")
 | 							check.tax.difference.and.lines()
 | 							add.costs()
-| 							on	case	i.dbcr	
+| 							on	case	i.dbcr
 | 								case	1:
 | 									invoice.tax.lines(abs(v.pric))
 | 								break
@@ -1136,7 +1141,7 @@ function	afs.process(
 						where	m_tfacp101._index1	=	{:i.ttyp,:i.ninv}
 						selectdo							|#ISGEC016014.en
 							stpapi.delete("tfacp1133s000", true, i.erro)
-						endselect						
+						endselect
 						stpapi.end.session("tfacp1133s000")				|#ISGEC016014.n
 						ret_val	=	stpapi.delete("tfacp1110s000", true, i.erro)
 						if	ret_val	<>	1	then
@@ -1221,7 +1226,7 @@ function	afs.process(
 			stpapi.set.report("tfgld1211s000","rtfgld121111000","D",i.erro)
 			stpapi.set.report("tfgld1210m000","rtfgld121111000","D",i.erro)
 			stpapi.form.command("tfgld1101m000",5,"finalize.batch", i.erro)
-			
+
 			if	not	isspace(i.erro)	then
 | 				stpapi.recover("tfacp1110s000", i.erro)
 | 				message("%s",i.erro)
@@ -1234,12 +1239,12 @@ function	afs.process(
 		endif
 		break
 	endcase
-	
+
 | 	stpapi.end.session("tfacp1210m000")
-	stpapi.end.session("tfacp1110s000")		
-	stpapi.end.session("tfgld1101m100")		
-	stpapi.end.session("tfgld1101m000")	
-}			
+	stpapi.end.session("tfacp1110s000")
+	stpapi.end.session("tfgld1101m100")
+	stpapi.end.session("tfgld1101m000")
+}
 
 function	handle.error.message(domain	tcmcs.str13	sess.detail)
 {
@@ -1250,7 +1255,7 @@ function	handle.error.message(domain	tcmcs.str13	sess.detail)
 
 function	match.receipt.line()
 {
-	select	tfacp245.orno, 
+	select	tfacp245.orno,
 		tfacp245.pono,
 		tfacp245.sqnb,
 		tfacp245.loco,
@@ -1275,12 +1280,12 @@ function	match.receipt.line()
 			if	i.pric	<=	0	then
 				stpapi.form.command("tfacp2544m000",5,"exec.user.6", i.erro)
 			else
-				stpapi.form.command("tfacp2544m000",5,"exec.user.3", i.erro)	
+				stpapi.form.command("tfacp2544m000",5,"exec.user.3", i.erro)
 				stpapi.synchronize.dialog("tfacp2151s000","MODIFY",i.erro)
 				stpapi.form.command("tfacp2151s000",5,"exec.cont.process",i.erro)
 			endif
 		endif
-	endselect	
+	endselect
 }
 
 function	add.costs()
@@ -1328,7 +1333,7 @@ function	tax.transactions()
 | 		stpapi.recover("tfacp1112m000",i.erro)
 	endif
 	stpapi.end.session("tfacp1112m000")
-	
+
 	stpapi.form.command("tfacp1110s000",5,"start.session.tfacp1112", i.erro)
 	stpapi.synchronize.dialog("tfacp1112m000","ADD",i.erro)
 	stpapi.put.field("tfacp1112m000","tfgld102.ccty","IN")
@@ -1347,13 +1352,13 @@ function	tax.transactions()
 function	invoice.tax.lines(domain	tcamnt	i.amnt)
 {
 	domain	tcmcs.str10	rem.amnt.l
-	
+
 	select	tctax940.seqn
 	from	tctax940
 	as	set with 1 rows
 	selectdo
 	endselect
-	
+
 	stpapi.form.command("tfacp1110s000",5,"start.tfacp9136m00l", i.erro)
 	stpapi.handle.subproc("tfacp1110s000","tfacp9136m00l","add")
 	stpapi.put.field("tfacp9136m00l","tfacp936.icom",str$(i.ncmp))
@@ -1393,12 +1398,12 @@ function	invoice.tax.lines(domain	tcamnt	i.amnt)
 
 function	check.tax.code()
 {
-	select	tfacp936.vatc, 
+	select	tfacp936.vatc,
 		tfacp936.cvat,
 		tcmcs036.indt.l
 	from	tfacp936, tcmcs036
 	where	tfacp936._index1	=	{:i.ncmp,:i.ttyp,:i.ninv}
-	and	tfacp936.rnso		=	0	
+	and	tfacp936.rnso		=	0
 	and	tcmcs036._index1	=	{tfacp936.vatc,tfacp936.cvat}
 	selectdo
 		on	case	tcmcs036.indt.l
@@ -1488,9 +1493,9 @@ function	check.tax.code()
 | 			get.category.wise.bp(10)
 			get.category.wise.bp(5)
 			break
-		endcase	
+		endcase
 		update.invoice.tax.lines()
-	endselect	
+	endselect
 }
 
 function	get.category.wise.bp(
@@ -1498,16 +1503,16 @@ function	get.category.wise.bp(
 					)
 {
 	domain	tctax.catg.l	catg.l
-	
+
 	catg.l	=	ltoe(i.catg)
-	
+
 	i.rnso	=	0
 	select	tctax940.seqn:i.rnso
 	from	tctax940
 	where	tctax940._index4	=	{:i.ncmp,:i.catg}
 	as	set with 1 rows
 	selectdo
-	endselect	
+	endselect
 }
 
 function	update.invoice.tax.lines()
@@ -1542,14 +1547,14 @@ function	copy.received.purchase.invoics(
 						domain	tfgld.prod	i.prod
 						)
 {
-	
+
 	select	tfacp100.*
 	from	tfacp100
 	where	tfacp100._index1	=	{:v.docn}
 	selectdo
 		tfacp100.isup = strip$(tfacp100.isup) & "."
 	endselect
-		
+
 	stpapi.put.field("tfacp1110s000","tfacp200.ttyp",i.ttyp)
 	stpapi.put.field("tfacp1110s000","tfacp200.ninv",str$(i.docn))
 	stpapi.put.field("tfacp1110s000","tfacp200.ifbp",tfacp100.ifbp)
@@ -1588,7 +1593,7 @@ function	copy.received.purchase.invoics(
 	stpapi.put.field("tfacp1110s000","tfacp200.pcom",str$(i.ncmp))
 	stpapi.put.field("tfacp1110s000","tfacp200.bust",str$(etol(tfacp.bust.not.applicable)))
 	ret_val	=	stpapi.insert("tfacp1110s000",true,i.erro)
-	
+
 	if ret_val <> 1 then
 | 		stpapi.recover("tfacp1110s000",i.erro)
 | 		message("%s",i.erro)
@@ -1597,12 +1602,12 @@ function	copy.received.purchase.invoics(
 }
 
 function	get.document.details()
-{	
+{
 	select	tfacp100.ctyp,
 		tfacp100.cinv,
 		tfacp100.stin,
 		tfacp200.year,
-		tfacp200.btno, 
+		tfacp200.btno,
 		tfacp200.stap,
 		tfacp200.tapr,
 		tfacp200.dapr,
@@ -1640,7 +1645,7 @@ function	update.received.purchase.invoices(
 {
 	domain tfgld.ttyp		ttyp.200
 	domain tfgld.docn		ninv.200
-	
+
 	select	tfacp200.ttyp:ttyp.200,tfacp200.ninv:ninv.200
 	from	tfacp200
 	where	tfacp200._index4 = {:c.year,:c.btno}
@@ -1709,8 +1714,8 @@ function	insert.tfisg184()
 			else
 				abort.transaction()
 			endif
-		endselect	
-	endselect	
+		endselect
+	endselect
 }
 
 function	domain	tcbool	new.tax.code()
@@ -1722,12 +1727,12 @@ function	domain	tcbool	new.tax.code()
 	from	tcmcs036
 	where	tcmcs036._index1	=	{:tfacp935.ccty,:tfacp935.cvat}
 	and	tcmcs036.ktax		=	tcktax.vat
-	and	tcmcs036.smpl		=	tcyesno.yes		
-	and	tcmcs036.extx		=	tcyesno.no		
-	and	(tcmcs036.indt.l	=	tctax.indt.l.lst	
-		or	tcmcs036.indt.l	=	tctax.indt.l.cst	
-		or	tcmcs036.indt.l	=	tctax.indt.l.vat	
-		or	tcmcs036.indt.l	=	tctax.indt.l.n.a)	
+	and	tcmcs036.smpl		=	tcyesno.yes
+	and	tcmcs036.extx		=	tcyesno.no
+	and	(tcmcs036.indt.l	=	tctax.indt.l.lst
+		or	tcmcs036.indt.l	=	tctax.indt.l.cst
+		or	tcmcs036.indt.l	=	tctax.indt.l.vat
+		or	tcmcs036.indt.l	=	tctax.indt.l.n.a)
 	as	set with 1 rows
 	selectdo
 		return(true)
@@ -1749,12 +1754,12 @@ function	check.tax.difference.and.lines()
 			o.tfisg184.tbam = tfisg184.tbam
 | 			o.tfisg184.vamt = tfisg184.tbam
 			insert.tax.lines(tfisg184.tvat, tfisg184.actm)
-			
+
 			o.tfisg184.tbam = 0.0
 | 			o.tfisg184.vamt = 0.0
 		endif
 	endselect
-	
+
 | 	select	tfisg184.*
 | 	from	tfisg184
 | 	where	tfisg184._index1	=	{:v.orno}
@@ -1768,7 +1773,7 @@ function	check.tax.difference.and.lines()
 | 			insert.tax.lines(tfisg184.cvat, tfisg184.vamt)
 | 		endselect
 | 	endselect
-	
+
 	| 	stpapi.form.command("tfacp1110s000",5,"start.tfacp9136m00l", i.erro)
 	| 	stpapi.handle.subproc("tfacp1110s000","tfacp9136m00l","MODIFY")
 	| 	stpapi.put.field("tfacp9136m00l","tfacp936.icom",str$(i.ncmp))
@@ -1794,15 +1799,15 @@ function	check.tax.difference.and.lines()
 function	code.correction()
 {
 	domain	tcamnt	i.amnt
-	
+
 | 	if tfisg184.tbam < 0 then
 | 	else
-		
-	
+
+
 		i.amnt	=	-tfisg184.tbam
 | 	endif
-	
-	
+
+
 	stpapi.form.command("tfacp1110s000",5,"start.tfacp9136m00l", i.erro)
 	stpapi.handle.subproc("tfacp1110s000","tfacp9136m00l","ADD")
 	stpapi.put.field("tfacp9136m00l","tfacp936.icom",str$(i.ncmp))
@@ -1828,10 +1833,10 @@ function	code.correction()
 			handle.error.message("tfacp9136m00l")
 		else
 	| 			stpapi.form.command("tfacp9136m00l",5,"exec.user.1", i.erro)
-		endif	
+		endif
 	endif
 	stpapi.end.session("tfacp9136m00l")
-	
+
 }
 
 function	insert.tax.lines(
@@ -1847,7 +1852,7 @@ function	insert.tax.lines(
 	stpapi.put.field("tfacp9136m00l","tfacp936.vatc","IN")
 	stpapi.put.field("tfacp9136m00l","tfacp936.cvat",i.cvat)
 	stpapi.put.field("tfacp9136m00l","tfacp936.amnt",str$(o.tfisg184.tbam))		|#new
-	stpapi.put.field("tfacp9136m00l","tfacp936.tbam",str$(o.tfisg184.tbam))		|#new	
+	stpapi.put.field("tfacp9136m00l","tfacp936.tbam",str$(o.tfisg184.tbam))		|#new
 	stpapi.put.field("tfacp9136m00l","tfacp936.vamt",str$(i.amnt))
 | 	stpapi.put.field("tfacp9136m00l","tfacp936.rnso",str$(53))
 | 	stpapi.put.field("tfacp9136m00l","tfacp936.rnso",str$(1))				|#ISGEC016014.o
@@ -1858,8 +1863,8 @@ function	insert.tax.lines(
 | 		stpapi.recover("tfacp9136m00l",i.erro)
 		handle.error.message("tfacp9136m00l")
 	else
-		stpapi.form.command("tfacp9136m00l",5,"exec.user.2", i.erro)		
-		stpapi.form.command("tfacp9136m00l",5,"exec.user.1", i.erro)		
+		stpapi.form.command("tfacp9136m00l",5,"exec.user.2", i.erro)
+		stpapi.form.command("tfacp9136m00l",5,"exec.user.1", i.erro)
 	endif
 	stpapi.end.session("tfacp9136m00l")
 }
@@ -1871,43 +1876,43 @@ function	handle.enable.disable()
 	enable.commands("unmatch.process")
 	enable.commands("approve.process")
 	enable.commands("unapprove.process")
-| 	enable.commands("finalize.process")	|#SD15062016.o, Asked by Mr. Arun Sharma, To 
+| 	enable.commands("finalize.process")	|#SD15062016.o, Asked by Mr. Arun Sharma, To
 						| permanantly freeze the finalize button
 	if	tfacp100.stin	<>	tfacp.stin.open	then
 		disable.commands("match.process")
 	endif
-	
+
 | 	if	tfacp200.stap	=	tfacp.stap.linked	then
 	if	tfacp200.stap	=	tfacp.stap.registered	or tfacp200.stap	=	tfacp.stap.linked then
 		disable.commands("match.process")
-	else	
+	else
 		disable.commands("unmatch.process")
 	endif
-	
+
 	if	tfacp200.stap	=	tfacp.stap.approved	then
 		disable.commands("match.process")
 		disable.commands("unmatch.process")
 		disable.commands("approve.process")
 	else
 		disable.commands("unapprove.process")
-| 		disable.commands("finalize.process")						|GH336CR627.com						
+| 		disable.commands("finalize.process")						|GH336CR627.com
 	endif
-	
+
 	if	tfgld100.stat	=	tfgld.bstt.term	then
 		disable.commands("match.process")
 		disable.commands("unmatch.process")
 		disable.commands("approve.process")
 		disable.commands("unapprove.process")
 	endif
-	
+
 	if	v.docn	=	0	then
 		disable.commands("match.process")
 		disable.commands("unmatch.process")
 		disable.commands("approve.process")
 		disable.commands("unapprove.process")
-| 		disable.commands("finalize.process")						|GH336CR627.com					
+| 		disable.commands("finalize.process")						|GH336CR627.com
 	endif
-	
+
 	if	c.btno	=	0	then
 		disable.commands("batch.no")
 		disable.commands("print.voucher")
@@ -1918,8 +1923,8 @@ function	handle.enable.disable()
 		enable.commands("print.voucher")
 		enable.commands("print.accounting.entry")
 	endif
-	
-	select	tfgld100.stat,									|GH336CR627.a.s		
+
+	select	tfgld100.stat,									|GH336CR627.a.s
 		tfgld018.trun
 	from	tfgld100, tfgld018
 	where	tfgld100._index1 = {:c.year,:c.btno}
@@ -1933,7 +1938,7 @@ function	handle.enable.disable()
 	selectempty
 		disable.commands("finalize.process")
 	endselect										|GH336CR627.a.e
-	
+
 	enable.disable.fields()					|GH370CR678.a
 }
 
@@ -1941,8 +1946,8 @@ function	handle.enable.disable()
 function	check.process.completion.status()
 {
 	get.document.details()
-	
-	if	c.btno	<>	0	and	
+
+	if	c.btno	<>	0	and
 		(tfgld100.stat	<>	tfgld.bstt.term		or
 		tfacp200.stap	<>	tfacp.stap.approved)	then
 		if	(ask.enum("tfisgq00001",tcyesno.yes)	=	tcyesno.no)	then
@@ -1961,9 +1966,9 @@ function get.amount.diff()
 {
 	domain	tcamnt	rep.rbsc, rep.roch, rep.rexc
 	domain	tcamnt	rep.rcst, rep.rstx, temp.rep.rgrs
-	
+
 	domain	tcpric	temp.pric
-	
+
 	temp.rep.rgrs = 0.00
 	select	whinh312.*, whinh310.stat, whinh310.dino
 	from	whinh312, whinh310
@@ -1976,8 +1981,8 @@ function get.amount.diff()
 			select	tdpur401.pric:temp.pric
 			from	tdpur401
 			where	tdpur401._index1 = {
-						:whinh312.orno, 
-						:whinh312.pono, 
+						:whinh312.orno,
+						:whinh312.pono,
 						:whinh312.seqn
 						}
 			and	tdpur401._compnr = :tfacp245.loco
@@ -1988,7 +1993,7 @@ function get.amount.diff()
 			rep.rbsc = temp.pric * whinh312.qrcr
 			Calculate_Other_Charge(whinh312.rcno, whinh312.rcln, rep.roch)
 			get.tax.from.tfacp935(whinh312.rcno, whinh312.rcln, whinh312.orno, whinh312.pono,
-							whinh312.seqn, rep.rexc, rep.rcst, rep.rstx)	
+							whinh312.seqn, rep.rexc, rep.rcst, rep.rstx)
 			temp.rep.rgrs = temp.rep.rgrs + (rep.rbsc + rep.roch + rep.rexc + rep.rcst + rep.rstx)
 		endif
 	selectempty
@@ -2006,8 +2011,8 @@ function get.amount.diff()
 				select	tdpur401.pric:temp.pric
 				from	tdpur401
 				where	tdpur401._index1 = {
-							:tdpur406.orno, 
-							:tdpur406.pono, 
+							:tdpur406.orno,
+							:tdpur406.pono,
 							:tdpur406.sqnb
 							}
 				and	tdpur401._compnr = :tfacp245.loco
@@ -2015,19 +2020,19 @@ function get.amount.diff()
 				selectempty
 					temp.pric = 0
 				endselect
-				
+
 				rep.rbsc = temp.pric * tdpur406.qiap
-				
+
 				Calculate_Other_Charge(whinh312.rcno, whinh312.rcln, rep.roch)
 				get.tax.from.tfacp935(tdpur406.rcno, tdpur406.rseq, tdpur406.orno, tdpur406.pono,
-							tdpur406.sqnb, rep.rexc, rep.rcst, rep.rstx)	
+							tdpur406.sqnb, rep.rexc, rep.rcst, rep.rstx)
 				temp.rep.rgrs = temp.rep.rgrs + (rep.rbsc + rep.roch + rep.rexc + rep.rcst + rep.rstx)
 			endif
-			
+
 		endselect
-		
+
 	endselect
-	
+
 	rep.rgrs = temp.rep.rgrs
 }
 
@@ -2035,11 +2040,11 @@ function get.amount.diff()
 function Calculate_Other_Charge(
 			domain	tcorno	i.rcno,
 			domain	tcpono	i.rcln,
-		ref	domain	tcamnt	tmp.roch	
+		ref	domain	tcamnt	tmp.roch
 				)
 {
 	domain tcamnt	additional.amount
-	
+
 	tmp.roch = 0
 	select 	tclct200.lcos, sum(tclct200.lcam):additional.amount
 	from	tclct200
@@ -2058,29 +2063,29 @@ function Calculate_Other_Charge(
 function get.tax.from.tfacp935(
 			domain	tcorno	i.rcno,
 			domain	tcpono	i.rcln,
-			domain	tcorno	i.orno,			
-			domain	tcpono	i.pono,			
-			domain	tcpono	i.sqnb,			
+			domain	tcorno	i.orno,
+			domain	tcpono	i.pono,
+			domain	tcpono	i.sqnb,
 		ref	domain	tcamnt	o.rexc.amnt,
 		ref	domain	tcamnt	o.rcst.amnt,
 		ref	domain	tcamnt	o.ser.amnt
 				)
 {
 	domain	tcamnt	amount
-	
+
 	o.rexc.amnt = 0
 	o.rcst.amnt = 0
 	o.ser.amnt = 0
 	amount = 0
-	
+
 	select	tfacp935.ccty, tfacp935.cvat, sum(tfacp935.vamt):amount
 	from	tfacp935
 	where	tfacp935.rcno = :i.rcno
 	and	tfacp935.rseq = :i.rcln
-	and	tfacp935.orno = :i.orno			
-	and	tfacp935.pono = :i.pono			
-	and	tfacp935.sqnb = :i.sqnb	
-| 	and	tfacp935._compnr = :tfacp245.loco	
+	and	tfacp935.orno = :i.orno
+	and	tfacp935.pono = :i.pono
+	and	tfacp935.sqnb = :i.sqnb
+| 	and	tfacp935._compnr = :tfacp245.loco
 	group by tfacp935.ccty, tfacp935.cvat
 	selectdo
 		select	tcmcs036.indt.l
@@ -2090,7 +2095,7 @@ function get.tax.from.tfacp935(
 		selectdo
 			on case etol(tcmcs036.indt.l)
 				case 4:				|Basic Excise Duty
-				case 9:				|Basic Custom Duty	
+				case 9:				|Basic Custom Duty
 				case 10:			|Countervailing Duty
 				case 14:			|ECess CVD
 				case 15:			|ECess on Custom
@@ -2102,10 +2107,10 @@ function get.tax.from.tfacp935(
 					break
 				case 1:				|Service
 				case 16:			|Ecess on Service
-				case 21:			|SHE Cess on Service	
+				case 21:			|SHE Cess on Service
 					o.ser.amnt = o.ser.amnt + amount
-					break	
-				case 2:				|Local Sales Tax	
+					break
+				case 2:				|Local Sales Tax
 				case 3:				|Central Sales Tax
 				case 26:			|VAT
 				case 30:			|Not Applicable
@@ -2142,8 +2147,8 @@ function long start.match.process
 	domain	tfgld.docn		o.ninv
 	domain	tfgld.amnt		new.debit, new.credit		|#ISGEC016014.n
 	domain	tfgld.dbcr		new.dbcr			|#ISGEC016014.n
-	
-	o.btno = 0	
+
+	o.btno = 0
 	err.msg = tfmsldll0042.Create.Transaction.Batch(
 			TRANSACTION_TYPE,		|domain	tfgld.ttyp	i.transaction.type,	| Transaction Type
 			i.year,				|domain tfgld.year	i.year,			| Year
@@ -2157,47 +2162,47 @@ function long start.match.process
 		message("%s",err.msg)
 		return(-1)
 	else
-		|* Copy Purchase Invoice 
+		|* Copy Purchase Invoice
 		if tfmsl.dll0042.mark.transaction.type(
 			i.year,
 			o.btno,
 			TRANSACTION_TYPE,
 			err.msg) then
-			
+
 			select 	tfgld011.dsrn
 			from	tfgld011
 			where 	tfgld011._index1 = {TRANSACTION_TYPE}
 			as set with 1 rows
 			selectdo
 			endselect
-			
-			
+
+
 			if not copy.received.purchase.invoics.new(
 | 				TRANSACTION_TYPE,37,o.year,o.prod,o.btno,o.ninv) then
 				TRANSACTION_TYPE,tfgld011.dsrn,o.year,o.prod,o.btno,o.ninv) then
 				|Add Cost Lines
-				
+
 				if v.pric <> 0 then
 					if not add.costs.new() then
-						
+
 					else
 						stpapi.end.session("tfacp1110s000")
 						stpapi.end.session("tfgld1101m100")
 						return(-1)
 					endif
 				endif
-				
-				
+
+
 				|* Add Taxes Lines
-				
+
 				select	tctax940.seqn
 				from	tctax940
 				as	set with 1 rows
 				selectdo
 				endselect
-				
+
 				tcmcs.dll0095.read.parm("tfisg000")
-				
+
 				|* Price Difference Line With Null Taxes
 				if v.pric <> 0 then
 | 					if not tax.transactions.line("IN","0",v.pric,tctax940.seqn) then
@@ -2216,63 +2221,63 @@ function long start.match.process
 							return(-1)
 						endif
 					endif
-					
+
 				endif
-				
+
 				if v.tdsa <> 0 and not isspace(v.cvat) then
-					if not tax.transactions.line("IN",v.cvat,v.tdsa,tctax940.seqn,tfgld.dbcr.debit) then	
+					if not tax.transactions.line("IN",v.cvat,v.tdsa,tctax940.seqn,tfgld.dbcr.debit) then
 					else
 						stpapi.end.session("tfacp1110s000")
 						stpapi.end.session("tfgld1101m100")
 						return(-1)
 					endif
-					
-					if not tax.transactions.line("IN",tfisg000.cvat,v.tdsa,tctax940.seqn,tfgld.dbcr.credit) then	
+
+					if not tax.transactions.line("IN",tfisg000.cvat,v.tdsa,tctax940.seqn,tfgld.dbcr.credit) then
 					else
 						stpapi.end.session("tfacp1110s000")
 						stpapi.end.session("tfgld1101m100")
 						return(-1)
 					endif
 				endif
-				
-				|*Match With Receipt 
+
+				|*Match With Receipt
 				match.with.receipt(str$(v.docn),i.pric)
-				
+
 				|* Create Posting for VAT Lines
-				
+
 				if not insert.tax.lines.new(TRANSACTION_TYPE,o.ninv) then
 				else
 					stpapi.end.session("tfacp1110s000")
 					stpapi.end.session("tfgld1101m100")
 					return(-1)
 				endif
-				
+
 				|* Create Posting For Matched Lines
-				
+
 											|#ISGEC016014.sn
-				get.price.difference(o.year, o.btno, TRANSACTION_TYPE, o.ninv, new.debit, new.credit)	
+				get.price.difference(o.year, o.btno, TRANSACTION_TYPE, o.ninv, new.debit, new.credit)
 				if	new.debit	<>	new.credit	then
 					if	isspace(v.pdif)	then
 						v.pdif	=	"6110115"
 					endif
-| 				if	v.amnt	<>	tfacp100.amth(1)	then							
+| 				if	v.amnt	<>	tfacp100.amth(1)	then
 | 					o.tfisg184.tbam	=	v.pric
-| 					insert.tax.lines("NULL", 0.0)	
-					v.pric	=	new.debit	-	new.credit
+| 					insert.tax.lines("NULL", 0.0)
+| 					v.pric	=	new.debit	-	new.credit	|#TV13476-sanjeev-27-07-2020 commented-SN
 					i.pric	=	new.debit	-	new.credit
-					if not add.costs.new() then			
-					else
-						stpapi.end.session("tfacp1110s000")
-						stpapi.end.session("tfgld1101m100")
+| 					if not add.costs.new() then				|#TV13476-sanjeev-27-07-2020 commented-SN
+| 					else
+						stpapi.end.session("tfacp1110s000")		|#TV13476-Raghuveer-18-09-2020 Enable
+						stpapi.end.session("tfgld1101m100")		|#TV13476-Raghuveer-18-09-2020 Enable
 						return(-1)
-					endif						
+| 					endif							|#TV13476-sanjeev-27-07-2020 commented-EN
 					o.tfisg184.tbam	=	abs(new.debit	-	new.credit)
 					if	new.debit	<	new.credit	then
 						new.dbcr	=	tfgld.dbcr.debit
 					else
 						new.dbcr	=	tfgld.dbcr.credit
 					endif
-					
+
 					if not tax.transactions.line("IN","NULL",o.tfisg184.tbam,tctax940.seqn,new.dbcr) then
 					else
 						stpapi.end.session("tfacp1110s000")
@@ -2280,23 +2285,23 @@ function long start.match.process
 						return(-1)
 					endif
 				endif
-											|#ISGEC016014.en				
-				
+											|#ISGEC016014.en
+
 			else
 				stpapi.end.session("tfacp1110s000")
 				stpapi.end.session("tfgld1101m100")
 				return(-1)
 			endif
 		endif
-		
-				
-		
+
+
+
 	endif
-	
-	
+
+
 	stpapi.end.session("tfacp1110s000")
 	stpapi.end.session("tfgld1101m100")
-	
+
 	return(0)
 }
 
@@ -2308,7 +2313,7 @@ function long copy.received.purchase.invoics.new(
 						domain	tfgld.year	i.year,
 						domain	tfgld.prod	i.prod,
 						domain	tfgld.btno	i.btno,	|Batch
-					ref 	domain	tfgld.docn	o.ninv	|Document Number 
+					ref 	domain	tfgld.docn	o.ninv	|Document Number
 						)
 {
 	long	ret_val,rt1,k
@@ -2316,14 +2321,14 @@ function long copy.received.purchase.invoics.new(
 	domain	tcmcs.str132m		recover.msg
 	domain	tcmcs.str12		tmp.ninv
 	string error1(500)
-	
+
 	select	tfacp100.*
 	from	tfacp100
 	where	tfacp100._index1	=	{:v.docn}
 	selectdo
 		tfacp100.isup = strip$(tfacp100.isup) & "/" & sprintf$("%D(%02d-%02m-%04Y)",tfacp100.invd)
 	endselect
-		
+
 	stpapi.put.field("tfacp1110s000","tfacp200.ttyp",i.ttyp)
 	stpapi.put.field("tfacp1110s000","tfacp200.ninv",str$(i.docn))
 	stpapi.put.field("tfacp1110s000","tfacp200.ifbp",tfacp100.ifbp)
@@ -2377,7 +2382,7 @@ function long copy.received.purchase.invoics.new(
 	else
 		stpapi.get.field("tfacp1110s000","tfacp200.ninv",tmp.ninv)
 		o.ninv = lval(tmp.ninv)
-		
+
 		select	tfacp100.*
 		from	tfacp100	for	update
 		where	tfacp100._index1	=	{:v.docn}
@@ -2417,7 +2422,7 @@ function long copy.received.purchase.invoics.new(
 | 			endif
 | 		endselect
 	endif
-	
+
 	return(0)
 }
 
@@ -2427,11 +2432,11 @@ function long add.costs.new()
 	domain	tcmcs.str132m		err.msg
 	domain	tcmcs.str132m		recover.msg
 	long	ret_val
-	
+
 	if	i.pric	=	0	then		|#ISGEC016014.sn
-		i.pric	=	v.pric	
+		i.pric	=	v.pric
 	endif						|#ISGEC016014.en
-	
+
 	stpapi.form.command("tfacp1110s000",5,"exec.user.1", err.msg)
 	stpapi.put.field("tfacp1133s000","tfacp101.comp",str$(i.ncmp))
 	stpapi.put.field("tfacp1133s000","tfacp101.leac",v.pdif)
@@ -2453,7 +2458,7 @@ function long add.costs.new()
 		return(-1)
 	endif
 	stpapi.end.session("tfacp1133s000")
-	
+
 	return(0)
 }
 
@@ -2471,14 +2476,14 @@ function long tax.transactions.line
 	domain	tcmcs.str132m		recover.msg
 	long	ret_val
 	domain	tfgld.amnt		tmp.amnt
-	
+
 | 	tmp.amnt = i.amnt
-| 	
+|
 | 	if i.amnt < 0 then
 | 		i.amnt = i.amnt * -1
 | 	endif
-	
-	
+
+
 	stpapi.form.command("tfacp1110s000",5,"start.session.tfacp1112", err.msg)
 	stpapi.synchronize.dialog("tfacp1112m000","ADD",i.erro)
 	stpapi.put.field("tfacp1112m000","tfgld102.ccty",i.ccty)
@@ -2487,15 +2492,15 @@ function long tax.transactions.line
 	stpapi.put.field("tfacp1112m000","tfgld102.rnso.l",str$(i.rnso.l))
 	stpapi.put.field("tfacp1112m000","tfgld102.dbcr",str$(etol(i.dbcr)))
 | 	if type = 1 then
-| 	
+|
 | 		if tmp.amnt  < 0 then
 | 			stpapi.put.field("tfacp1112m000","tfgld102.dbcr",str$(etol(tfgld.dbcr.debit)))
 | 		else
 | 			stpapi.put.field("tfacp1112m000","tfgld102.dbcr",str$(etol(tfgld.dbcr.credit)))
 | 		endif
 | 	endif
-	
-	
+
+
 	ret_val	=	stpapi.insert("tfacp1112m000",true,err.msg)
 	if	ret_val	<>	1	then
 		message("%s",err.msg)
@@ -2504,7 +2509,7 @@ function long tax.transactions.line
 		return(-1)
 	endif
 	stpapi.end.session("tfacp1112m000")
-	
+
 	return(0)
 }
 
@@ -2517,11 +2522,11 @@ function match.with.receipt
 {
 	long	ret_val
 	domain	tcmcs.str132m		err.msg
-	
+
 	stpapi.form.command("tfacp1110s000",5,"exec.user.4", err.msg)
 	stpapi.handle.subproc("tfacp1110s000","tfacp2544m000","modify")
-	
-	select	tfacp245.orno, 
+
+	select	tfacp245.orno,
 		tfacp245.pono,
 		tfacp245.sqnb,
 		tfacp245.loco,
@@ -2544,7 +2549,7 @@ function match.with.receipt
 				if	i.pric	<=	0	then
 				stpapi.form.command("tfacp2544m000",5,"exec.user.6", err.msg)
 				else
-					stpapi.form.command("tfacp2544m000",5,"exec.user.3", err.msg)	
+					stpapi.form.command("tfacp2544m000",5,"exec.user.3", err.msg)
 					stpapi.synchronize.dialog("tfacp2151s000","MODIFY",err.msg)
 					stpapi.form.command("tfacp2151s000",5,"exec.cont.process",err.msg)
 					stpapi.end.session("tfacp2151s000")
@@ -2552,9 +2557,9 @@ function match.with.receipt
 			endif
 		endif
 	endselect
-	
+
 	stpapi.end.session("tfacp2544m000")
-		
+
 }
 
 
@@ -2568,10 +2573,10 @@ function long insert.tax.lines.new
 	domain	tcmcs.str132m		err.msg
 	domain	tcmcs.str132m		recover.msg
 	long ret_val
-	
+
 	stpapi.form.command("tfacp1110s000",5,"start.tfacp9136m00l", err.msg)
 	stpapi.handle.subproc("tfacp1110s000","tfacp9136m00l","ADD")
-	
+
 	select	tfisg184.*
 	from	tfisg184
 	where	tfisg184._index1	=	{:v.orno}
@@ -2583,8 +2588,8 @@ function long insert.tax.lines.new
 			stpapi.put.field("tfacp9136m00l","tfacp936.ninv",str$(i.ninv))
 			stpapi.put.field("tfacp9136m00l","tfacp936.vatc","IN")
 			stpapi.put.field("tfacp9136m00l","tfacp936.cvat",tfisg184.cvat)
-			stpapi.put.field("tfacp9136m00l","tfacp936.amnt",str$(tfisg184.tbam))		
-			stpapi.put.field("tfacp9136m00l","tfacp936.tbam",str$(tfisg184.tbam))			
+			stpapi.put.field("tfacp9136m00l","tfacp936.amnt",str$(tfisg184.tbam))
+			stpapi.put.field("tfacp9136m00l","tfacp936.tbam",str$(tfisg184.tbam))
 			stpapi.put.field("tfacp9136m00l","tfacp936.vamt",str$(tfisg184.actm))
 			stpapi.put.field("tfacp9136m00l","tfacp936.rnso",str$(1))
 			ret_val	=	stpapi.insert("tfacp9136m00l",true, err.msg)
@@ -2593,17 +2598,17 @@ function long insert.tax.lines.new
 				stpapi.end.session("tfacp9136m00l")
 				return(-1)
 			else
-				
+
 			endif
 		endif
 	endselect
-	
-	select	tfacp936.vatc, 
+
+	select	tfacp936.vatc,
 		tfacp936.cvat,
 		tcmcs036.indt.l
 	from	tfacp936 for update, tcmcs036
 	where	tfacp936._index1	=	{:i.ncmp,:i.ttyp,:i.ninv}
-	and	tfacp936.rnso		=	0	
+	and	tfacp936.rnso		=	0
 	and	tcmcs036._index1	=	{tfacp936.vatc,tfacp936.cvat}
 	selectdo
 		on	case	tcmcs036.indt.l
@@ -2692,7 +2697,7 @@ function long insert.tax.lines.new
 		case	tctax.indt.l.sb.cess:
 			get.category.wise.bp(3)
 			break
-		endcase	
+		endcase
 | 		update.invoice.tax.lines()
 
 		tfacp936.rnso	=	i.rnso
@@ -2704,11 +2709,11 @@ function long insert.tax.lines.new
 			abort.transaction()
 		endif
 	endselect
-	
-	
+
+
 	stpapi.end.session("tfacp9136m00l")
-	
-	
+
+
 	stpapi.form.command("tfacp1110s000",5,"start.tfacp9136m00l", err.msg)
 | 	stpapi.handle.subproc("tfacp1110s000","tfacp9136m00l","ADD")
 	stpapi.form.command("tfacp9136m00l",5,"exec.user.1", i.erro)
@@ -2724,19 +2729,19 @@ function	get.price.difference(
 					domain	tfgld.docn	new.docn,
 				ref	domain	tfgld.amnt	new.debit,
 				ref	domain	tfgld.amnt	new.credit
-					)	
+					)
 {
 
 	domain	tfgld.amnt	debit.amth.102, credit.amth.102, debit.amth.107, credit.amth.107
-	
+
 	debit.amth.102	=	0
 	credit.amth.102	=	0
 	debit.amth.107	=	0
 	credit.amth.107	=	0
-	
+
 	debit.amth.102	=	get.home.currency(new.year, new.btno, new.ttyp, new.docn, tfgld.dbcr.debit)
 	credit.amth.102	=	get.home.currency(new.year, new.btno, new.ttyp, new.docn, tfgld.dbcr.credit)
-	
+
 	select	tfgld107.vamh,
 		tfgld107.ivln,
 		tfgld107.ktax
@@ -2762,18 +2767,18 @@ function	get.price.difference(
 				debit.amth.107	=	debit.amth.107 + tfgld107.vamh(1)
 			endif
 			break
-		case	tfgld.dbcr.credit:	
+		case	tfgld.dbcr.credit:
 			if	tfgld107.ktax	=	tcktax.income.tax	or
 				tfgld107.ktax	=	tcktax.social.cont.exp	then
 				debit.amth.107	=	debit.amth.107 + tfgld107.vamh(1)
 			else
 				credit.amth.107	=	credit.amth.107 + tfgld107.vamh(1)
 			endif
-				
+
 			break
 		endcase
 	endselect
-	
+
 	new.debit	=	debit.amth.102	+	debit.amth.107
 	new.credit	=	credit.amth.102	+	credit.amth.107
 }
@@ -2787,20 +2792,20 @@ function	domain	tfgld.amnt	get.home.currency(
 								)
 {
 	domain	tfgld.amnt	new.amth
-	
+
 	new.amth	=	0
-	
+
 	select	sum(tfgld102.amth(1)):new.amth
 	from	tfgld102
 	where	tfgld102._index1	=	{:i.ncmp,:new.year,:new.btno,:new.ttyp,:new.docn}
 	and	tfgld102.dbcr		=	:new.dbcr
 	selectdo
 	endselect
-	
+
 	return(new.amth)
 }
 								|#ISGEC016014.en
-								
+
 function extern ir.extension()					|GH334CR629.a.s
 {
 	start.synchronized.child.with(FIND.DATA)
@@ -2823,7 +2828,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 	domain	tfgld.trun	o.trun
 	domain	tcmcs.str50	v.turn
 	o.trun = 0
-	
+
 	select	tfgld100.stat
 	from	tfgld100
 	where	tfgld100._index1 = {:i.year, :i.btno}
@@ -2832,7 +2837,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 	selectempty
 		message("Batch not Ready")
 	endselect
-	
+
 	select	tfgld109.trun:o.trun
 	from	tfgld109
 	where	tfgld109._index1 = {:i.year}
@@ -2873,7 +2878,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 			abort.transaction()
 		endif
 	endif
- 	
+
 	stpapi.put.field("tfgld1519m000", "tfgld109.year", str$(i.year))
 	stpapi.put.field("tfgld1519m000", "tfgld109.trun", str$(o.trun + 1))
 	ret_val	=	stpapi.find("tfgld1519m000", i.erro)
@@ -2881,11 +2886,11 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 | 		stpapi.synchronize.dialog("tfgld1519m000", "modify", i.erro)
 		stpapi.handle.subproc("tfgld1519m000", "tfgld1110m000", "modify")
 | 		stpapi.continue.process("tfgld1110m000", i.erro)
-		
-		
+
+
 		stpapi.handle.subproc("tfgld1110m000", "tfgld1111s000", "modify")
 		stpapi.form.command("tfgld1110m000", 5, "exec.cont.process", i.erro)
-		
+
 		stpapi.put.field("tfgld1111s000", "tfgld100.year", str$(i.year))
 		stpapi.put.field("tfgld1111s000", "tfgld100.btno", str$(i.btno))
 		ret_val	=	stpapi.find("tfgld1111s000", i.erro)
@@ -2898,7 +2903,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 			message("No Batch found for run finalization")
 		endif
 	endif
-	
+
 	if strip$(i.erro) <> "" then
 		message(i.erro)
 		stpapi.recover("tfgld1110m000", i.erro)
@@ -2907,7 +2912,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 	stpapi.end.session("tfgld1110s000")
 	stpapi.end.session("tfgld1110m000")
 	stpapi.end.session("tfgld1519m000")
-	
+
 	handle.enable.disable()
 }												|GH336CR627.a.e
 
@@ -2915,7 +2920,7 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 function enable.disable.fields()								|GH370CR678.a.s
 {
 	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
-	
+
 	select	tfacp200.stap
 	from	tfacp200
 	where	tfacp200._index1 = {:i.ttyp, :i.ninv}
@@ -2924,11 +2929,11 @@ function enable.disable.fields()								|GH370CR678.a.s
 	selectdo
 		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
 	endselect
-}	
+}
 											|GH370CR678.a.e
 function update.tfacp200()			|#TV13440-Sanjeev-09-09-2020-SN
 {
-	
+
 	select	tfacp200.*
 	from	tfacp200 for update
 	where	tfacp200._index1 = {:i.ttyp,:i.ninv}
@@ -2941,6 +2946,72 @@ function update.tfacp200()			|#TV13440-Sanjeev-09-09-2020-SN
 		else
 			abort.transaction()
 		endif
-	endselect	
+	endselect
 
 }						|#TV13440-Sanjeev-09-09-2020-EN
+
+
+function extern advance.linking()			|#TV SN Tanuj 12/10/2020
+{
+        if not isspace(bpid.f) then
+		domain tcmcs.str30 prno, pono, cprj
+		select	tfacp100.cdf_pono, tfacp100.ifbp
+		from	tfacp100
+		where	tfacp100._index1 = :v.docn
+		and	tfacp100.cdf_pono = :v.orno
+		selectdo
+			get.var( pid, "tfacp100.cdf_pono", pono)
+			pono = trim$(pono)
+			select	tfacp500.ttyp, tfacp500.ninv, tfacp500.line, tfacp500.flpd, tfacp500.ifbp, tfacp500.docd, tfacp500.tpay, tfacp500.ccur,
+				tfacp500.balc, tfacp500.cdf_cprj, tfacp500.cdf_prno, tfacp500.pdoc, tfacp500.doca, tfacp500.tpay
+			from	tfacp500
+			where	tfacp500._index2 = {:bpid.f}
+			and	tfacp500.cdf_prno = :pono
+			selectdo
+				if tfacp500.tpay = ltoe(9) or tfacp500.tpay = ltoe(10) then
+					get.var( pid, "tfacp500.cdf_prno", prno)
+					get.var( pid, "tfacp500.cdf_cprj", cprj)
+					prno = trim$(prno)
+					cprj = trim$(cprj)
+					select	tfisg231.*
+					from	tfisg231	for update
+					where	tfisg231._index1 = {:tfacp500.ifbp, :tfacp500.ttyp,:tfacp500.ninv, :prno, :tfacp500.line}
+					selectdo
+						tfisg231.docn = tfacp500.ninv
+						tfisg231.dtyp = tfacp500.tpay
+						tfisg231.refc = str$(tfacp500.pdoc) & "/" & str$(tfacp500.ttyp) & "/" & str$(tfacp500.doca)
+						tfisg231.docd = tfacp500.docd
+						tfisg231.ccur = tfacp500.ccur
+						tfisg231.balc = tfacp500.balc
+						tfisg231.proj = str$(cprj)
+						tfisg231.stts = tfacp500.flpd
+						tfisg231.line = tfacp500.line
+						db.update(ttfisg231,db.retry,e)
+					selectempty
+						tfisg231.bpid =	bpid.f
+						tfisg231.prno = prno
+						tfisg231.ttyp = tfacp500.ttyp
+						tfisg231.docn = tfacp500.ninv
+						tfisg231.dtyp = tfacp500.tpay
+						tfisg231.refc = str$(tfacp500.pdoc) & "/" & str$(tfacp500.ttyp) & "/" & str$(tfacp500.doca)
+						tfisg231.docd = tfacp500.docd
+						tfisg231.ccur = tfacp500.ccur
+						tfisg231.balc = tfacp500.balc
+						tfisg231.proj = str$(cprj)
+						tfisg231.stts = tfacp500.flpd
+						tfisg231.line = tfacp500.line
+						db.insert(ttfisg231,db.retry,e)
+					endselect
+				endif
+			selectempty
+			endselect
+			if not e then
+				commit.transaction()
+			endif
+		selectempty
+		endselect
+			start.synchronized.child("tfisg2131s000","bpid.f","tfisg231.bpid")
+	else
+		message("No Bussiness Partner found")
+	endif
+}										|#TV EN Tanuj 12/10/2020
