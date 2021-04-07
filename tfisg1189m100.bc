@@ -1,21 +1,21 @@
 |******************************************************************************
-|* tfisg1189m100  0  VRC B61U a7 isg 
+|* tfisg1189m100  0  VRC B61U a7 isg
 |* Payment Request Details
-|* merino1                       
+|* merino1
 |* 2016-07-16
 |******************************************************************************
 |* Main table tfisg189 , Form Type 1
 |******************************************************************************
-|* ID ISGEC016008, Shilpa Janardanan, B61U a7 ISG  
+|* ID ISGEC016008, Shilpa Janardanan, B61U a7 ISG
 |* Logic modification
 |*
 |* ID ISGEC01043, Dharmendra, 23-07.2016
 |*
-|* ID ISGECFIN009, IT0386, Saurabh Dubey, 03 August 2016, VRC B61U a7 isg 
+|* ID ISGECFIN009, IT0386, Saurabh Dubey, 03 August 2016, VRC B61U a7 isg
 |* Modifications
-|* 
+|*
 |* ID ISGEC016007, Manish Manchanda, 2016-08-31
-|* Modifications - message pop up for user 
+|* Modifications - message pop up for user
 |*
 |* ID ISGEC016010, Manish Manchanda, 2016-09-26
 |* Modifications - Retention condition to be checked in case of Payment Request
@@ -34,7 +34,7 @@ declaration:
 	#pragma used dll ottstpapihand
 	#include<bic_dam>
 
-	table   ttfisg189 | 
+	table   ttfisg189 |
 	table	ttfisg185
 	table	ttfcmg109
 	table	ttfisg000
@@ -51,7 +51,7 @@ declaration:
 	table	ttccom100
 	table	ttfgld025
 	table	ttfgld100
-	table	ttfcmg109		
+	table	ttfcmg109
 	table	ttdpur400
 	table	ttdpur401
 	table	ttdisg088
@@ -62,7 +62,7 @@ declaration:
 	table	ttctax039	|#ISGEC016007.n
 	table	ttcmcs033	|#ISGEC016007.n
 	table	ttctax011	|#ISGEC016007.n
-	
+
 	long	advice.no,count.select,ret
 	extern	domain	tfgld.amnt	v.totl
 	extern	domain	tcncmp	i.ncmp
@@ -80,7 +80,7 @@ declaration:
 	extern	domain	tfcmg.tadv	tpay
 	extern	domain	tfgld.date	v.post
 	extern  domain tcmcs.str6	v.pyad,p.pyad
-	
+
 	extern	domain	tccom.bpid	var.suno
 	extern	domain	tcnama		var.snnm
 	extern	domain	tcemno		var.buyr			|#ISGEC016008.sn
@@ -126,8 +126,8 @@ i.payd = str$(i.pbtn)
 
 before.display.object:
 	if i.pbtn <> 0 then
-		
-		
+
+
 		select tfisg189.*
 		from tfisg189
 		where tfisg189.pyad =:i.payd
@@ -141,11 +141,11 @@ before.display.object:
 		selectempty
 			message("Payment Advice not find , in Quick Payment Process")
 			end()
-			
+
 		endselect
-		
+
 	endif
-	
+
 | 	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize")		|#ISGEC016007.o
 	disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize","calculate", "device.open","device.without.open")	|#ISGEC016007.n
 	advice.no = val(strip$(shiftl$(tfisg189.pyad)))
@@ -156,7 +156,7 @@ before.display.object:
 	selectempty
 | 		tfcmg109.stpp = ltoe(7)		|#ISGEC016008.o
 		tfcmg109.stpp = ltoe(0)			|ISGEC016008.n
-	endselect	
+	endselect
 	get.total()
 	select tfisg185.sele from tfisg185
 	where tfisg185._index3 = {:tfisg189.iprq,:tfisg189.bpid,:tfisg189.type}
@@ -166,7 +166,7 @@ before.display.object:
 	selectempty
 		tfisg185.sele = tcyesno.no
 	endselect
-	
+
 	if tfisg189.proc = tcyesno.no and tfisg185.sele = tcyesno.no then
 		disable.commands("paym.adv","process","tfisg2400m009","tfisg1402m000","finalize", "device.open","device.without.open")
 	else
@@ -175,19 +175,19 @@ before.display.object:
 	if etol(tfcmg109.stpp) = 6 then
 		enable.commands("tfisg2400m009", "device.open","device.without.open")
 	endif
-	
+
 	if tfisg185.proc = tcyesno.yes then
 		disable.commands("paym.adv","tfmsl0137m000")
 	else
 		if isspace(tfisg189.pyad) then
-			if tfisg185.sele = tcyesno.yes then	
+			if tfisg185.sele = tcyesno.yes then
 				enable.commands("paym.adv")
-			endif	
+			endif
 		else
 			enable.commands("process","tfmsl0137m000")
-			disable.commands("paym.adv")				
-		endif		
-	endif	
+			disable.commands("paym.adv")
+		endif
+	endif
 	get.batch()
 	select	tfgld100.stat
 	from	tfgld100
@@ -196,9 +196,9 @@ before.display.object:
 	selectdo
 		disable.commands("finalize")
 	selectempty
-		if tfisg185.sele = tcyesno.yes then	
+		if tfisg185.sele = tcyesno.yes then
 			enable.commands("finalize")
-		endif					
+		endif
 	endselect
 	if tfisg189.type = tfisg.tran.stan and tfisg189.proc = tcyesno.no and not isspace(tfisg189.iprq) then
 		enable.commands("process")
@@ -210,10 +210,10 @@ before.display.object:
 			enable.commands("paym.adv")
 		selectempty
 			disable.commands("paym.adv")
-		endselect		
+		endselect
 	else
 		disable.commands("process")
-	endif						
+	endif
 	if tfisg189.type = tfisg.tran.payi then
 		select	count(tfisg185.sele):count.select
 		from	tfisg185
@@ -227,18 +227,18 @@ before.display.object:
 
 		if count.select > 0 then
 			enable.commands("tfisg1188m000","paym.adv")
-		else	
+		else
 			disable.commands("tfisg1188m000","paym.adv")
-		endif	
+		endif
 	else
 		disable.commands("tfisg1188m000")
-	endif	
+	endif
 
 	if tfisg189.type = tfisg.tran.stan then
 		enable.commands("tfcmg1508m000")
-	else	
+	else
 		disable.commands("tfcmg1508m000")
-	endif	
+	endif
 | 	if tfisg189.type = tfisg.tran.stan or tfisg189.proc = tcyesno.yes  then		|#ISGEC016008.o
 	if tfisg189.type = tfisg.tran.stan or tfisg189.proc = tcyesno.yes  or tfisg189.type = tfisg.tran.paym then
 | 		or tfisg189.type = tfisg.tran.payi then		|#ISGEC016008.n	| ISGEC01043.o
@@ -247,12 +247,12 @@ before.display.object:
 		enable.fields  ("hold.orno")
 	endif
 									|#ISGEC016007.sn
-	if	tfisg189.type	=	tfisg.tran.paym	then								
+	if	tfisg189.type	=	tfisg.tran.paym	then
 		enable.commands("calculate")
 	endif
 	disable.commands("finalize")
 									|#ISGEC016007.en
-	
+
 |***************************** field section ************************************
 
 field.hold.orno:
@@ -261,10 +261,10 @@ before.zoom:
 | 	query.extend.where.in.zoom("tdpur400.otbp = "& quoted.string(tfisg189.bpid))	|#ISGEC016008.n, |# ISGEC01043.o
 											|# ISGEC01043.sn
 	if tfisg189.type = tfisg.tran.payi then
-		query.extend.where.in.zoom("tdpur400.otbp = "& quoted.string(tfisg189.bpid) & 
+		query.extend.where.in.zoom("tdpur400.otbp = "& quoted.string(tfisg189.bpid) &
 			" and tdpur400.orno in (select tfmsl020.orno from tfmsl020)")
 	else
-		query.extend.where.in.zoom("tdpur400.otbp = "& quoted.string(tfisg189.bpid))	
+		query.extend.where.in.zoom("tdpur400.otbp = "& quoted.string(tfisg189.bpid))
 	endif
 											|# ISGEC01043.en
 field.tfisg189.bpid:
@@ -280,8 +280,8 @@ before.display:
 	where	tccom100._index1 = {:tfisg189.bpid}
 	selectdo
 	selectempty
-		tccom100.nama = ""	
-	endselect	
+		tccom100.nama = ""
+	endselect
 field.tfisg189.type:
 before.input:
 	set.enum.values.for.field("tfisg189.type",tfisg.tran.invo,tfisg.tran.stan,tfisg.tran.paym,tfisg.tran.payi)
@@ -298,15 +298,15 @@ before.zoom:
 	if not isspace(tfisg189.bpid) then
 		if	tfisg189.type	=	tfisg.tran.paym		then			|#ISGEC016010.n
 | 		query.extend.where.in.zoom("tfmsl020.stat = "& str$(20) & " and tfmsl020.bpid = " & quoted.string(tfisg189.bpid) & " and tfmsl020.ackn = tfmsl.ackn.receive"
-															|ISGEC01050.o	
+															|ISGEC01050.o
 		query.extend.where.in.zoom("tfmsl020.stat = "& str$(90) & " and tfmsl020.bpid = " & quoted.string(tfisg189.bpid) & " and tfmsl020.ackn = tfmsl.ackn.receive"
 													|ISGEC01050.n
 					& " and tfmsl020.optn <> tfoption.retention")
 		else										|#ISGEC016010.sn
-| 			query.extend.where.in.zoom("tfmsl020.stat = "& str$(20) & " and tfmsl020.bpid = " & quoted.string(tfisg189.bpid) & " and tfmsl020.ackn = tfmsl.ackn.receive")		
+| 			query.extend.where.in.zoom("tfmsl020.stat = "& str$(20) & " and tfmsl020.bpid = " & quoted.string(tfisg189.bpid) & " and tfmsl020.ackn = tfmsl.ackn.receive")
 			query.extend.where.in.zoom("tfmsl020.stat = "& str$(90) & " and tfmsl020.bpid = " & quoted.string(tfisg189.bpid) & " and tfmsl020.ackn = tfmsl.ackn.receive")
 		endif										|#ISGEC016010.en  |ISGEC01050.n
-		
+
 
 	else
 		if	tfisg189.type	=	tfisg.tran.paym		then			|#ISGEC016010.n
@@ -318,19 +318,19 @@ before.zoom:
 			query.extend.where.in.zoom("tfmsl020.stat = "& str$(90) & " and tfmsl020.ackn = tfmsl.ackn.receive")	|ISGEC01050.n
 		endif										|#ISGEC016010.en
 	endif
-	
+
 |****************************** choice section **********************************
 choice.process:
 before.choice:
 							|#ISGEC016007.sn
-	if	not	check.user()	then						
+	if	not	check.user()	then
 		message("User has not authorize to make the payment.")
 		choice.again()
 	endif
 							|#ISGEC016007.en
 	p.data = 1
 on.choice:
-	select tfisg185.* from tfisg185 
+	select tfisg185.* from tfisg185
 	where tfisg185._index1 = {:tfisg189.iprq}
 	and tfisg185.sele = tcyesno.yes
 	as set with 1 rows
@@ -338,14 +338,14 @@ on.choice:
 	endselect
 	if tfisg189.type = tfisg.tran.stan then
 
-		start.synchronized.child("tfisg1186m000","tfisg189.iprq","tfisg186.iprq")	
-	else	
+		start.synchronized.child("tfisg1186m000","tfisg189.iprq","tfisg186.iprq")
+	else
 		afs.process()
-	endif	
+	endif
 choice.finalize:
 before.choice:
 	get.batch()
-	
+
 	select	tfgld100.user
 	from	tfgld100
 	where	tfgld100._index1 = {:tfgld018.year,:tfgld018.btno}
@@ -374,14 +374,14 @@ before.choice:
 		else
 			abort.transaction()
 		endif
-	endselect		
+	endselect
 on.choice:
 	afs.finalize()
-	
+
 choice.paym.adv:
 before.choice:
 							|#ISGEC016007.sn
-	if	not	check.user()	then						
+	if	not	check.user()	then
 		message("User has not authorize to make the payment.")
 		choice.again()
 	endif
@@ -390,17 +390,17 @@ before.choice:
 	if not po.amount.correct() then
 		choice.again()
 	endif
-	
+
 on.choice:
-	select tfisg185.* from tfisg185 
+	select tfisg185.* from tfisg185
 	where tfisg185._index1 = {:tfisg189.iprq}
 	and tfisg185.sele = tcyesno.yes
 	as set with 1 rows
 	selectdo
 	endselect
 
-	start.session(MODAL,"tfisg1285m000","","")	
-	
+	start.session(MODAL,"tfisg1285m000","","")
+
 	select tfisg189.* from tfisg189
 	where tfisg189._index1 = {:tfisg189.iprq}
 	as set with 1 rows
@@ -408,10 +408,10 @@ on.choice:
 	endselect
 	execute(find.data)
 
-choice.tfcmg1508m000:			
+choice.tfcmg1508m000:
 on.choice:
 	start.synchronized.child("tfcmg1501m000", "tfisg189.pyad", "tfcmg101.btno")
-	
+
 | 	tpay =  tfcmg.tadv.alone
 | 	start.synchronized.child.with(ADD.SET)
 | 	start.synchronized.child("tfcmg1508m000",
@@ -424,9 +424,9 @@ on.choice:
 	endselect
 	execute(find.data)
 
-| choice.tfisg1188m000:			
+| choice.tfisg1188m000:
 | before.choice:
-| 	select tfisg185.* from tfisg185 
+| 	select tfisg185.* from tfisg185
 | 	where tfisg185._index1 = {:tfisg189.iprq}
 | 	and tfisg185.sele = tcyesno.yes
 | 	as set with 1 rows
@@ -439,7 +439,7 @@ on.choice:
 | 	selectdo
 | 	endselect
 | 	execute(find.data)
-choice.select.all:		
+choice.select.all:
 on.choice:
 	select	tfisg185.sele
 	from	tfisg185 for  update
@@ -452,14 +452,14 @@ on.choice:
 | 		tfisg185.rblk = tcyesno.yes
 | 		db.update(ttfisg185, db.retry,e)
 	endselect
-	if not ret then 
+	if not ret then
 		commit.transaction()
 	else
 		message("Total payment exceeds PO value")
 		abort.transaction()
 	endif
-	
-						
+
+
 choice.deselect.all:		|#ISGEC016005.sn
 on.choice:
 	select	tfisg185.sele
@@ -476,7 +476,7 @@ choice.add.set:
 before.choice:
 	delete.not.processed.record()		|#ISGEC016008.en
 	hold.orno = ""				|# ISGEC01043.n
-	
+
 choice.update.db:
 after.choice:
 | 	execute(find.data)
@@ -497,7 +497,7 @@ function get.total()
 	if tfisg189.type = tfisg.tran.payi then
 		select	sum(tfisg188.balh):v.totl
 		from	tfisg188
-		where	tfisg188._index1 = {:tfisg189.iprq}	
+		where	tfisg188._index1 = {:tfisg189.iprq}
 		and	tfisg188.sele = tcyesno.yes
 		and	tfisg188.proc = tcyesno.no
 		and	tfisg188._compnr	=	:i.ncmp		|test.o
@@ -517,13 +517,13 @@ function get.total()
 		selectempty
 			v.totl	=	0
 		endselect
-	endif	
+	endif
 }
 
 function 	get.batch()
 {
 	domain	tfgld.btno	temp.btno
-	
+
 	temp.btno	=	val(tfisg189.pyad)
 	select	tfcmg103.ttyp,
 		tfcmg103.docn
@@ -593,7 +593,7 @@ function	afs.process()
 		i.tadv	=	tfcmg.tadv.purinv
 		break
 	endcase
-	
+
 	select	tfisg185.pyad:i.btno,tfisg185.cheq:v.cheq,tfisg185.post:v.post
 	from	tfisg185
 	where	tfisg185._index1	=	{:tfisg189.iprq,:tfisg189.bpid,:tfisg189.type,:tfisg189.adrq}
@@ -602,16 +602,16 @@ function	afs.process()
 | 	and	tfisg185.ncmp	=	:i.ncmp
 | 	and	tfisg185._compnr	=	:i.ncmp
 	as set with 1 rows
-	selectdo	
-		if	not	isspace(i.btno)	then	
-			tfmsldll0042.Process.Payment.Batch.For.Supplier.BP(	
-									v.cheq,	
-									i.btno,	
-									v.post	
+	selectdo
+		if	not	isspace(i.btno)	then
+			tfmsldll0042.Process.Payment.Batch.For.Supplier.BP(
+									v.cheq,
+									i.btno,
+									v.post
 									)
 			after.process.updation()
 			update.tfisg185.proc()
-										
+
 | 			delete.tfisg815.proc.no(tfisg185.iprq,
 | 						tfisg185.bpid,
 | 						tfisg185.type,
@@ -619,12 +619,12 @@ function	afs.process()
 | 						tfisg185.ncmp,
 | 						tfisg185.ttyp,
 | 						tfisg185.ninv
-| 						)				
+| 						)
 			message("Process Complete")
 			refresh.parent(-1)
 		endif
-	endselect	
-	check.and.update.process.flag()				
+	endselect
+	check.and.update.process.flag()
 }
 function	after.process.updation()
 {
@@ -637,7 +637,7 @@ function	after.process.updation()
 		break
 | 	case	tfisg.tran.rete:
 | 		update.tfacp201()
-| 		break	
+| 		break
 	endcase
 }
 function	update.tfmsl020()
@@ -659,7 +659,7 @@ function	update.tfmsl020()
 		selectdo
 		endselect
 	endselect
-	
+
 	select	tfcmg103.ttyp,
 		tfcmg103.docn
 	from	tfcmg103
@@ -668,7 +668,7 @@ function	update.tfmsl020()
 	as set with 1 rows
 	selectdo
 	endselect
-	
+
 	select	tfmsl020.*
 	from	tfmsl020	for	update
 	where	tfmsl020._index1	=	{:tfisg185.adrq}
@@ -685,7 +685,7 @@ function	update.tfmsl020()
 		dal.set.field("tfmsl020.ttyp", tfcmg103.ttyp)
 		dal.set.field("tfmsl020.docn", tfcmg103.docn)
 		if isspace(tfmsl020.cprj)	then
-			dal.set.field("tfmsl020.cprj",tdpur401.cprj)			
+			dal.set.field("tfmsl020.cprj",tdpur401.cprj)
 		endif
 		dal.set.field("tfmsl020.lino", 0)
 		dal.set.field("tfmsl020.chqe", tfisg185.cheq)
@@ -705,13 +705,13 @@ function	update.tfacp200()
 {
 	domain tfgld.btno	batch.no
 	batch.no = 0
-	
+
 	select	tfisg185.*
 	from	tfisg185
 	where	tfisg185._index1	=	{:tfisg185.iprq,:tfisg185.bpid,:tfisg185.type,:tfisg185.adrq}
 	and	tfisg185.sele = tcyesno.yes
 	and	tfisg185.proc = tcyesno.no
-	selectdo	
+	selectdo
 		batch.no = lval(tfisg185.pyad)
 		select	tfcmg101.ptyp,tfcmg101.pdoc
 		from	tfcmg101
@@ -737,7 +737,7 @@ function	update.tfacp200()
 					else
 						abort.transaction()
 					endif
-				endselect	
+				endselect
 			else
 				select	tfgld102.ctyp,tfgld102.cdoc
 				from	tfgld102
@@ -761,13 +761,13 @@ function	update.tfacp200()
 						endif
 					endselect
 				endselect
-			endif	
-		endselect	
-	endselect	
+			endif
+		endselect
+	endselect
 }
 function	update.tfisg185.proc()
 {
-	select	tfisg185.*			
+	select	tfisg185.*
 	from	tfisg185	for	update
 	where	tfisg185._index1	=	{:tfisg185.iprq,:tfisg185.bpid,:tfisg185.type,:tfisg185.adrq}
 | 	and	tfisg185.sele = tcyesno.yes
@@ -816,8 +816,8 @@ function check.and.update.process.flag()
 	as set with 1 rows
 	selectempty
 		v.pyad = ""
-	endselect	
-	
+	endselect
+
 	if not isspace(v.pyad) then					|#RR.04_06_2016.sn
 		advice.no = val(strip$(shiftl$(v.pyad)))
 		select tfcmg109.stpp
@@ -841,7 +841,7 @@ function check.and.update.process.flag()
 				dal.set.field("tfmsl020.ttyp", tfcmg103.ttyp)
 				dal.set.field("tfmsl020.docn", tfcmg103.docn)
 				if isspace(tfmsl020.cprj)	then
-					dal.set.field("tfmsl020.cprj",tdpur401.cprj)			
+					dal.set.field("tfmsl020.cprj",tdpur401.cprj)
 				endif
 				dal.set.field("tfmsl020.lino", 0)
 				dal.set.field("tfmsl020.chqe", tfisg185.cheq)
@@ -854,17 +854,17 @@ function check.and.update.process.flag()
 					abort.transaction()
 				endif
 			endselect
-		endselect		
-	endif		
-	
+		endselect
+	endif
+
 }
 function boolean po.amount.correct()
 {
 	domain tfgld.amnt	hold.pymt,pymt.made,alrd.pymt,po.amnt
-	domain	tfgld.amnt	amount.home, total.paid		
+	domain	tfgld.amnt	amount.home, total.paid
 	domain	tfgld.btno	pyad
 	hold.pymt = 0
-	
+
 
 	select tfisg185.orno,sum(tfisg185.balh):hold.pymt
 	from tfisg185
@@ -873,12 +873,12 @@ function boolean po.amount.correct()
 	and	tfisg185.sele = tcyesno.yes
 	group by tfisg185.orno
 	selectdo
-		
+
 		pymt.made = 0
 		alrd.pymt = 0
 		po.amnt = 0
 | 		pyad = val(tfisg185.pyad)
-		
+
 | 		select	tdisg088.revi			|#ISGEC016008.sn
 | 		from	tdisg088
 | 		where	tdisg088._index1 = {:tfisg185.orno}
@@ -886,8 +886,8 @@ function boolean po.amount.correct()
 | 		as set with 1 rows
 | 		selectdo
 | 		endselect
-		
-		
+
+
 		select	tdmsl400.vrsn	|#ISGECFIN009.sn
 		from	tdmsl400
 		where	tdmsl400._index1 = {:tfisg185.orno}
@@ -899,22 +899,22 @@ function boolean po.amount.correct()
 		selectempty
 			tdmsl400.vrsn = 0
 		endselect	|#ISGECFIN009.en
-		
-		
+
+
 		var.ogrs = 0
-		
-		tdisg.dll0002.Get_PO_Details(				
+
+		tdisg.dll0002.Get_PO_Details(
 				tfisg185.orno, tdmsl400.vrsn,
-				var.suno,	
-				var.snnm,	
-				var.buyr,	
-				var.bynm,	
-				var.odat,	
-				var.hdst,	
-				var.ddta,	
-				var.cprj,	
-				var.pjdc,	
-				var.obsc,	|Basic Value	
+				var.suno,
+				var.snnm,
+				var.buyr,
+				var.bynm,
+				var.odat,
+				var.hdst,
+				var.ddta,
+				var.cprj,
+				var.pjdc,
+				var.obsc,	|Basic Value
 				var.oexc,	|Excise Value
 				var.osrv,	|Service Tax
 				var.ocst,	|CST/VAT
@@ -925,9 +925,9 @@ function boolean po.amount.correct()
 				var.cess,	|Ces
 				var.olct,	|LC Value
 				var.ogrs)					|#ISGEC016008.en
-		
+
 		alrd.pymt = 0
-		
+
 		select	tfisg185.balh, tfisg185.pyad
 		from	tfisg185
 		where	tfisg185._index2 = {:tfisg185.orno}
@@ -943,24 +943,24 @@ function boolean po.amount.correct()
 				alrd.pymt = alrd.pymt + tfisg185.balh
 			endselect
 		endselect
-		
+
 | 		select sum(tfisg185.balh):alrd.pymt,tfisg185.pyad
 | 		from tfisg185, tfcmg100
 | 		where tfisg185._index2 = {:tfisg185.orno}
 | 		and	tfisg185.sele = tcyesno.yes
 | 		and	tfisg185.proc = tcyesno.yes
-| 		and	tfcmg100.btno = :pyad		
-| 		and	tfcmg100.chst in (5,7)		
+| 		and	tfcmg100.btno = :pyad
+| 		and	tfcmg100.chst in (5,7)
 | 		group by tfisg185.pyad
 | 		selectdo
 | 		endselect
 
 		amount.home = 0
-		
+
 		select	tcemm170.comp,
 			tcemm170.fcua
 		from	tcemm170
-		selectdo	
+		selectdo
 			select	tfacp200.amth
 			from	tfacp200
 			where	tfacp200.orno = {:tfisg185.orno}
@@ -978,26 +978,26 @@ function boolean po.amount.correct()
 					amount.home = amount.home + tfacp200.amth(1)
 				endselect
 			endselect
-		endselect	
-		amount.home = abs(amount.home)	
+		endselect
+		amount.home = abs(amount.home)
 | 		select	tdpur400.oamt
 | 		from	tdpur400
 | 		where	tdpur400._index1 = {:tfisg185.orno}
 | 		selectdo
 | 		endselect
-		
+
 | 		if (tdpur400.oamt- (hold.pymt + amount.home)) < 0 then		|#ISGEC016008.o
 		if (var.ogrs - (hold.pymt + amount.home + alrd.pymt)) < 0 then		|#ISGEC016008.n
 			total.paid = amount.home + alrd.pymt
 			message("PO No. %s, Total PO amount %d , Already utilised %d", tfisg185.orno, var.ogrs, total.paid)
 			return(false)
 		endif
-		
+
 	endselect
 	return(true)
 }
 function	afs.finalize()
-{	
+{
 	get.batch()
 	if	tfgld018.btno	<>	0	then
 		stpapi.put.field("tfgld1101m000","tfgld100.year",str$(tfgld018.year))
@@ -1010,7 +1010,7 @@ function	afs.finalize()
 			stpapi.set.report("tfgld1211s000","rtfgld121111000","D",i.erro)
 			stpapi.set.report("tfgld1210m000","rtfgld121111000","D",i.erro)
 			stpapi.form.command("tfgld1101m000",5,"finalize.batch", i.erro)
-			
+
 			if	not	isspace(i.erro)	then
 				message("%s", i.erro)
 				stpapi.recover("tfacp1110s000",i.erro)
@@ -1020,7 +1020,7 @@ function	afs.finalize()
 			stpapi.end.session("tfgld1211s000")
 			stpapi.end.session("tfgld1210m000")
 		endif
-	endif	
+	endif
 }
 
 									|#ISGEC016007.sn
@@ -1040,11 +1040,11 @@ function	extern	calculate()
 {
 	domain	tcamnt		v.amnt.1, v.amnt.2, v.frml
 	domain	tcmcs.str10	v.str1
-	
-	v.amnt		=	0	
-	v.amnt.1	=	0	
-	v.amnt.2	=	0	
-	
+
+	v.amnt		=	0
+	v.amnt.1	=	0
+	v.amnt.2	=	0
+
 	select	tfisg185.ccty,
 		tfisg185.cvat,
 		tfisg185.balh
@@ -1056,7 +1056,7 @@ function	extern	calculate()
 		tfisg185.cvat	=	""
 		tfisg185.balh	=	0
 	endselect
-	
+
 	select	tctax039.cvat,
 		tcmcs032.pvat,
 		tcmcs036.ktax,
@@ -1068,10 +1068,10 @@ function	extern	calculate()
 	and	tcmcs036.ktax		in		(tcktax.income.tax, tcktax.vat)
 	and	tctax039.cmbb		refers	to	tcmcs032.cmba
 	and	tcmcs036.tbvf		refers	to	tctax011
-	selectdo	
+	selectdo
 		string.scan(tctax011.frml,"%s*%f",v.str1, v.frml)
 		if	v.frml	=	0	then
-			v.frml	=	1	
+			v.frml	=	1
 		endif
 		if	tcmcs032.pvat	<>	0	then
 			on	case	tcmcs036.ktax
@@ -1101,7 +1101,7 @@ function	extern	calculate()
 			endselect
 		endif
 	endselect
-	
+
 	v.amnt	=	tfisg185.balh	-	v.amnt.1	+	v.amnt.2
 }
 									|#ISGEC016007.en
@@ -1112,7 +1112,7 @@ function extern device.open()
 | 	mode.device = 0
 	spool.device = "D"
 	spool.preview = false
-	
+
 	export("spool.device", spool.device)
 | 	export("mode.device", mode.device)
 	start.session(MODAL, "tfisg2400m009", "", "")
@@ -1124,7 +1124,7 @@ function extern device.without.open()
 | 	mode.device = 0
 	spool.device = "P"
 	spool.preview = true
-	
+
 	export("spool.device", spool.device)
 | 	export("mode.device", mode.device)
 	start.session(MODAL, "tfisg2400m009", "", "")
