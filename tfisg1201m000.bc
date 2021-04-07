@@ -40,6 +40,9 @@
 |* ID GH342CR632, RAvi Kumar, 13-06-2020
 |* Auto print of batch from Purchase Order Invoice Processing
 |*
+|* ID GH344CR000, RAvi Kumar, 02-07-2020
+|* IR42958 Fatal Error in quick PTR on selection of IR without Receipt
+|*
 |* ID GH376CR000, RAvi Kumar, 22-07-2020
 |* Issue after finalisation through Quick PTR
 |*
@@ -373,7 +376,11 @@ when.field.changes:
 				v.tdsa = v.tdsa + (tdpur401.pric * tdpur401.qiap)
 			endselect
 
-		endselect
+		selectempty									|GH344CR000.a.s
+			message("IR without Receipt")
+			set.input.error("",e)
+			choice.again()
+		endselect									|GH344CR000.a.e
 
 
 
