@@ -24,6 +24,7 @@ declaration:
 	table	ttpisg011
 	table	ttpisg007
 	table	ttdpur400
+	table	ttpptc101
 
 	extern  domain  tccprj           cprj.f, cprj.t
 	extern  domain  tppdm.cspa       cspa.f, cspa.t
@@ -31,6 +32,7 @@ declaration:
 				cont.amnt.hc, contribution.amnt, exhausted.amnt.imp, exhausted.amnt.imp.yes, exhausted.amnt.ye
 	extern	domain	tcpric	rep.oprc
 	extern	domain	tcyesno	imp.po
+	extern	domain	tcpono	only.sanction
 
 |****************************** program section ********************************
 
@@ -162,7 +164,11 @@ function read.main.table()
 			else
 				rep.oprc = 0
 			endif	
-			poplaced.amnt = poplaced.amnt + (rep.oqnt * rep.oprc)
+			if tdpur400.hdst = tdpur.hdst.created or tdpur400.hdst = tdpur.hdst.cancelled then
+				poplaced.amnt = 0
+			else
+				poplaced.amnt = poplaced.amnt + (rep.oqnt * rep.oprc)
+			endif
 			podelivered.amnt = podelivered.amnt + Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, tdpur401.pric)
 			podelivered.amnt = podelivered.amnt + Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, tdpur401.pric)
 			
@@ -195,6 +201,7 @@ function read.main.table()
 function read.main.table.po()
 {
 	initialization()
+	only.sanction = 0
 	
 	select	tpisg012.cprj,
 		tpisg012.elem,
@@ -257,6 +264,15 @@ function read.main.table.po()
 			tpptc100.desc = ""
 		endselect
 		
+		select	tpptc101.cspp
+		from	tpptc101
+		where	tpptc101._index2 = {:tpisg012.cprj, :tpisg012.elem}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tpptc101.cspp = ""
+		endselect
+		
 		directsanc.amnt = get.utilization()		
 		select	tdpur401.orno,
 			tdpur401.pono,
@@ -267,10 +283,12 @@ function read.main.table.po()
 		where	tdpur401._index5 = {:tpisg012.cprj}
 		and	tdpur401.cspa = :tpisg012.elem
 		and	tdpur401.oltp in (tdgen.oltp.total, tdgen.oltp.orderline)
+		order by tdpur401.orno, tdpur401.pono
 		selectdo
 			podelivered.amnt = 0
 			select	tdpur400.impo.l:imp.po,
-				tdpur400.ccur
+				tdpur400.ccur,
+				tdpur400.hdst
 			from	tdpur400
 			where	tdpur400._index1 = {:tdpur401.orno}
 			as set with 1 rows
@@ -283,7 +301,11 @@ function read.main.table.po()
 			else
 				rep.oprc = 0
 			endif	
-			poplaced.amnt = (rep.oqnt * rep.oprc)
+			if tdpur400.hdst = tdpur.hdst.created or tdpur400.hdst = tdpur.hdst.cancelled then
+				poplaced.amnt = 0
+			else
+				poplaced.amnt = (rep.oqnt * rep.oprc)
+			endif
 			podelivered.amnt = Get_Warehouse_Receipt(tdpur401.orno, tdpur401.pono, tdpur401.pric)
 			podelivered.amnt = podelivered.amnt + Get_Purchase_Receipt(tdpur401.orno, tdpur401.pono, tdpur401.pric)
 			
@@ -301,6 +323,10 @@ function read.main.table.po()
 | 			endselect
 | 			balance = (exhausted.amnt - poplaced.amnt - directsanc.amnt)
 			balance = (poplaced.amnt - podelivered.amnt)
+			only.sanction = 0
+			rprt_send()
+		selectempty
+			only.sanction = 1
 			rprt_send()
 		endselect
 | 		if imp.po = tcyesno.yes then
