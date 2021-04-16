@@ -39,6 +39,9 @@
 |* 
 |* GH489CR000, RAvi Kumar, 11022021
 |* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
+|*
+|* GH543CR000, RAvi Kumar, 14-04-2021
+|* No change in Isgec GSTIN in EBA after E-Invoicing of custom Invoice(tdisg831)
 |****************************** declaration section ***************************
 declaration:
 #ident "@(#)ISG001016, Yoshita Kundwani, IT0177, 31-05-2014 , VRC B61U "
@@ -1608,8 +1611,19 @@ function display.all.form.fields()
 			|#ISGEC017006.en								
 function extern	print.export.invoice()						|#Paras.sn
 {
-	reportno = 6
-	tdisgdll831tv.custom_invoice(tdisg831.edrn)
+	
+	select	tpisg122.gstn.c								|GH543CR000.a.s
+	from	tpisg122
+	where	tpisg122._index1 = {:tdisg831.cprj}
+	and	tpisg122.gstn.c = :tdisg831.rnso.l
+	as set with 1 rows
+	selectdo
+		reportno = 6
+		tdisgdll831tv.custom_invoice(tdisg831.edrn)
+	selectempty
+		message("Isgec GSTIN is not Equal to GST Compliance")
+		choice.again()
+	endselect									|GH543CR000.a.e
 }										|#Paras.en
 
 function attachment.status()									|RAvi.a.s.28092020
