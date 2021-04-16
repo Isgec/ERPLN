@@ -100,7 +100,9 @@
 |*
 |* GH481CR000, RAvi Kumar, 03-02-2021
 |* Remove PO Series check  from Receipt correction sessions
-
+|* 
+|* GH528CR878, RAvi Kumar, 26-03-2021
+|* Modification in Logistics PO Generation from Superprocure utility
 |******************************************************************************
 	table	ttdmsl400
 	table	ttpisg012
@@ -138,6 +140,8 @@
 	table	ttdisg461
 	table	ttcmcs008
 	table	ttcemm170
+	table	ttcmcs052			|GH528CR878.a
+	table	ttppdm649			|GH528CR878.a
 		
 		extern	domain tdpur.hdst	hold.hdst
 		extern	domain	tccpay		hold.cpay
@@ -376,6 +380,24 @@ function extern long ue.before.before.save.object(long mode)
 			endif
 		endif
 		endif								|#sanjeev 26092019#E - CR-485
+		
+		if tdpur400.hdst = tdpur.hdst.approved or tdpur400.hdst = tdpur.hdst.in.process then				|GH528CR878.a.s
+			select	tdpur401.cprj
+			from	tdpur401
+			where	tdpur401._index1 = {:tdpur400.orno}
+			group by tdpur401.cprj
+			selectdo
+				select	tpisg011.act1
+				from	tpisg011
+				where	tpisg011._index1 = {:tdpur401.cprj}
+				and	tpisg011.act1 <> tpisg.sanction.approved
+				as set with 1 rows
+				selectdo
+					email.alert.all.project(tdpur401.cprj)
+				endselect
+			endselect
+		endif														|GH528CR878.a.e
+	break							
 	break							
 		
 	endcase
@@ -1947,4 +1969,135 @@ function boolean bp.block.for.PO(domain	tccom.bpid	i.bpid)
 	
 	return(false)
 }										|GH447CR757.a.e
+
+function email.alert.all.project(domain	tccprj	modi.cprj)			|GH528CR878.a.s
+{
+	string tmp.file(200), line(500)
+	long fp
+	domain tcemno	emno.code
+	domain	tfgld.user	user.code
+
+	long    message.ID
+	long    to.ID
+	long    attachment.ID
+	long    ret
+
+	domain ttcmf.prov service       
+| 	Infor ERP Enterprise eMessage Connector service for 
+| 	transporting messages
+	long stat       |Variable to hold return values
+	long mid        |CMF message id
+
+	tmp.file = creat.tmp.file$(bse.tmp.dir$())
+	fp = seq.open(tmp.file, "w+")
+	if fp <= 0 then
+		dal.set.error.message("@ Temp file can not be created")
+	endif
+
+	line = ""
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:modi.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
+	line = strip$(line) & "Project " & trim$(modi.cprj) & " " & trim$(tcmcs052.dsca) 
+	
+	line = strip$(line) & " is under modification, PO " & tdpur400.orno & " is pending for approval due to it."
+	seq.write(line, len(line), fp)
+		
+	seq.puts("",fp)
+	seq.puts("",fp)
+	seq.puts("This is a system generated E-mail!",fp)
+	ret = seq.close(fp)
+
+	user.code = logname$
+	
+	select 	bpmdm001.mail,
+		tccom001.nama 
+	from 	tccom001, bpmdm001
+	where 	tccom001._index4 = {:user.code}
+	and	tccom001.emno refers to bpmdm001
+	as set with 1 rows
+	selectdo
+	selectempty
+		bpmdm001.mail = ""
+	endselect
+	
+	if isspace(bpmdm001.mail) then
+		dal.set.error.message("@ Email ID for user " & user.code & " Not maintained")
+	endif	
+	
+| 	******* Email Header **********************
+	line = ""
+	message.ID = cmf.create()
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:modi.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
+	
+	line = "PO Approval Pending due to Sanction under Modification " & trim$(modi.cprj) & " " & trim$(tcmcs052.dsca) 
+	
+	ret = cmf.setClass(message.ID, "CMF.NOTE.EMAIL")
+	ret = cmf.setSubject(message.ID, line)
+
+| 	******** from ID *****************************
+	to.ID = cmf.createRecipient(message.ID, ttcmf.role.from)  
+	ret = cmf.setRecipientName(to.ID, tccom001.nama)
+	ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+	ret = cmf.setRecipientType(to.ID, "SMTP")
+
+| 	******** to ID
+	select	tppdm649.emno
+	from	tppdm649
+	where	tppdm649._index1 = {:modi.cprj}
+	and	tppdm649.cres in ("P01", "P02", "P03", "P04", "P05", "P06")
+	selectdo
+		select 	bpmdm001.mail,
+			tccom001.nama 
+		from 	tccom001, bpmdm001
+		where 	bpmdm001._index1 = {:tppdm649.emno}
+		and	tccom001.emno refers to bpmdm001
+		and	bpmdm001.mail <> ""
+		selectdo
+			to.ID = cmf.createRecipient(message.ID, ttcmf.role.to)  
+			ret = cmf.setRecipientName(to.ID, tccom001.nama)
+			ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(to.ID, "TRUE")		
+			ret = cmf.setRecipientType(to.ID, "SMTP")
+		selectempty
+			dal.set.error.message("@ Email ID for user " & trim$(tppdm649.emno) & " Not maintained" )
+		endselect
+	endselect
+
+| 	********* Mail Body *****************
+	attachment.ID = cmf.createAttachment(message.ID)
+	ret = cmf.setAttachmentBody(attachment.ID, ttyeno.yes)
+	ret = cmf.setAttachmentMIME(attachment.ID, "text/plain")                       
+	ret = cmf.setAttachmentFileName(attachment.ID, tmp.file, "abc.txt")
+
+| 	*********  Send mail *****************
+	if message.ID <> 0 then
+		stat = cmf.startService("SMTP", 2)
+		
+		if stat <> 0 then
+			dal.set.error.message("@ Message could not be sent(Infor ERP Enterprise eMessage Connector service did not start)")
+		endif
+		stat = cmf.send(message.ID, "SMTP")
+		
+		if stat <> 0 then
+			dal.set.error.message("@ Message could not be sent(Infor ERP Enterprise eMessage Connector service refused message)")
+			cmf.stopService("SMTP", 2)
+		endif
+		stat = cmf.stopService("SMTP", 2)
+	endif
+}
+											|GH528CR878.a.e
+
 

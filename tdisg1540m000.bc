@@ -6,7 +6,9 @@
 |******************************************************************************
 |* Main table tdisg140 Superprocure, Form Type 1
 |******************************************************************************
-                                                                                
+|*
+|* GH528CR878, RAvi Kumar, 26-03-2021
+|* Modification in Logistics PO Generation from Superprocure utility      
 |****************************** declaration section ***************************
 declaration:
 
@@ -239,6 +241,7 @@ function generate.po.line(	domain	tcorno	orno.po.line)
 				create.text(orno.po.line)
 				generate.po.line.ex(orno.po.line)
 				generate.document.req(orno.po.line)
+				update.payment.term(orno.po.line)		|GH528CR878.a
 				commit.transaction()
 			else
 				abort.transaction()
@@ -330,7 +333,8 @@ function generate.document.req(	domain	tcorno	orno.po.line.ex)
 
 function domain	tcmcs.str500m	get.text.line()
 {
-	domain	tcmcs.str500m	str.text
+| 	domain	tcmcs.str500m	str.text		|GH528CR878.com
+			string	str.text(5000)			|GH528CR878.a
 	domain	tcdsca	to.state, from.state
 	
 | 	select	tdpur401.ccty
@@ -368,7 +372,8 @@ function domain	tcmcs.str500m	get.text.line()
 	str.text = str.text & "from " & trim$(tdisg140.snam) & " to " & trim$(tdisg140.dnam)
 	str.text = str.text & " to state - " & trim$(tdisg140.tcst) & ", "
 	str.text = str.text & "Type of Vehicle - " & trim$(tdisg140.type) & ", "
-	str.text = str.text & "Weight - " & trim$(str$(tdisg140.wght)) & ", "
+| 	str.text = str.text & "Weight - " & trim$(str$(tdisg140.wght)) & ", "						|GH528CR878.com
+	str.text = str.text & "Weight of Material - " & trim$(str$(tdisg140.wght)) & " " &trim$(tdisg140.wunt) & ", "	|GH528CR878.a
 	str.text = str.text & "Size of Vehicle - " & trim$(tdisg140.size) & ", "
 	str.text = str.text & "No. of Vehicle - " & trim$(str$(tdisg140.novc)) & ", "
 	str.text = str.text & "Amount - Rs." & trim$(str$(tdisg140.amnt))
@@ -379,20 +384,29 @@ function domain	tcmcs.str500m	get.text.line()
 function create.text(domain	tcorno	orno.po.line.text)
 {
 	
-	string	temp.file1(500), text(300), kw1(17),kw2(17),kw3(17),kw4(17)
+	string	temp.file1(500), text(300), kw1(17),kw2(17),kw3(17),kw4(17), buffer.string(5000)	|GH528CR878.a	
 	long	write.return, input.file, seq
-	domain	tcmcs.str500m	buffer.string
+| 	domain	tcmcs.str500m	buffer.string								|GH528CR878.com
 	
 	select	tdpur401.txta
 	from	tdpur401 for update
 	where	tdpur401._index1 = {:orno.po.line.text, 1, 1}
 	as set with 1 rows
 	selectdo
-		buffer.string = get.text.line()
+| 		buffer.string = get.text.line()								GH528CR878.com
 		temp.file1 = creat.tmp.file$(bse.tmp.dir$())
 		temp.file1 = strip$(temp.file1)
 		input.file = seq.open(temp.file1,"w")
-		seq = seq.puts(buffer.string, input.file)
+| 		seq = seq.puts(buffer.string, input.file)						|GH528CR878.a.s		
+		seq = 	seq.puts("Load no - " & trim$(str$(tdisg140.load)), input.file)
+		seq = 	seq.puts("Vehicle Request no - " & trim$(tdisg140.ivrn), input.file)
+		seq = 	seq.puts("From State - " & trim$(tdisg140.fcst)  & " LUMPSUM LOWEST RATE SETTLED WITH TRANSPORTER FOR TRANSPORTATION OF MATERIAL "
+				& "from " & trim$(tdisg140.snam) & " to " & trim$(tdisg140.dnam) & " to state - " & trim$(tdisg140.tcst), input.file)
+		seq = 	seq.puts("Type of Vehicle - " & trim$(tdisg140.type), input.file)
+		seq = 	seq.puts("Actual Size - " & trim$(tdisg140.size), input.file)
+		seq = 	seq.puts("Weight of Material - " & trim$(str$(tdisg140.wght)) & " " &trim$(tdisg140.wunt), input.file)
+		seq = 	seq.puts("No. of Vehicle - " & trim$(str$(tdisg140.novc)), input.file)
+		seq = 	seq.puts("Amount - Rs." & trim$(str$(tdisg140.amnt)), input.file)		|GH528CR878.a.e
 		seq = seq.puts("RATES ARE INCLUDING ALL STATES RTO PANELTY, CHALLANS, TAXES,DUTIES & WARAI ETC.", input.file)
 		seq = seq.puts("GST SHALL BE DEPOSITED BY ISGEC IN TO GOVERNMENT ACCOUNT AS PER APPLICABLE RATE", input.file)
 		seq = seq.puts("TDS SHALL BE DEDUCTED AS PER APPLICABLE RATE", input.file)
@@ -511,3 +525,25 @@ function string get.text.footer()
 	seq = seq.close(input.file)
 	return(temp.file2)
 }
+
+function update.payment.term(	domain	tcorno	orno.po.line.pay)				|GH528CR878.a.s
+{
+	select	tcisg001.bdat,
+		tcisg001.prd
+	from	tcisg001 for update
+	where	tcisg001._index1 = {:orno.po.line.pay}
+	as set with 1 rows
+	selectdo
+		if dal.change.object("tcisg001") = 0 then
+			dal.set.field("tcisg001.bdat", tcisg.bdat.delivery.date)
+			dal.set.field("tcisg001.prd", "Within 30 Days")
+			if dal.save.object("tcisg001") = 0 then
+				commit.transaction()
+			else
+				dal.get.error.message(error.msg)
+			endif
+		endif
+	endselect
+}												|GH528CR878.a.e
+
+
