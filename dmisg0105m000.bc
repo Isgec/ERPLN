@@ -25,6 +25,9 @@
 |*
 |* ID: GH194CR508, RAvi Kumar, 01-11-2019, VRC B61U a7 isg
 |* If drawing is expired its Items cannot be released
+|* 
+|* GH533CR000, RAvi Kumar, 01-04-2021
+|* IR175083 -Issue Standard Item code show double in display item master 
 |****************************** declaration section ***************************
 declaration:
 
@@ -106,7 +109,11 @@ before.choice:
 			|#ISGEC001002.eo
 			break	
 	ENDCASE		
- 
+	if check.item.released() then						|GH533CR000.a.s
+	else
+		message("Item " & trim$(dmisg005.item) & " already released")
+		choice.again()
+	endif									|GH533CR000.a.e 
 	|Check()
 	
 	if not check.release_item() then						|RAvi.a.s.GH194CR508
@@ -622,7 +629,7 @@ function set.enable.disable.fields()
 			from	tcisg004
 			where	tcisg004._index1 = {:dmisg005.cprj,:dmisg005.cspa,
 							:dmisg005.loti,:dmisg005.item}
-			and	tcisg004.rvid = :str.revn
+| 			and	tcisg004.rvid = :str.revn
 			and	(tcisg004.indt = tcyesno.yes or tcisg004.refq = tcyesno.yes or tcisg004.orno = tcyesno.yes)
 			as set with 1 rows
 			selectdo
@@ -776,3 +783,19 @@ function boolean check.release_item()						|RAvi.a.s.GH194CR508
 	return(true)
 }
 										|RAvi.a.e.GH194CR508
+
+function boolean check.item.released()							|GH533CR000.a.s
+{
+	select	tcisg004.*
+	from	tcisg004
+	where	tcisg004._index1 = {:dmisg005.cprj, :dmisg005.cspa, :dmisg005.loti, :dmisg005.item}
+	and	tcisg004.docn = :dmisg005.docn
+	and	tcisg004.rvid = :dmisg005.revn
+	as set with 1 rows
+	selectdo
+		return(false)
+	endselect
+	
+	return(true)
+}											|GH533CR000.a.e
+
