@@ -31,6 +31,9 @@
 |*
 |* ID: GH161CR472, RAvi Kumar,       12-10-2019
 |* Sanction Short Logging of PO
+|*
+|* GH440CR000, RAvi Kumar, 19-11-2020
+|* Payment term is showing in negative in PO
 |******************************************************************************
         table	ttdmsl400   
 	table	ttdpur414
@@ -468,12 +471,13 @@ function extern long tdisgdll0400.insert_tcisg001										|#ISG001017.sn
 			ret = db.insert(ttcisg001,db.skip.dupl) 
 		endselect	
 	endselect
-	UpdateAmnt(tdpur400.orno)
+	UpdateAmnt(tdpur400.orno, version)				|GH440CR000.a
 
 	return(ret)
 }													
 
-function UpdateAmnt(domain	tcorno mOrno)
+function UpdateAmnt(domain	tcorno mOrno,
+			domain	tcsern	versn)				|GH440CR000.a
 {
 	domain	tcamnt cAmt1, tot.extx,tot.cltx
 	domain	tcamnt cAmt2
@@ -519,20 +523,23 @@ function UpdateAmnt(domain	tcorno mOrno)
 	
 	select sum(tcisg001.perc):mPer 
 	from tcisg001 
-	where tcisg001.orno=:mOrno 
+| 	where tcisg001.orno=:mOrno  
+	where tcisg001._index1 = {:mOrno, :versn} 				|GH440CR000.a
 	selectdo 
 	endselect
 	
 	select  count(*):mCtr 
 	from tcisg001 
-	where tcisg001.orno=:mOrno 
+| 	where tcisg001.orno=:mOrno 
+	where tcisg001._index1 = {:mOrno, :versn} 				|GH440CR000.a
 	and tcisg001.catg=tcisg.catg.running.payment 
 	selectdo 
 	endselect
   
 	select  tcisg001.* 
 	from tcisg001 for  update 
-	where tcisg001.orno=:mOrno
+| 	where tcisg001.orno=:mOrno
+	where tcisg001._index1 = {:mOrno, :versn} 				|GH440CR000.a
 	and (tcisg001.catg = tcisg.catg.advance or tcisg001.catg = tcisg.catg.retention)		
 	selectdo
 		tcisg001.amnt = round((tcisg001.perc * bamt.m) / 100,2,1)
@@ -542,7 +549,8 @@ function UpdateAmnt(domain	tcorno mOrno)
 
 	select  tcisg001.* 
 	from tcisg001 for  update 
-	where tcisg001.orno=:mOrno
+| 	where tcisg001.orno=:mOrno
+	where tcisg001._index1 = {:mOrno, :versn} 				|GH440CR000.a
 	and tcisg001.catg = tcisg.catg.running.payment
 	selectdo
 		i = i + 1
@@ -877,7 +885,7 @@ function extern	tdisg.dll0400.sanction.short.logging.PO( domain	tcorno	i.orno.r)
 	where	tdpur401._index1 = {:i.orno.r}
 	group by tdpur401.cprj, tdpur401.cspa
 	selectdo
-		select	sum(tdpur401.pric):basic.pric.up
+		select	sum(tdpur401.oamt):basic.pric.up
 		from	tdpur401
 		where	tdpur401._index1 = {:i.orno.r}
 		and	tdpur401.cprj = :o.cprj.r1.up
@@ -1003,7 +1011,7 @@ function send.email.alert(domain	tcorno	i.orno.mail)
 	where	tdpur401._index1 = {:i.orno.mail}
 	group by tdpur401.cprj, tdpur401.cspa
 	selectdo
-		select	sum(tdpur401.pric):basic.pric.up
+		select	sum(tdpur401.oamt):basic.pric.up
 		from	tdpur401
 		where	tdpur401._index1 = {:i.orno.mail}
 		and	tdpur401.cprj = :o.cprj.r1.up
@@ -1111,7 +1119,7 @@ function send.email.alert(domain	tcorno	i.orno.mail)
 	endif		
 	|******* Email Header
          message.ID = cmf.create()
-	line = "Sanction Short logging log."
+	line = "Sanction Short log."
         ret = cmf.setClass(message.ID, "CMF.NOTE.EMAIL")
         ret = cmf.setSubject(message.ID,line)
 	
