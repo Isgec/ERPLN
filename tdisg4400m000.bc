@@ -165,6 +165,9 @@
 |* 
 |* GH537CR000, RAvi Kumar, 02-04-2021
 |* 175410-GST Taxes not coming in PO print when manual amount is entered in ASV Price for GST in PO line
+|*
+|* GH539CR881, RAvi Kumar, 02-04-2021
+|* Provision for writing Header Text Fields in PO
 |****************************** declaration section ***************************
 declaration:
 	table	ttdpur400
@@ -954,7 +957,28 @@ function read.main.table()
 		rep.cin = "L23423HR1933PLC000097"
 	else
 		rep.cin = "U29308HR2017PTC067285"
-	endif									
+	endif		
+	
+	if not highest.vrsn then						|GH539CR881.a.s
+		select	tdmsl500.hde1:tdmsl502.hde1,
+			tdmsl500.hde2:tdmsl502.hde2, 
+			tdmsl500.hde3:tdmsl502.hde3
+		from	tdmsl500
+		where	tdmsl500._index1 = {:tdpur400.orno, :i.vrsn}
+		as set with 1 rows
+		selectdo
+		endselect
+	else
+		select	tdmsl502.hde1,
+			tdmsl502.hde2,
+			tdmsl502.hde3
+		from	tdmsl502
+		where	tdmsl502._index1 = {:tdpur400.orno}
+		as set with 1 rows
+		selectdo
+		endselect
+	endif
+										|GH539CR881.a.e									
 	
 	rep.name = trim$(brnc.nama) & " " & trim$(brnc.namb)				|#ISGEC01038.en
 	tccomdll9003.l.decode.amount.into.words(tot.bas,r.word)			|#Prasanna.05.12.2018.n
@@ -1032,7 +1056,7 @@ function read.main.table()
 | 						tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
 | 					endif
 | 					if tdpur401.porg = tdgen.porg.manual then						|GH537CR000.a
-					if tdpur401.asoi.l = tcasvo.l.manual then						|GH537CR000.a 16042021
+					if tdpur401.asog.l = tcasvo.l.manual then						|GH537CR000.a 16042021
 					else
 						tdpur401.tasg.l = tdpur401.oamt							|GH523CR000.a.e
 					endif
@@ -1740,7 +1764,7 @@ function get.po.totals()
 | 					tdpur401.tasg.l = (tdpur401.tasg.l / tdpur401.qoor ) * (add.qty)
 | 				endifendif
 | 				if tdpur401.porg = tdgen.porg.manual then						|GH537CR000.a
-				if tdpur401.asoi.l = tcasvo.l.manual then						|GH537CR000.a 16042021
+				if tdpur401.asog.l = tcasvo.l.manual then						|GH537CR000.a 16042021
 				else
 					tdpur401.tasg.l = tdpur401.oamt							|GH523CR000.a.e
 				endif						|GH523CR000.a.e

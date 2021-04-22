@@ -37,6 +37,9 @@
 |*
 |* ID GH211CR000, RAvi Kumar, 19/11/2019
 |* IR-133019-Wrong Tax print on PO P10139321 
+|* 
+|* GH539CR881, RAvi Kumar, 02-04-2021
+|* Provision for writing Header Text Fields in PO
 |******************************************************************************
 	table	ttdpur400
 	table	ttdpur401
@@ -256,10 +259,16 @@ function extern tdmsl.dll0500.move.tdpur400.to.tdmsl500()
 		tdmsl502.fdes	=	""
 		tdmsl502.fde2	=	""
 		tdmsl502.fde3	=	""
+		tdmsl502.hde1	=	""		|GH539CR881.a
+		tdmsl502.hde2	=	""		|GH539CR881.a
+		tdmsl502.hde3	=	""		|GH539CR881.a
 	endselect
 	tdmsl500.fdes	=	tdmsl502.fdes
 	tdmsl500.fde2	=	tdmsl502.fde2
 	tdmsl500.fde3	=	tdmsl502.fde3				|RAvi.a.e.25092020
+	tdmsl500.hde1	=	tdmsl502.hde1		|GH539CR881.a
+	tdmsl500.hde2	=	tdmsl502.hde2		|GH539CR881.a
+	tdmsl500.hde3	=	tdmsl502.hde3		|GH539CR881.a
 }
 									|#ISGECDV001080.sn
 function copy.text(domain tcmcs.str17 i.field, domain tcmcs.str17 o.text, domain tctxtn inp.text)
