@@ -11,6 +11,9 @@
 |*
 |* ID GH327CR621, RAvi Kumar, 30-05-2020
 |* Modification in Input Tax Creait utility
+|*
+|* GH549CR000, RAvi Kumar, 06-05-2021
+|* 177091-Change series from "41" to "42" in session "Input Tax Credit Utility
 |****************************** declaration section ***************************
 declaration:
 
@@ -205,7 +208,8 @@ function boolean run.afs(	domain	tcncmp		i.loco,
 	string recover.msg(500)
 	long ret_val,retval1,retval2
 	ttyp1 = "JET"
-	seri1 = 0041
+| 	seri1 = 0041							|GH549CR000.com
+	seri1 = 0042							|GH549CR000.a
 	
 	stpapi.put.field("tfacp9600m00l", "b.ttyp", ttyp1)		|itest.so
 	stpapi.put.field("tfacp9600m00l", "b.seri", str$(seri1))
