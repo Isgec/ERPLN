@@ -56,6 +56,9 @@
 |*
 |* GH395CR716, RAvi Kumar, 08-09-2020
 |* Pending Indent Report should consider the Indent not pending only when Indent is approved
+|* 
+|* GH547CR882, RAvi Kumar, 28-04-2021
+|* Modification in Indent Types
 |****************************** declaration section ***************************
 declaration:
 
@@ -223,7 +226,8 @@ function generate.header()
 		sprintf$("DEL. Date"),							|19
 		sprintf$("Element"),							|20											
 		sprintf$("Indent Status"),						|21
-		sprintf$("Workflow Initiated Status"))					|22		|RAvi.a.10102019
+		sprintf$("Workflow Initiated Status"),					|22		|RAvi.a.10102019
+		sprintf$("Indent Subtype"))						|23		|GH547CR882.a
 		
 	line = strip$(shiftl$(line))		
 	seq.puts(line, stat.fp)		
@@ -306,7 +310,8 @@ function read.main.table()
 				
 										|#ISGECDV001130.sn
 				tdisg100.prio = empty
-				select	tdisg100.prio
+				select	tdisg100.prio,
+					tdisg100.subt			|GH547CR882.a
 				from	tdisg100
 				where	tdisg100._index1 = {:tdpur200.rqno}
 				selectdo
@@ -507,7 +512,8 @@ function write.data()
 		sprintf$("%u(%02d/%02m/%04Y)",tdpur401.ddta),	|19
 		sprintf$("%s",tdpur201.cspa),			|20
 		sprintf$("%s",req_status),			|21
-		sprintf$("%s", workflow.status))		|22				|RAvi.a.10102019
+		sprintf$("%s", workflow.status),		|22				|RAvi.a.10102019
+		sprintf$("%s", enum.descr$("tdisg.subtype", tdisg100.subt)))		|23				|GH547CR882.a
 		
 		line = strip$(shiftl$(line))
 		seq.puts(line, stat.fp)
@@ -644,7 +650,8 @@ function other_than_approval()
 							
 	tdisg100.prio = empty
 	
-	select	tdisg100.prio
+	select	tdisg100.prio,
+		tdisg100.subt				|GH547CR882.a
 	from	tdisg100
 	where	tdisg100._index1 = {:tdpur200.rqno}
 	selectdo
