@@ -47,7 +47,9 @@
 |*
 |* GH457CR795, RAvi Kumar, 21-12-2020
 |* Modification in Print Voucher
-
+|*
+|* GH552CR828, RAvi Kumar, 07-05-2021
+|* MSME Code required in Print Voucher (Purchase)
 |****************************** declaration section ***************************
 declaration:
 	table	ttfgld102
@@ -72,6 +74,7 @@ declaration:
 	table	ttdisg873				|GH413CR739.a
 	table	ttfisg183				|GH457CR795.a
 	table	ttccom001				|GH457CR795.a
+	table	ttccom120				|GH552CR828.a
 
 |******** Form Field ***********************************************************
 
@@ -401,6 +404,15 @@ function non.finalized.transactions()
 		
 		get_invoice_status(rep.ttyp, rep.docn)	|#ISG01007.n
 		get.bp.name(o.ifbp)				|ISGEC017005.n
+		select	tccom120.creg							|GH552CR828.a.s
+		from	tccom120
+		where	tccom120._index1 = {:o.ifbp}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom120.creg = ""
+		endselect								|GH552CR828.a.
+		
 		get_ptr_text(rep.ttyp, rep.docn)							|ISGEC017005.n
 		get.tax.ledger.data(g.flag, rep.ttyp, rep.docn)	|#GST001026.n
 		rprt_send()
@@ -683,6 +695,14 @@ function finalized.transactions()
 		get_invoice_status(rep.ttyp, rep.docn)	|#ISG01007.n
 		get.tax.ledger.data(g.flag, rep.ttyp, rep.docn)	|#GST001026.n
 		get.bp.name(o.ifbp)				|ISGEC017005.n
+		select	tccom120.creg							|GH552CR828.a.s
+		from	tccom120
+		where	tccom120._index1 = {:o.ifbp}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom120.creg = ""
+		endselect								|GH552CR828.a.
 		get_ptr_text(rep.ttyp, rep.docn)
 		print1 = 0					|ISGEC017005.n
 		rprt_send()
@@ -1133,6 +1153,15 @@ function ptr.net.payable.computation(	domain	tfgld.ttyp	i.ttyp,			|Transactin Ty
 		get_invoice_status(i.ttyp, i.docn)
 		get.tax.ledger.data(g.flag, rep.ttyp, rep.docn)	|#GST001026.n
 		get.bp.name(o.ifbp)
+		
+		select	tccom120.creg							|GH552CR828.a.s
+		from	tccom120
+		where	tccom120._index1 = {:o.ifbp}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom120.creg = ""
+		endselect								|GH552CR828.a.e
 		get.pay.due.date(i.ttyp, i.docn, rep.orno1)	
 		get_ptr_gross_amnt(i.ttyp, i.docn, i.lino)
 		get.withholding.data(i.ttyp, i.docn)	
