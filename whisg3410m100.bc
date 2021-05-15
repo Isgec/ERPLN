@@ -64,6 +64,9 @@
 |*
 |* ID: ISGEC019006, Arun Chauhan, 06-07-2019
 |* add Invoice currency instead of home currency
+|*
+|* GH551CR827, RAvi Kumar, 07-05-2021
+|* CR827-MSME Code required in Print Purchase Bill Approval Memo
 |***************************** declaration section ***************************
 declaration:
 
@@ -603,13 +606,14 @@ function read.main.table()
 				v.dsca = ""
 			endselect		
 			
-			select	tdpur400.*, tcmcs065.dsca, tccom100.nama, |tcmcs041.dsca,
+			select	tdpur400.*, tcmcs065.dsca, tccom100.nama, tccom120.creg, |tcmcs041.dsca,				|GH551CR827.a
 				tcmcs065.comp:fin_comp				|#ISGEC01046.n
-			from	tdpur400, tcmcs065, tccom100|, tcmcs041
+			from	tdpur400, tcmcs065, tccom100, tccom120|, tcmcs041					|GH551CR827.a
 			where	tdpur400._index1 = {:whinh312.orno}
 			and	tdpur400.cofc refers to tcmcs065 Unref Clear
 			and	tdpur400.otbp refers to tccom100 Unref Clear
 | 			and	tdpur400.cdec refers to tcmcs041 Unref Clear			|#Sahil.Sharma.19.02.2019.o
+			and	tdpur400.otbp refers to tccom120			|GH551CR827.a
 			selectdo
 				get.var(pid,"tdpur400.cdf_lc01", cdf_lc01)			|#ISGEC01099.sn
 				if etol(cdf_lc01) = 1 then
@@ -788,7 +792,7 @@ function read.main.table()
 			cess.amnt = 0.00	|#ISGECMOD020.n
 			rep.st.amnt = 0
 			service.tax = false			|#ISGECDV001031.n
-| 			calculate_freight()				|RAvi.com.17102020	
+| 			calculate_freight()			|RAvi.com.17102020
 			get.tax.rate(tdpur401.ccty, tdpur401.cvat)
 								|#ISGECDV001031.sn
 			if	service.tax	then
@@ -2036,7 +2040,7 @@ function get.additional.value.200()
 			
 		endselect
 	endselect
-| 	calculate_freight()								|RAvi.com.17102020
+| 	calculate_freight()						|RAvi.com.17102020
 	for i = 1 to 5 step 1
 		if not isspace(additional.array(1,i)) then
 			printed.addition = 1

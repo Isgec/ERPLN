@@ -80,6 +80,9 @@
 |*
 |* ID: ISGEC019006, Arun Chauhan, 06-07-2019,
 |* Modification in invoice currency instead of home currency
+|*
+|* GH551CR827, RAvi Kumar, 07-05-2021
+|* CR827-MSME Code required in Print Purchase Bill Approval Memo
 |****************************** declaration section ***************************
 declaration:
 
@@ -536,10 +539,10 @@ function read.main.table()
 		tmp.rep.sgst.amnt = 0.00
 		
 		select	tdpur401.*, tdpur400.*, tppdm600.padr, tcibd001.dsca, 
-			tcmcs065.dsca, tccom100.nama, tcmcs041.dsca, tcmcs052.dsca,
+			tcmcs065.dsca, tccom100.nama, tcmcs041.dsca, tcmcs052.dsca,tccom120.creg,	|GH551CR827.a
 			tcmcs065.comp:fin_comp				|ISG10103.n
 		from	tdpur401, tdpur400, tppdm600, tcibd001, tcmcs065,
-			tccom100, tcmcs041, tcmcs052
+			tccom100, tcmcs041, tcmcs052, tccom120						|GH551CR827.a
 		where	tdpur401._index1 = {:tdpur406.orno, :tdpur406.pono, :tdpur406.sqnb}
 		and	tdpur401.orno refers to tdpur400 Unref Clear
 		and	tdpur401.cprj refers to tppdm600 Unref Clear
@@ -548,6 +551,7 @@ function read.main.table()
 		and	tdpur400.otbp refers to tccom100 Unref Clear
 		and	tdpur400.cdec refers to tcmcs041 Unref Clear
 		and	tdpur401.cprj refers to tcmcs052 Unref Clear
+		and	tdpur400.otbp refers to tccom120 Unref Clear					|GH551CR827.a
 		selectdo
 			get.var(pid,"tdpur400.cdf_lc01", cdf_lc01)			|#ISGEC01099.sn
 			if etol(cdf_lc01) = 1 then
