@@ -14,6 +14,9 @@
 |*
 |* GH407CR000, RAvi Kumar, 24-09-2020
 |* 153719 - Issue of Group code filter in Report Print Manhour Data
+|*
+|* GH542CR873, RAvi Kumar, 15-04-2021
+|* Common Manhours booking reports to be developed for Isgec and Redecam
 |****************************** declaration section ***************************
 declaration:
 
@@ -60,6 +63,7 @@ declaration:
 	extern	domain	tcmcs.str50		rep.remk
 	extern domain	tcorno		rep.dcat, rep.dsno			|#ISGEC01041.n
 	extern domain  tcmcs.str30	rep.docn
+			domain	tcncmp		curr.comp			|GH542CR873.a
 	
 |*************** Include **************
 #include<bic_desktop>	
@@ -98,14 +102,18 @@ functions:
 
 function generate.file()
 {
+	curr.comp = get.compnr()			|GH542CR873.a
 	open.file()
 	generate.header()
-	read.main.table()
+	read.main.table(200)			|GH542CR873.a
+	read.main.table(651)			|GH542CR873.a
+	read.main.table(700)			|GH542CR873.a
 	close.file()
 }
 
-function read.main.table()
+function read.main.table(	domain	tcncmp	i.comp)		|GH542CR873.a
 {
+	switch.to.company(i.comp)		|GH542CR873.a
 	select	tiisg910.emno, tiisg910.rlid, tiisg910.tdat, 
 		tiisg910.acid, tiisg910.cprj, tiisg910.cspa, 
 		tiisg910.hhrs, tiisg906.grcd, tiisg910.opty,
@@ -177,6 +185,7 @@ function read.main.table()
 		
 		print.details()
 	endselect
+	switch.to.company(curr.comp)		|GH542CR873.a	
 }
 
 
