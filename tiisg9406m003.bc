@@ -58,7 +58,7 @@ declaration:
 	extern	domain 		tfgld.date		date.m	
 	extern	domain 		tfgld.date		startdate.f
 	extern	domain 		tfgld.date		enddate.t	
-	extern	domain		tphrs.nhrs	hrs.m, hrs.m.200, hrs.m.651, hrs.m.700	|GH542CR873.a
+	extern	domain		tphrs.nhrs	hrs.m, hrs.m.200, hrs.m.651, hrs.m.700, hrs.m.810	|GH542CR873.a
 		domain	tcncmp	curr.comp			|GH542CR873.a
 		domain	tcbool	flag.data.present		|GH542CR873.a
 |****************************** program section ********************************
@@ -83,9 +83,14 @@ on.choice:
 	if	rprt_open()	then
 | 		read.main.table()	|#ISGECDV001011.o
 | 		read.main.table.new()	|#ISGECDV001011.n	|GH542CR873.com
-		read.main.table.comp(200)		|GH542CR873.a
-		read.main.table.comp(651)		|GH542CR873.a
-		read.main.table.comp(700)		|GH542CR873.a
+		if curr.comp = 810 then
+			read.main.table.new()
+		else
+			read.main.table.comp(200)		|GH542CR873.a
+			read.main.table.comp(651)		|GH542CR873.a
+			read.main.table.comp(700)		|GH542CR873.a
+| 			read.main.table.comp(810)		|GH542CR873.a
+		endif
 		rprt_close()
 	else
 		choice.again()
@@ -322,6 +327,7 @@ function read.main.table.comp(domain	tcncmp	in.comp)		|GH542CR873.a.s
 	hrs.m.200 = 0
 	hrs.m.651 = 0
 	hrs.m.700 = 0
+	hrs.m.810 = 0
 	switch.to.company(in.comp)		
 	select	tiisg906.emno, 
 		tiisg911.desc,
@@ -389,7 +395,8 @@ function read.main.table.comp(domain	tcncmp	in.comp)		|GH542CR873.a.s
 					calculate.total.hrs.from.all.comp(200, hrs.m.200)
 					calculate.total.hrs.from.all.comp(651, hrs.m.651)
 					calculate.total.hrs.from.all.comp(700, hrs.m.700)
-					hrs.m = hrs.m.200 + hrs.m.651 + hrs.m.700
+| 					calculate.total.hrs.from.all.comp(810, hrs.m.810)
+					hrs.m = hrs.m.200 + hrs.m.651 + hrs.m.700| + hrs.m.810
 					if get.compnr() = 200 then
 						if date.m > date.to.num(2020, 12, 31) then			
 							if	hrs.m > 0.00 and round(hrs.m,2,1) < 8.75	then		
@@ -435,15 +442,17 @@ function read.main.table.comp(domain	tcncmp	in.comp)		|GH542CR873.a.s
 					if calculate.total.hrs.from.all.comp(200, hrs.m.200) then
 						if calculate.total.hrs.from.all.comp(651, hrs.m.651) then
 							if calculate.total.hrs.from.all.comp(700, hrs.m.700) then
-								if not flag.data.present then
-									select	tcccp020.avlb
-									from	tcccp020
-									where	tcccp020._index1 = {"STND", "STND", :date.m}
-									and	tcccp020.avlb = tcyesno.yes
-									selectdo
-										rprt_send()
-									endselect
-								endif
+| 								if calculate.total.hrs.from.all.comp(810, hrs.m.810) then
+									if not flag.data.present then
+										select	tcccp020.avlb
+										from	tcccp020
+										where	tcccp020._index1 = {"STND", "STND", :date.m}
+										and	tcccp020.avlb = tcyesno.yes
+										selectdo
+											rprt_send()
+										endselect
+									endif
+| 								endif
 							endif	
 						endif
 					endif
