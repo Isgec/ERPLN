@@ -53,7 +53,9 @@
 |*
 |* GH409CR737, RAvi Kumar, 15-10-2020
 |* Upgrade Quick Payment session
-
+|* 
+|* GH554CR000, RAvi Kumar, 19-05-2021
+|* 178385-Unwanted text remarks is coming in bottom side of many bank receipt vouchers tfisg1402m000 (Print voucher detail) 
 |****************************** declaration section ***************************
 declaration:
 
@@ -1323,22 +1325,28 @@ function assign.report.variable
 	endselect									|ISGEC01091.en
 	
 	user.name(tfmsl020.eusr,reci.user)						
-	user.name(tfmsl020.veri,veri.user)								|ISGEC01050.en
+	user.name(tfmsl020.veri,veri.user)									|ISGEC01050.en
 	
-		
-	select	a_tfmsl020.mpym:mod.paym, a_tfmsl020.aamt:req.amnt,		|#GH279CR578_000.sn
-		a_tfmsl020.ccur:ccur	
-	from	tfmsl020 a_tfmsl020
-	where	a_tfmsl020.btno = :rep.btno1
-	as set with 1 rows
-	selectdo
-		paym.mode =  str$(enum.descr$("tfisg.mpym", mod.paym))
-	selectempty
+	if rep.btno1 = 0 then						|GH554CR000.a
 		mod.paym = empty
 		ccur = ""
 		req.amnt = 0
 		paym.mode = ""
-	endselect								|#GH279CR578_000.en
+	else
+		select	a_tfmsl020.mpym:mod.paym, a_tfmsl020.aamt:req.amnt,		|#GH279CR578_000.sn
+			a_tfmsl020.ccur:ccur	
+		from	tfmsl020 a_tfmsl020
+		where	a_tfmsl020.btno = :rep.btno1
+		as set with 1 rows
+		selectdo
+			paym.mode =  str$(enum.descr$("tfisg.mpym", mod.paym))
+		selectempty
+			mod.paym = empty
+			ccur = ""
+			req.amnt = 0
+			paym.mode = ""
+		endselect								|#GH279CR578_000.en
+	endif
 	
 	if rep.amth <> 0.00 then
 		if brp_open > 0 then
