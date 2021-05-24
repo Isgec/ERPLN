@@ -27,6 +27,9 @@
 |*
 |* GH509CR861, RAvi Kumar, 12-03-2021
 |* Statement for Import Purchase Orders
+|* 
+|* GH557CR888, RAvi Kumar, 21-05-2021
+|* CR888-To modify the range of filter named Delivery Date to current date+3 years
 |****************************** declaration section ***************************
 declaration:
 
@@ -147,7 +150,8 @@ declaration:
 |*************** Include **************
 #include<bic_desktop>
 |****************************** program section ********************************
-
+before.program:
+	utc.add(utc.num(), 3, 0, 0 ,0 ,0 ,0 , ddta.t)					|GH557CR888.a
 
 |****************************** group section **********************************
 

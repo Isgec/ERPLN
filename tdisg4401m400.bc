@@ -25,6 +25,9 @@
 |* 
 |* GH495CR000, RAvi Kumar, 17-02-2021
 |* In Project EC0034, PO P83006079 and P83006081 showing incorrect value in Linewise Po delivery status report
+|* 
+|* GH557CR888, RAvi Kumar, 21-05-2021
+|* CR888-To modify the range of filter named Delivery Date to current date+3 years
 |****************************** declaration section ***************************
 declaration:
 
@@ -139,7 +142,8 @@ declaration:
 #include<bic_desktop>
 #pragma used dll otctaxdll4100
 |****************************** program section ********************************
-
+before.program:
+	utc.add(utc.num(), 3, 0, 0 ,0 ,0 ,0 , ddta.t)					|GH557CR888.a
 
 |****************************** group section **********************************
 

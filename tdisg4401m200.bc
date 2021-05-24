@@ -53,6 +53,9 @@
 |* 
 |* GH495CR000, RAvi Kumar, 17-02-2021
 |* In Project EC0034, PO P83006079 and P83006081 showing incorrect value in Linewise Po delivery status report
+|* 
+|* GH557CR888, RAvi Kumar, 21-05-2021
+|* CR888-To modify the range of filter named Delivery Date to current date+3 years
 |****************************** declaration section ***************************
 declaration:
 
@@ -164,12 +167,13 @@ declaration:
 	extern	domain	tcamnt		rep.rsgst			
 	extern	domain	tcamnt		rep.rcgst			
 	extern	domain	tcamnt		rep.rigst	|#ISGECGST002.en	
-	extern	domain	tccwar		rep.cwar	|GH431CR774.a
+	extern	domain	tccwar		rep.cwar	|GH431CR774.a		
 
 |*************** Include **************
 #include<bic_desktop>
 |****************************** program section ********************************
-
+before.program:
+	utc.add(utc.num(), 3, 0, 0 ,0 ,0 ,0 , ddta.t)					|GH557CR888.a
 
 |****************************** group section **********************************
 
@@ -1185,7 +1189,8 @@ function Get_GR_Supp_Invn(
 			if	cnt.rec = 1	then
 				ot.grno = trim$(tfisg002.grno)
 												|#ISGECDV001176.sn
-				ot.grdt = sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt)
+| 				ot.grdt = sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt)		|RAvi.05052020.com
+				ot.grdt = sprintf$("%D(%02d/%02m/%04Y)", tfisg002.grdt)		|RAvi.05052020.a
 				if	tfisg003.otbp = tcyesno.yes	then
 					ot.trnm = trim$(tfisg003.bpnm)
 				else
@@ -1195,7 +1200,8 @@ function Get_GR_Supp_Invn(
 			else
 				ot.grno = trim$(ot.grno) & ", " & trim$(tfisg002.grno)
 															|#ISGECDV001176.sn
-				ot.grdt = trim$(ot.grdt) & ", " & trim$(sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt))
+| 				ot.grdt = trim$(ot.grdt) & ", " & trim$(sprintf$("%D(%02m/%02d/%04Y)", tfisg002.grdt))	|RAvi.05052020.com
+				ot.grdt = trim$(ot.grdt) & ", " & trim$(sprintf$("%D(%02d/%02m/%04Y)", tfisg002.grdt))	|RAvi.05052020.a
 				if	tfisg003.otbp = tcyesno.yes	then
 					ot.trnm = trim$(ot.trnm) & ", " & trim$(tfisg003.bpnm)
 				else
