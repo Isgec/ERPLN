@@ -34,6 +34,9 @@
 |*
 |* GH440CR000, RAvi Kumar, 19-11-2020
 |* Payment term is showing in negative in PO
+|*
+|* GH558CR885, RAvi Kumar, 24-05-2021
+|* CR885-Add PO Item reference in Sanction Short email 
 |******************************************************************************
         table	ttdmsl400   
 	table	ttdpur414
@@ -987,6 +990,9 @@ function send.email.alert(domain	tcorno	i.orno.mail)
 	line = concat$("	","<th align =left>","Description","</th>")
 	fp = seq.puts(line, file.ret)
 	
+	line = concat$("	","<th align =left>","Reference A","</th>")		|GH558CR885.a
+	fp = seq.puts(line, file.ret)
+	
 	line = concat$("	","<th align =left>","Element","</th>")
 	fp = seq.puts(line, file.ret)
 	
@@ -1004,6 +1010,15 @@ function send.email.alert(domain	tcorno	i.orno.mail)
 
 	line = concat$("	","</tr>")
 	fp = seq.puts(line , file.ret)
+	
+	select	tdpur400.refa					|GH558CR885.a.s
+	from	tdpur400
+	where	tdpur400._index1 = {:i.orno.mail}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tdpur400.refa = ""
+	endselect						|GH558CR885.a.e
 
 	select 	tdpur401.cprj:o.cprj.r1.up,
 		tdpur401.cspa:o.cspa.r1.up
@@ -1073,6 +1088,9 @@ function send.email.alert(domain	tcorno	i.orno.mail)
 		fp = seq.puts(line , file.ret)
 		
 		line = concat$("	", "<th align =left>", tcmcs052.dsca, "</th>")
+		fp = seq.puts(line , file.ret)
+		
+		line = concat$("	", "<th align =left>", trim$(tdpur400.refa), "</th>")		|GH558CR885.a
 		fp = seq.puts(line , file.ret)
 		
 		line = concat$("	", "<th align =left>", o.cspa.r1.up, "</th>")
