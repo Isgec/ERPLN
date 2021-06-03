@@ -105,9 +105,13 @@ function generate.file()
 	curr.comp = get.compnr()			|GH542CR873.a
 	open.file()
 	generate.header()
-	read.main.table(200)			|GH542CR873.a
-	read.main.table(651)			|GH542CR873.a
-	read.main.table(700)			|GH542CR873.a
+	if curr.comp = 810 then
+		read.main.table(810)
+	else	
+		read.main.table(200)			|GH542CR873.a
+		read.main.table(651)			|GH542CR873.a
+		read.main.table(700)			|GH542CR873.a
+	endif
 	close.file()
 }
 
