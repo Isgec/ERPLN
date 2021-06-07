@@ -96,6 +96,9 @@
 |*
 |* GH503CR000, RAvi Kumar, 05-03-2021
 |* Remove delete and cancel option from Purchase Order
+|*
+|* GH556CR878.2, RAvi Kumar, 21-05-2021
+|* CR878-2-Email Alert required to Project manager when Sanction is under modification and PO is pending for approval
 |******************************************************************************
 
 #ident "@(#)ISG001001	GAURAV TYAGI 11/02/2014 VRC B61U a7 live"
@@ -135,6 +138,10 @@
 	table	ttdpur094		|ISGEC01149.n
 	table	ttpisg012		|ISGEC01152.sn
 	table	ttpisg019		|ISGEC01152.en
+	table	ttcmcs052		|GH556CR878.2.a
+	table	ttppdm649		|GH556CR878.2.a
+	table	ttppdm090		|GH556CR878.2.a
+	
 	extern	domain	tcamnt		old_amount
 	extern	domain	tcyesno		o.approve
 	extern	domain	tcbool		advn.avail		|#ISGECDV001162.n
@@ -226,6 +233,8 @@ function extern long ue.before.before.save.object(long mode)
 							tdpur401.orno,
 							tdpur401.pono,
 							tdpur401.oamt)
+			else										|GH556CR878.2.a.s
+				email.alert.all.project(tdpur401.cprj)			
 			endif
 		endif	
 
@@ -733,6 +742,8 @@ function extern long ue.after.after.save.object(long mode)
 								tdpur401.orno,
 								tdpur401.pono,
 								tdpur401.oamt)
+				else										|GH556CR878.2.a.s
+					email.alert.all.project(tdpur401.cprj)			
 				endif
 			endif	
 		endif		|#ISEC015001.en	
@@ -810,6 +821,8 @@ function extern long ue.after.before.destroy.object()
 		if not tpisgdll0012.check_sanction_status(tdpur401.cprj,o.vers) then
 			|Update Sanction Amount
 			tpisgdll0012.SanctionControlLine(tdpur401.cprj,o.vers,tdpur401.cspa)
+		else										|GH556CR878.2.a.s
+			email.alert.all.project(tdpur401.cprj)			
 		endif
 	endif
 
@@ -2389,3 +2402,141 @@ function get_purchase_rate(						|#ISGEC01170.sn
 	selectdo
 	endselect
 }									|#ISGEC01170.en
+
+function email.alert.all.project(domain	tccprj	modi.cprj)			|GH556CR878.2.a.s
+{
+	string tmp.file(200), line(500)
+	long fp
+	domain tcemno	emno.code
+	domain	tfgld.user	user.code
+
+	long    message.ID
+	long    to.ID
+	long    attachment.ID
+	long    ret
+
+	domain ttcmf.prov service       
+| 	Infor ERP Enterprise eMessage Connector service for 
+| 	transporting messages
+	long stat       |Variable to hold return values
+	long mid        |CMF message id
+	domain	tcsern	higher.vrsn
+	domain	tccspa	o.cspa.r1.up
+	domain	tcamnt	basic.pric.up, o.totl.up, o.tpisg012.exha.up, o.tpisg012.pamt.up, rep.avai.on.up
+	domain	tcorno	o.vers.up
+	domain	tccprj	o.cprj.r1.up
+
+	tmp.file = creat.tmp.file$(bse.tmp.dir$())
+	fp = seq.open(tmp.file, "w+")
+	if fp <= 0 then
+		dal.set.error.message("@ Temp file can not be created")
+	endif
+
+	line = ""
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:modi.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
+	line = strip$(line) & "Project " & trim$(modi.cprj) & " " & trim$(tcmcs052.dsca) 
+	
+	line = strip$(line) & " is under modification, PO " & tdpur401.orno & " line is not creating due to it."
+	seq.write(line, len(line), fp)
+		
+	seq.puts("",fp)
+	seq.puts("",fp)
+	
+	seq.puts("This is a system generated E-mail!",fp)
+	ret = seq.close(fp)
+
+	user.code = logname$
+	
+	select 	bpmdm001.mail,
+		tccom001.nama 
+	from 	tccom001, bpmdm001
+	where 	tccom001._index4 = {:user.code}
+	and	tccom001.emno refers to bpmdm001
+	as set with 1 rows
+	selectdo
+	selectempty
+		bpmdm001.mail = ""
+	endselect
+	
+	if isspace(bpmdm001.mail) then
+		dal.set.error.message("@ Email ID for user " & user.code & " Not maintained")
+	endif	
+	
+| 	******* Email Header **********************
+	line = ""
+	message.ID = cmf.create()
+	select	tcmcs052.dsca
+	from	tcmcs052
+	where	tcmcs052._index1 = {:modi.cprj}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tcmcs052.dsca = ""
+	endselect
+	
+	line = "PO line not created due to Sanction under Modification " & trim$(modi.cprj) & " " & trim$(tcmcs052.dsca) 
+	
+	ret = cmf.setClass(message.ID, "CMF.NOTE.EMAIL")
+	ret = cmf.setSubject(message.ID, line)
+
+| 	******** from ID *****************************
+	to.ID = cmf.createRecipient(message.ID, ttcmf.role.from)  
+	ret = cmf.setRecipientName(to.ID, tccom001.nama)
+	ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+	ret = cmf.setRecipientType(to.ID, "SMTP")
+
+| 	******** to ID
+	select	tppdm649.emno
+	from	tppdm649
+	where	tppdm649._index1 = {:modi.cprj}
+	and	tppdm649.cres in ("P01", "P02", "P03", "P04", "P05", "P06")
+	selectdo
+		select 	bpmdm001.mail,
+			tccom001.nama 
+		from 	tccom001, bpmdm001
+		where 	bpmdm001._index1 = {:tppdm649.emno}
+		and	tccom001.emno refers to bpmdm001
+		and	bpmdm001.mail <> ""
+		selectdo
+			to.ID = cmf.createRecipient(message.ID, ttcmf.role.to)  
+			ret = cmf.setRecipientName(to.ID, tccom001.nama)
+			ret = cmf.setRecipientAddress(to.ID, bpmdm001.mail)	
+			ret = cmf.setRecipientResponsibility(to.ID, "TRUE")		
+			ret = cmf.setRecipientType(to.ID, "SMTP")
+		selectempty
+			dal.set.error.message("@ Email ID for user " & trim$(tppdm649.emno) & " Not maintained" )
+		endselect
+	endselect
+
+| 	********* Mail Body *****************
+	attachment.ID = cmf.createAttachment(message.ID)
+	ret = cmf.setAttachmentBody(attachment.ID, ttyeno.yes)
+	ret = cmf.setAttachmentMIME(attachment.ID, "text/plain")                       
+	ret = cmf.setAttachmentFileName(attachment.ID, tmp.file, "abc.txt")
+
+| 	*********  Send mail *****************
+	if message.ID <> 0 then
+		stat = cmf.startService("SMTP", 2)
+		
+		if stat <> 0 then
+			dal.set.error.message("@ Message could not be sent(Infor ERP Enterprise eMessage Connector service did not start)")
+		endif
+		stat = cmf.send(message.ID, "SMTP")
+		
+		if stat <> 0 then
+			dal.set.error.message("@ Message could not be sent(Infor ERP Enterprise eMessage Connector service refused message)")
+			cmf.stopService("SMTP", 2)
+		endif
+		stat = cmf.stopService("SMTP", 2)
+	endif
+}
+											|GH556CR878.2.a.e
+
+

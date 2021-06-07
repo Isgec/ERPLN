@@ -142,6 +142,7 @@
 	table	ttcemm170
 	table	ttcmcs052			|GH528CR878.a
 	table	ttppdm649			|GH528CR878.a
+	table	ttppdm090			|GH528CR878.2.a
 		
 		extern	domain tdpur.hdst	hold.hdst
 		extern	domain	tccpay		hold.cpay
@@ -1987,6 +1988,11 @@ function email.alert.all.project(domain	tccprj	modi.cprj)			|GH528CR878.a.s
 | 	transporting messages
 	long stat       |Variable to hold return values
 	long mid        |CMF message id
+	domain	tcsern	higher.vrsn
+	domain	tccspa	o.cspa.r1.up
+	domain	tcamnt	basic.pric.up, o.totl.up, o.tpisg012.exha.up, o.tpisg012.pamt.up, rep.avai.on.up
+	domain	tcorno	o.vers.up
+	domain	tccprj	o.cprj.r1.up
 
 	tmp.file = creat.tmp.file$(bse.tmp.dir$())
 	fp = seq.open(tmp.file, "w+")
@@ -2007,6 +2013,154 @@ function email.alert.all.project(domain	tccprj	modi.cprj)			|GH528CR878.a.s
 	
 	line = strip$(line) & " is under modification, PO " & tdpur400.orno & " is pending for approval due to it."
 	seq.write(line, len(line), fp)
+	
+	seq.puts("</br>",fp)
+	seq.puts("</br>",fp)
+	
+	line = concat$("	","<table","border=","1"," >")
+	seq.puts(line, fp)
+		
+	line = concat$("	","<tr>")
+	seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","PO No.","</th>")
+	seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Revision No.","</th>")
+	seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Project","</th>")
+	seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Description","</th>")
+	 seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Reference A","</th>")		
+	 seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Element","</th>")
+	 seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Description","</th>")
+	 seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Sanction Required for PO","</th>")
+	  seq.puts(line, fp)
+
+	line = concat$("	","<th align =left>","Available Sanction","</th>")
+	 seq.puts(line, fp)
+	
+	line = concat$("	","<th align =left>","Balance Sanction after PO","</th>")
+	 seq.puts(line, fp)
+
+	line = concat$("	","</tr>")
+	 seq.puts(line, fp)
+	
+	select	tdpur400.refa					
+	from	tdpur400
+	where	tdpur400._index1 = {:tdpur400.orno}
+	as set with 1 rows
+	selectdo
+	selectempty
+		tdpur400.refa = ""
+	endselect						
+
+
+	select 	tdpur401.cprj:o.cprj.r1.up,
+		tdpur401.cspa:o.cspa.r1.up
+	from	tdpur401
+	where	tdpur401._index1 = {:tdpur400.orno}
+	group by tdpur401.cprj, tdpur401.cspa
+	selectdo
+		select	sum(tdpur401.oamt):basic.pric.up
+		from	tdpur401
+		where	tdpur401._index1 = {:tdpur400.orno}
+		and	tdpur401.cprj = :o.cprj.r1.up
+		and	tdpur401.cspa = :o.cspa.r1.up
+		selectdo
+		selectempty
+			basic.pric.up = 0
+		endselect
+		
+		select	tcmcs052.dsca
+		from	tcmcs052
+		where	tcmcs052._index1 = {:o.cprj.r1.up}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tcmcs052.dsca = ""
+		endselect
+		
+		select	tppdm090.desc
+		from	tppdm090
+		where	tppdm090._index1 = {:o.cspa.r1.up}
+		as set with 1 rows
+		selectdo
+		selectempty
+			tppdm090.desc = ""
+		endselect
+		
+		select	tdmsl400.vrsn:higher.vrsn
+		from	tdmsl400
+		where	tdmsl400._index1 = {:tdpur400.orno}
+		order by tdmsl400.vrsn desc
+		as set with 1 rows
+		selectdo
+		endselect
+			
+		tpisgdll0012.check_sanction_status(o.cprj.r1.up, o.vers.up)
+		
+		select 	tpisg012.totl:o.totl.up,
+			tpisg012.exha:o.tpisg012.exha.up,
+			tpisg012.pamt:o.tpisg012.pamt.up
+		from	tpisg012
+		where	tpisg012._index1 = {:o.cprj.r1.up, :o.vers.up, :o.cspa.r1.up}
+		as set with 1 rows
+		selectdo
+		endselect
+		
+		rep.avai.on.up = o.totl.up - o.tpisg012.exha.up
+		
+		line = concat$("	","<tr>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	","<th align =left>",tdpur400.orno,"</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", higher.vrsn, "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", o.cprj.r1.up, "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", tcmcs052.dsca, "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", trim$(tdpur400.refa), "</th>")	
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", o.cspa.r1.up, "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", tppdm090.desc, "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", str$(basic.pric.up), "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", str$(rep.avai.on.up), "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "<th align =left>", str$(rep.avai.on.up - basic.pric.up), "</th>")
+		 seq.puts(line, fp)
+		
+		line = concat$("	", "</tr>")
+		 seq.puts(line, fp)
+	endselect
+
+	line = concat$("	","</table>","<br><br>")
+	 seq.puts(line, fp)
+	 
 		
 	seq.puts("",fp)
 	seq.puts("",fp)
