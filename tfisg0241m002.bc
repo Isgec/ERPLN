@@ -38,6 +38,9 @@
 |* "GH281CR579_000", Changes in  Cash flow data, 
 |* Paras Kukreti, 2020-02-28
 |*
+|* "GH282CR580_000", Required new session, Update cash flow data with batch. 
+|* Paras Kukreti, 2020-02-28
+|*
 |* "GH361CR676-677_000", Bug fixing related to fund transfer transactions project code 
 |* Paras Kukreti, 2020-07-10
 |*
@@ -78,7 +81,8 @@ declaration:
 	extern  domain  tfacp.base		selection.by
 	extern  domain  tccprj			v.cprj
 	extern  domain  tcncmp			curr.comp, ncmp.f|, ncmp.t
-	extern  domain  tcncmp			ncmp.t, ncmp.f1			|#GH265CR554_000.sn	
+	extern  domain  tcncmp			ncmp.t, ncmp.f1			|#GH265CR554_000.sn
+	extern domain	tfgld.btno		btno				|#GH282CR580_000.n
 	
 |*********************************** Global Variables *************************************************	
 	extern	domain	tcsess		i.session.code
@@ -2654,8 +2658,9 @@ function	redo.update.cash.flow()
 	where	tfgld106._index10	inrange	{:year, :prno.f}	
 					and	{:year, :prno.t}
 | 	and	tfgld106.ocmp		=	:ncmp.f
-| 	and	tfgld106.obat		=	4740		
-| 	and	tfgld106.obat		=	9			|bharti.n		
+| 	and	tfgld106.obat		=	4986		
+| 	and	tfgld106.obat		=	9			|bharti.n
+	and	tfgld106.obat		=	:btno				|#GH282CR580_000.n
 	and	tfgld106._compnr	=	:ncmp.f
 	and	tfgld011._index1	=	{tfgld106.otyp}
 	and	tfgld011.catg		<>	tfgld.catg.opening.bal
@@ -3356,9 +3361,9 @@ function	get.new.project(
 	if	isspace(o.cprj)	then
 | 		if	r.docn	=	0	then				|#GH238CR530_000.o
 		if	r.docn	=	0 or					|#GH238CR530_000.sn
-| 			tfgld011.ttyp 	=	"AUR" or			|#GH361CR676-677_000.o
-| 			(tfgld011.ttyp 	=	"AUR" or tfgld011.ttyp 	=	"B99") or	|#GH361CR676-677_000.n
-			(tfgld011.ttyp 	=	"AUR" or tfgld011.ttyp 	=	"B99" or tfgld011.ttyp 	=	"B91") or	|#merino-77325-Sanjeev-03/02/2021 -added B91
+| 			r.ttyp = "AUR" or					|#GH238CR530_000.sn	|#GH361CR676-677_000.o
+| 			(r.ttyp = "AUR" or r.ttyp = "B99") or					|#GH238CR530_000.sn |#GH361CR676-677_000.n
+			(r.ttyp = "AUR" or r.ttyp = "B99" or r.ttyp = "B91") or					|#Merino-77325-Sanjeev-03/02/2021-Added B91
 			tfgld011.catg = tfgld.catg.purchase.cred or	
 			tfgld011.catg = tfgld.catg.sales.inv or	
 			tfgld011.catg = tfgld.catg.purchase.inv or	
@@ -3390,9 +3395,7 @@ function	get.new.project(
 				r.docn = tfgld106.odoc
 			endif									|bharti.en
 			
-| 			if r.ttyp = "AUR" then					|#GH238CR530_000.sn	|#GH361CR676-677_000.o
-| 			if (r.ttyp = "AUR" or r.ttyp = "B99") then					|#GH238CR530_000.sn |#GH361CR676-677_000.n
-			if (r.ttyp = "AUR" or r.ttyp = "B99" or r.ttyp = "B91") then|#merino-77325-Sanjeev-03/02/2021 -added B91
+			if r.ttyp = "AUR" then					|#GH238CR530_000.sn
 				r.ncmp = ncmp.f
 			endif							|#GH238CR530_000.en
 			
@@ -3713,7 +3716,8 @@ function delete.tfisg041()					|bharti.sn.25.09.19
 | 	where	tfisg041._index2 inrange {:ncmp.f,:year,:prno.f} and {:ncmp.f,:year,:prno.t}	|#GH265CR554_000.o
 	where	tfisg041._index2 inrange {:ncmp.f1,:year,:prno.f} and {:ncmp.t,:year,:prno.t}	|#GH265CR554_000.n
 	and	tfisg041.cfam = tfcf.auto.man.cashflow.auto			|#GH251CR545_000.n
-| 	and	tfisg041.btno = 4740	
+| 	and	tfisg041.btno = 30459	
+	and	tfisg041.btno		=	:btno				|#GH282CR580_000.n
 	selectdo
 		db.delete(ttfisg041,db.retry,e)
 	endselect
