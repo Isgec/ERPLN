@@ -24,6 +24,9 @@
 |*
 |* GH398CR000, RAvi Kumar, 19-09-2020
 |* PTR not cleared from IRN after deletion
+|*
+|* GH559CR000, RAvi Kumar, 20-05-2021
+|* 178402-Remove/Update or delete/new PTR no from Maintain GR with Transport Session in IR 
 |******************************************************************************
                                                                                 
 #include <bic_dal>
@@ -345,9 +348,29 @@ function clear.IRN()									|GH398CR000.a.s
 				tfacp100.ctyp = ""
 				tfacp100.cinv = 0
 				db.update(ttfacp100, db.retry, e)
+				unlink_ir.after.clear()							|GH559CR000.a
 			endselect
 		endif
 	endselect
 }
 												|GH398CR000.a.e
+function unlink_ir.after.clear()						|GH559CR000.a.s
+{
+	select	tfisg001.stat,
+		tfisg001.invt,
+		tfisg001.pinv
+	from	tfisg001 for update
+	where	tfisg001.invt = :tfacp200.ttyp
+	and	tfisg001.pinv = :tfacp200.ninv
+	and	tfisg001.stat in (tfisg.status.invoice.process)    
+	and	tfisg001._compnr = :tcemm030.lcmp
+	selectdo
+		tfisg001.stat = tfisg.status.gr.receipt
+		tfisg001.invt = ""
+		tfisg001.pinv = 0
+		db.update(ttfisg001,db.retry,e)
+	endselect
+}
+										|GH559CR000.a.e
+
 
