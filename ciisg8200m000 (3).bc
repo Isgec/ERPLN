@@ -1,20 +1,28 @@
 |******************************************************************************
-|* tdisgdll045  0  VRC B61U a7 isg 
-|* Dll for Custom E-Invoicing Debit/Credit notes
-|* RAvi Kumar
-|* 20-10-22 [12:28]
+|* ciisg8200m000  0  VRC B61U a7 isg 
+|* Process for E-Invoicing
+|* TechVikas                     
+|* 2020-03-13
 |******************************************************************************
-|* Script Type: Library
+|* Main table ciisg800 E-Invoicing Request Data, Form Type 4
+|* 
+|* GH489CR000, RAvi Kumar, 11022021
+|* Correction in Custom Invoice functionality to Post same Tax code and Isgec Registration in E-Invoicing and GSTR-1
+|*
+|* GH470CR000, RAvi Kumar, 11-03-2021
+|* Exchange Rate correction in Custom Invoice HTML Print
+|*
+|* GH543CR000, RAvi Kumar, 14-04-2021
+|* No change in Isgec GSTIN in EBA after E-Invoicing of custom Invoice(tdisg831)
+|******************************************************************************
                                                                                 
 |****************************** declaration section ***************************
+declaration:
+
   table   tciisg800 | E-Invoicing Request Data
   table	  tciisg802
   table	  tciisg803
   table	  tciisg810
-  table	  ttpisg039
-  table	  ttdisg045
-  table	  ttdisg046
-  table	  ttppdm600
   
    extern  domain  tcncmp           comp.f
    extern  domain  tcncmp           comp.t
@@ -252,8 +260,9 @@ extern	domain	tcamnt		tot.amnt
 	extern	domain	tcdsca	billship.to.ccty.dsca
 	extern domain tccom.cadr	own.cadr						
 	extern	domain	tcpstc		own.pincode
-	extern	domain	tcpvat		cgst.rate, sgst.rate, igst.rate,tcs.rate						
-	extern	domain	tcamnt		cgst.amnt, sgst.amnt, igst.amnt, cess.amnt, tot.amnt,tcs.amnt,assv.val		
+	extern	domain	tcpvat		cgst.rate, sgst.rate, igst.rate,tcs.rate						|RAvi.a.21102020
+	extern	domain	tcamnt		cgst.amnt, sgst.amnt, igst.amnt, cess.amnt, tot.amnt,tcs.amnt,assv.val			|RAvi.a.21102020
+
 #pragma used dll ottstpapihand
 |COMMERCIAL INVOICE VARIABLE DECLARATION END *************************************
 
@@ -409,9 +418,75 @@ extern	domain	tcamnt		net_payable,tot_payable
 	extern domain	tfgld.date	utc.sdat
 	long	yearno,monthno,month_dayno
 	extern domain tcorno	str.doc
-	extern	domain	tcamnt	cgst.amount, sgst.amount, igst.amount, cess.amount, stcess.amount	
+	extern	domain	tcamnt	cgst.amount, sgst.amount, igst.amount, cess.amount, stcess.amount			|RAvi.a
+|****************************** program section ********************************
+
+before.program:
+	import("tdisg831.edrn",f.edrn)
+|****************************** group section **********************************
+
+group.1:
+init.group:
+   get.screen.defaults()
+   disable.fields("f.edrn")
+   
+   
+choice.process:
+before.choice:
+	curr.comp = get.compnr()						|RAvi.a.s.28092020
+	select	tdisg831.invn,
+		tdisg831.rnso.l,					|GH543CR000.a
+		tdisg831.cprj						|GH543CR000.a
+	from	tdisg831
+	where	tdisg831._index1 = {:f.edrn}
+	selectdo
+	endselect
 	
-function extern tdisg.dll045.extract_export_data(domain	tcorno	i.rqno)
+	
+	
+	idoc = lval(tdisg831.invn(4;8))
+	ityp = tdisg831.invn(1;3)
+	str.doc = str$(idoc)
+	
+	select	ciisg801.errm
+	from	ciisg801
+	where	ciisg801._index1 = {:curr.comp, :ityp, :str.doc}
+	as set with 1 rows
+	selectdo
+		if isspace(ciisg801.errm) then
+			message("E-Invoice already processed")
+			choice.again()
+		endif
+	endselect								|RAvi.a.e.28092020
+	
+	select	tpisg122.gstn.c							|GH543CR000.a.s
+	from	tpisg122
+	where	tpisg122._index1 = {:tdisg831.cprj}
+	and	tpisg122.gstn.c = :tdisg831.rnso.l
+	as set with 1 rows 
+	selectdo
+	selectempty
+		message("Isgec GSTIN is not Equal to GST Compliance")
+		choice.again()
+	endselect
+										|GH543CR000.a.e	
+on.choice:
+	extract_export_data(f.edrn)
+| 	message("Process Completed !!")						|RAvi.a.s.24092020
+
+	select	ciisg800.docn
+	from	ciisg800
+	where	ciisg800._index1 = {:curr.comp, :ityp, :str.doc}
+	as set with 1 rows
+	selectdo
+		message("Process Completed !!")
+	endselect								|RAvi.a.e.24092020
+
+	
+	
+	
+functions:
+function extract_export_data(domain	tcorno	i.edrn)
 {
 	long	print.stat
 	
@@ -421,7 +496,7 @@ function extern tdisg.dll045.extract_export_data(domain	tcorno	i.rqno)
 	domain tcyesno		o.yes.no.flag
 	
 	tcmcs.dll0095.read.parm("tccom000")
-| 	curr.comp = get.compnr()		
+	curr.comp = get.compnr()		
 	srno=0
 	p = 0
 	q = 0
@@ -434,87 +509,64 @@ function extern tdisg.dll045.extract_export_data(domain	tcorno	i.rqno)
 	tccom130.namc=" "
 	tccom130.dsca=" "
 	tccom130.ln06=" "
-	tccom130.pstc=" "					
+	tccom130.pstc=" "					|RAvi.com.09102020
 	lumpsum = "Lumpsum"
 	cin.no.export = ""			
 	iec.no.export = ""
 	pan.no.export = ""
 						
-	text(1,1) = ""				
+    text(1,1) = ""				
 	text(1,2) = ""				
-								
-	select	tdisg045.*
-	from	tdisg045
-	where	tdisg045._index1 = {:i.rqno}
-	as set with 1 rows
-	selectdo
-		select	tdisg831.cprj,
-			tdisg831.ofbp,
-			tdisg831.bold,
-			tdisg831.lcno,
-			tdisg831.ctyd,
-			tdisg831.sbno,
-			tdisg831.ptld,
-			tdisg831.ptds,
-			tdisg831.octy,
-			tdisg831.invd,
-			tdisg831.etct,
-			tpisg036.*
-		from	tdisg831, tpisg036
-		where	tdisg831._index2 = {:tdisg045.invn}
-		and	tdisg831.cprj refers to tpisg036
-		selectdo
-			heading = "EXPORT INVOICE"
-			nill.val = "0.00"
-			select	tppdm600.ncmp
-			from	tppdm600
-			where	tppdm600._index1 = {:tdisg831.cprj}
-			as set with 1 rows
-			selectdo
-				curr.comp = tppdm600.ncmp
-			endselect
-			
-			if curr.comp = 700 then			
-				cin.no.export = "U29308HR2017PTC67285"
-				iec.no.export = "AD090319001886S" 
-				pan.no.export = "AAECI3897A"
-			else
-				cin.no.export = "L23423HR1933PL000097"
-				iec.no.export = "0501013628" 
-				pan.no.export = "AAACT5540K"
-			endif
 	
-			select	tppdm740.ccur
-			from	tppdm740
-			where	tppdm740._index1 = {:tdisg831.cprj, :tdisg831.ofbp}
+	heading = "EXPORT INVOICE"
+	nill.val = "0.00"
+	
+	if curr.comp = 700 then			
+		cin.no.export = "U29308HR2017PTC67285"
+		iec.no.export = "AD090319001886S" 
+		pan.no.export = "AAECI3897A"
+	else
+		cin.no.export = "L23423HR1933PL000097"
+		iec.no.export = "0501013628" 
+		pan.no.export = "AAACT5540K"
+	endif
+								
+		
+	select	tdisg831.*,tpisg036.*
+	from	tdisg831,tpisg036
+	where	tdisg831._index1 = {:i.edrn}
+	and	tdisg831.cprj	refers	to	tpisg036
+	selectdo
+		select	tppdm740.ccur
+		from	tppdm740
+		where	tppdm740._index1 = {:tdisg831.cprj,:tdisg831.ofbp}
+		selectdo
+			select	tcmcs002.dsca
+			from	tcmcs002
+			where	tcmcs002._index1 = {:tppdm740.ccur}
 			selectdo
-				select	tcmcs002.dsca
-				from	tcmcs002
-				where	tcmcs002._index1 = {:tppdm740.ccur}
-				selectdo
-				selectempty
-					tcmcs002.dsca = ""
-				endselect
+			selectempty
+				tcmcs002.dsca = ""
 			endselect
-			
-										
-| 			if tdisg831.etyp = tdisg.advice.service then
-| 				num.to.date(tdisg831.invd, yr, mnth, day)
-| 				o.eff.date = date.to.utc(yr, mnth, day, 23 , 59, 59)
-| 								
-| 				if not tcmcs.dll0108.determine.currency.rate.and.rate.factor(	get.compnr(),
-| 												"INR",
-| 												tppdm740.ccur,
-| 												o.eff.date,		|* Effectivity Date
-| 												"SAL",			|* Rate Type
-| 												exc.rate,			|* Curency Rate
-| 												o.ratf,
-| 												o.yes.no.flag)	 then	|* Express in Base Currecy
-| 				endif
-| 				rate.type.line = 	"(RBI DAILY EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
-| 							tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 							
-| 			else	
-			if date.to.num(2021, 06, 07) > tdisg831.invd then								
+		endselect
+		
+		if date.to.num(2021, 03, 17) > tdisg831.invd then							
+			if tdisg831.etyp = tdisg.advice.service then
+				num.to.date(tdisg831.invd, yr, mnth, day)
+				o.eff.date = date.to.utc(yr, mnth, day, 23 , 59, 59)
+								
+				if not tcmcs.dll0108.determine.currency.rate.and.rate.factor(	get.compnr(),
+												"INR",
+												tppdm740.ccur,
+												o.eff.date,		|* Effectivity Date
+												"SAL",			|* Rate Type
+												exc.rate,			|* Curency Rate
+												o.ratf,
+												o.yes.no.flag)	 then	|* Express in Base Currecy
+				endif
+				rate.type.line = 	"(RBI DAILY EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
+							tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 							
+			else								
 				select	tdisg878.exrt:exc.rate
 				from	tdisg878
 				where	tdisg878._index1 = {:tppdm740.ccur}
@@ -525,501 +577,759 @@ function extern tdisg.dll045.extract_export_data(domain	tcorno	i.rqno)
 					exc.rate = 1
 				endselect
 				
-| 				rate.type.line = 	"(CUSTOM EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
-| 							tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 
-| 			endif
-			else	
-				exc.rate = tdisg831.etct
+				rate.type.line = 	"(CUSTOM EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
+							tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 
 			endif
-										
-| 			get_label()
-			select	tdisg839.blno,
-				tdisg839.pddt,
-				tdisg839.biln,
-				tdisg839.voyg,
-				tdisg839.vfln
-			from	tdisg839
-			where	tdisg839._index1 = {:tdisg831.bold}
-			selectdo
-			selectempty
-				tdisg839.blno = ""
-				tdisg839.pddt = 0
-			endselect
+		else
+			exc.rate = tdisg831.etct		|GH470CR000
+		endif
+									
+		get_label()
+		select	tdisg839.blno,tdisg839.pddt, tdisg839.biln,
+			tdisg839.voyg, tdisg839.vfln
+		from	tdisg839
+		where	tdisg839._index1 = {:tdisg831.bold}
+		selectdo
+		selectempty
+			tdisg839.blno = ""
+			tdisg839.pddt = 0
+		endselect
+		
+		select	tpisg122.gstn.c,
+			tpisg122.orno,
+			tpisg122.podt
+		from	tpisg122
+		where	tpisg122._index1 = {:tdisg831.cprj}
+		selectdo
+		selectempty
+			tpisg122.gstn.c = 0
+			tpisg122.podt = 0
+			tpisg122.orno = ""
+		endselect
+
+| 		tctax.dll9140.get.own.reg.number.based.on.seq(tpisg122.gstn.c, gstn.c.no)				|GH489CR000.com
+| 		tcisgdll0100.get.financial.company.address.CDF.from.seqn(tpisg122.gstn.c, own.cadr)			|GH489CR000.com
+		tctax.dll9140.get.own.reg.number.based.on.seq(tdisg831.rnso.l, gstn.c.no)				|GH489CR000.n
+		tcisgdll0100.get.financial.company.address.CDF.from.seqn(tdisg831.rnso.l, own.cadr)			|GH489CR000.n
+		bill.from.loc(own.cadr, own.pincode)
+		description()
+		select tccom130.*
+		from	tccom130
+		where	tccom130._index1 = {:tdisg831.fact}
+		selectdo
+			label.f = "Factory Address :"
+			factory1 = tccom130.ln01
+			factory2 = tccom130.ln02
+			factory3 = tccom130.ln03
+			factory4 = tccom130.ln04
+			factory5 = tccom130.ln05
+		selectempty
+			label.f = ""
+			factory1 = ""
+			factory2 = ""
+			factory3 = ""
+			factory4 = ""
+			factory4 = ""
+			factory5 = ""
+		endselect
+		
+| 		select	tpisg036.exad,tpisg036.exp3,tpisg036.exp4,tpisg036.head				|RAvi.s.09102020	bill to adress
+| 		from	tpisg036
+| 		where	tpisg036._index1 = {:tdisg831.cprj}
+| 		selectdo
+| 			select tccom130.*
+| 			from	tccom130
+| 			where	tccom130._index1 = {:tpisg036.exad}
+| 			selectdo
+| 				exp1 = tccom130.ln01
+| 				exp2 = tccom130.ln02
+| 				exp3 = tccom130.ln03
+| 				exp4 = tccom130.ln04
+| 				exp5 = tccom130.ln05	
+| 				BillFrom_Pin = tccom130.pstc
+| 				gstn.c.cste = get.statutory.code(tccom130.ccty, tccom130.cste)
+| 			selectempty
+| 				exp1 = ""
+| 				exp2 = ""
+| 				exp3 = ""
+| 				exp4 = ""
+| 				exp5 = ""
+| 			endselect
+| 		endselect
+															|RAvi.e.09102020
+		select	tdisg825.*
+		from	tdisg825
+		where	tdisg825._index1 = {:tdisg831.lcno}
+		selectdo
+			buyer_order = tdisg825.born
+			buyer_date = tdisg825.bdat
 			
-			select	tpisg122.gstn.c,
-				tpisg122.orno,
-				tpisg122.podt
-			from	tpisg122
-			where	tpisg122._index1 = {:tdisg831.cprj}
+			inco_term = tdisg825.inco
+			mode = tdisg825.mpay
+			
+			exp1 = tdisg825.exp1
+			exp2 = tdisg825.exp2
+			exp3 = tdisg825.exp3
+			exp4 = tdisg825.exp4
+			exp5 = tdisg825.exp5
+			
+			buyer1 = tdisg825.buy1
+			buyer2 = tdisg825.buyr2
+			buyer3 = tdisg825.buy3
+			buyer4 = tdisg825.buy4
+			buyer5 = tdisg825.buy5
+			
+			con1 = tdisg825.con1
+			con2 = tdisg825.con2
+			con3 = tdisg825.con3
+			con4 = tdisg825.con4
+			con5 = tdisg825.con5
+
+			tpisg036.head = tpisg036.head
+			
+			select	tcmcs041.dsca,tcmcs041.cdec
+			from	tcmcs041
+			where	tcmcs041._index1 = {:tdisg825.cdec}
 			selectdo
-			selectempty
-				tpisg122.gstn.c = 0
-				tpisg122.podt = 0
-				tpisg122.orno = ""
+				delivery_term = tcmcs041.cdec
 			endselect
-
-			tctax.dll9140.get.own.reg.number.based.on.seq(tpisg122.gstn.c, gstn.c.no)
-			tcisgdll0100.get.financial.company.address.CDF.from.seqn(tpisg122.gstn.c, own.cadr)
-			bill.from.loc(own.cadr, own.pincode)
-			description()
-																
-			select	tdisg825.*
-			from	tdisg825
-			where	tdisg825._index1 = {:tdisg831.lcno}
+			bpid = tdisg825.bpid
+			term_delivery = delivery_term(1;3) & " " & trim$(tdisg831.ctyd) & " " & trim$(inco_term)
+		selectempty
+			select	tpisg036.*
+			from	tpisg036
+			where	tpisg036._index1 = {:tdisg831.cprj}
 			selectdo
-				buyer_order = tdisg825.born
-				buyer_date = tdisg825.bdat
+				buyer_order = tpisg036.born
+				buyer_date = tpisg036.bdat
 				
-				inco_term = tdisg825.inco
-				mode = tdisg825.mpay
+				inco_term = tpisg036.inco
+				mode = tpisg036.mpay
 				
-				exp1 = tdisg825.exp1
-				exp2 = tdisg825.exp2
-				exp3 = tdisg825.exp3
-				exp4 = tdisg825.exp4
-				exp5 = tdisg825.exp5
+				exp1 = tpisg036.exp5
+				exp2 = tpisg036.exp6
+				exp3 = tpisg036.exp7
+				exp4 = tpisg036.exp8
+				exp5 = tpisg036.exp9
 				
-				buyer1 = tdisg825.buy1
-				buyer2 = tdisg825.buyr2
-				buyer3 = tdisg825.buy3
-				buyer4 = tdisg825.buy4
-				buyer5 = tdisg825.buy5
+				buyer1 = tpisg036.buyr1
+				buyer2 = tpisg036.buyr2
+				buyer3 = tpisg036.buyr3
+				buyer4 = tpisg036.buyr4
+				buyer5 = tpisg036.buyr5
 				
-				con1 = tdisg825.con1
-				con2 = tdisg825.con2
-				con3 = tdisg825.con3
-				con4 = tdisg825.con4
-				con5 = tdisg825.con5
-
-				tpisg036.head = tpisg036.head
+				con1 = tpisg036.cons1
+				con2 = tpisg036.cons2
+				con3 = tpisg036.cons3
+				con4 = tpisg036.cons4
+				con5 = tpisg036.cons5
 				
 				select	tcmcs041.dsca,tcmcs041.cdec
 				from	tcmcs041
-				where	tcmcs041._index1 = {:tdisg825.cdec}
+				where	tcmcs041._index1 = {:tpisg036.cdec}
 				selectdo
 					delivery_term = tcmcs041.cdec
 				endselect
-				bpid = tdisg825.bpid
+				bpid = tpisg036.bpid
 				term_delivery = delivery_term(1;3) & " " & trim$(tdisg831.ctyd) & " " & trim$(inco_term)
-			selectempty
-				select	tpisg036.*
-				from	tpisg036
-				where	tpisg036._index1 = {:tdisg831.cprj}
-				selectdo
-					buyer_order = tpisg036.born
-					buyer_date = tpisg036.bdat
-					
-					inco_term = tpisg036.inco
-					mode = tpisg036.mpay
-					
-					exp1 = tpisg036.exp5
-					exp2 = tpisg036.exp6
-					exp3 = tpisg036.exp7
-					exp4 = tpisg036.exp8
-					exp5 = tpisg036.exp9
-					
-					buyer1 = tpisg036.buyr1
-					buyer2 = tpisg036.buyr2
-					buyer3 = tpisg036.buyr3
-					buyer4 = tpisg036.buyr4
-					buyer5 = tpisg036.buyr5
-					
-					con1 = tpisg036.cons1
-					con2 = tpisg036.cons2
-					con3 = tpisg036.cons3
-					con4 = tpisg036.cons4
-					con5 = tpisg036.cons5
-					
-					select	tcmcs041.dsca,tcmcs041.cdec
-					from	tcmcs041
-					where	tcmcs041._index1 = {:tpisg036.cdec}
-					selectdo
-						delivery_term = tcmcs041.cdec
-					endselect
-					bpid = tpisg036.bpid
-					term_delivery = delivery_term(1;3) & " " & trim$(tdisg831.ctyd) & " " & trim$(inco_term)
-				endselect
-			endselect
-			
-			tot_amount = 0
-			tot.inr.amnt = 0
-			final.total = 0
-			
-												
-| 			select	tdisg832.*, tcibd001.cuni				
-| 			from	tdisg832,tcibd001
-| 			where	tdisg832._index1={:i.rqno}
-| 			and	tdisg832.bivl <> 0
-| 			and	tdisg832.item refers to tcibd001			
-| 			selectdo
-			select	tdisg046.*
-			from	tdisg046
-			where	tdisg046._index1 = {:tdisg045.rqno}
-			selectdo	
-				inr.amnt = tdisg046.amnt * exc.rate 
-											
-				tot_amount = tot_amount + tdisg046.amnt
-				tot.inr.amnt = tot.inr.amnt + inr.amnt	
-								
-				select	tdisg007.type:v.type,sum(tdisg007.nopk):v.nopk
-				from	tdisg007
-				where	tdisg007._index1 = {:tdisg046.rcno, :tdisg046.rcln}
-				and	tdisg007.slct = tcyesno.yes
-				group by tdisg007.type
-				selectdo
-					p = 4
-					q = q + 1
-				selectempty
-					p = 4
-					q = q + 1
-				endselect
-				
-				select	tccom100.cadr
-				from	tccom100
-				where	tccom100._index1 = {:bpid}
-				selectdo
-					get.bp.data()
-					select	ciisg810.gcty					
-					from	ciisg810
-					where	ciisg810._index1 = {:tccom130.ccty}
-					as set with 1 rows
-					selectdo
-					endselect
-					Exp_CntCode = ciisg810.gcty
-				endselect
-				
-				select	tctax400.fovn:gstn.b.no
-				from	tctax400
-				where	tctax400._index1 = {:bpid}
-				and	tctax400.catg.l = 9
-				selectdo
-				selectempty
-					gstn.b.no = "NA"
-				endselect
-				
-				srno = srno + 1
-				get.amount.in.word1(tot_amount)
-				
-				select	ciisg802.*
-				from	ciisg802
-				where	ciisg802._index1 = {:tdisg046.cuni}
-				selectdo
-				selectempty
-					
-				endselect
-				assv.val = tdisg046.amnt				
-				
-				get.tax.data()					
-				GSTIN = gstn.c.no
-				TaxSch = "GST"
-				Version = 1.0
-				Irn = ""
-				Tran_Catg = "EXPWOP"	
-				Tran_RegRev = "RG"
-				if trim$(con1) = trim$(buyer1) or isspace(buyer1) then
-					Tran_Typ = "REG"
-				else
-					Tran_Typ = "SHP"
-				endif
-				Tran_EcmTrn = tcyesno.no
-				Tran_EcmGstin = ""
-| 				Doc_Typ = "INV"
-				if tdisg045.note = tdisg.notes.credit then
-					Doc_Typ = "CRN"
-				else
-					Doc_Typ = "DBN"
-				endif
-				
-				Doc_No = tdisg045.cdin
-				Doc_OrgInvNo = tdisg045.invn
-				local.to.utc(tdisg045.indt,0, Doc_Dt) 
-				Ref_PrecInvNo = tdisg045.invn
-				
-				num.to.date(tdisg831.invd, yr, mnth, day)
-				o.eff.date = date.to.utc(yr, mnth, day, 0 , 0, 0)
-				
-				Ref_PrecInvDt = o.eff.date
-				BillFrom_Gstin = gstn.c.no
-				BillFrom_TrdNm = exp1
-				BillFrom_Bno = exp2
-				BillFrom_Bnm = exp3
-				BillFrom_Flno = ""
-				BillFrom_Loc = desc3
-				BillFrom_Dst = desc3
-				BillFrom_Pin = own.pincode
-				BillFrom_Stcd = gstn.c.no
-				BillFrom_Ph = ""
-				BillFrom_Em = ""
-				
-				if isspace(buyer1) then
-					BillTo_Gstin = gstn.b.no
-					BillTo_TrdNm = trim$(con1)
-					BillTo_Bno = trim$(con2)&","&trim$(con3)
-					BillTo_Bnm = trim$(con4)&","&trim$(con5)
-					BillTo_Flno = ""
-					BillTo_Loc = trim$(billship.to.ccty.dsca)
-					BillTo_Dst = trim$(billship.to.ccty.dsca)
-					BillTo_Stcd = "NA"
-					BillTo_Ph = ""
-					BillTo_Em = ""
-				else
-					BillTo_Gstin = gstn.b.no
-					BillTo_TrdNm = trim$(buyer1)
-					BillTo_Bno = trim$(buyer2) & "," & trim$(buyer3)
-					BillTo_Bnm = trim$(buyer4) & "," & trim$(buyer5)
-					BillTo_Flno = ""
-					BillTo_Loc = trim$(billship.to.ccty.dsca)
-					BillTo_Dst = trim$(billship.to.ccty.dsca)
-					BillTo_Stcd = "NA"
-					BillTo_Ph = ""
-					BillTo_Em = ""
-				endif
-				
-				ShipFrom_Gstin = gstn.c.no
-				ShipFrom_TrdNm = exp1
-				ShipFrom_Bno = exp2
-				ShipFrom_Bnm = exp3
-				ShipFrom_Flno = ""
-				ShipFrom_Loc = desc3
-				ShipFrom_Dst = desc3
-				ShipFrom_Pin = BillFrom_Pin
-				ShipFrom_Stcd = gstn.c.no
-				ShipFrom_Ph = ""
-				ShipFrom_Em = ""
-				
-				ShipTo_Gstin = gstn.b.no
-				ShipTo_TrdNm = trim$(con1)
-				ShipTo_Bno = trim$(con2) & "," & trim$(con3)
-				ShipTo_Bnm = trim$(con4) & "," & trim$(con5)
-				ShipTo_Flno = ""
-				ShipTo_Loc = trim$(billship.to.ccty.dsca)
-				ShipTo_Dst = trim$(billship.to.ccty.dsca)
-				ShipTo_Pin = BillTo_Pin
-				ShipTo_Stcd = "NA"
-				ShipTo_Ph = ""
-				ShipTo_Em = ""
-				
-				Item_PrdNm = tdisg046.item|trim$(tdisg832.pkgd)
-| 				select	tdisg832.dsca,
-| 					tdisg832.ityp
-| 				from	tdisg832
-| 				where	tdisg832._index4 = {:tdisg046.rcno, :tdisg046.rcln}
-| 				as set with 1 rows
-| 				selectdo
-| 				selectempty
-| 					tdisg832.dsca = ""
-| 				endselect
-				
-				Item_PrdDesc = tdisg046.item|trim$(tdisg832.pkgd)
-				Item_HsnCd = tdisg046.hsnc
-				Item_Barcde = ""
-				Item_Qty = tdisg046.qnty
-				Item_Qty = round(Item_Qty, 3, 1)
-				Item_FreeQty = 0
-				Item_Unit = ciisg802.guni	|unit
-				if tdisg046.qnty = 0 or inr.amnt = 0 then
-					Item_UnitPrice = 0
-				else
-					Item_UnitPrice = inr.amnt/tdisg046.qnty
-				endif
-				Item_UnitPrice = round(Item_UnitPrice, 3, 1)
-				Item_TotAmt = inr.amnt
-				Item_TotAmt = round(Item_TotAmt, 2, 1)
-				Item_Discount = 0.00
-				Item_OthChrg = 0.00
-				Item_AssAmt = Item_TotAmt-Item_Discount+Item_OthChrg
-				Item_CgstRt = cgst.rate
-				Item_SgstRt = sgst.rate
-				Item_IgstRt = igst.rate
-				Item_CesRt = cess.rate
-				Item_CesNonAdval = 0.00
-				Item_StateCes = 0.00
-	| 			Item_TotItemVal = inr.amnt							
-				Item_Batch_Nm = ""	
-				Item_Batch_ExpDt = 0
-				Item_Batch_WrDt = 0
-				
-				cgst.amount = Item_AssAmt * Item_CgstRt/100					
-				cgst.amount = round(cgst.amount, 2, 1)
-				sgst.amount = Item_AssAmt * Item_SgstRt/100
-				sgst.amount = round(sgst.amount, 2, 1)
-				igst.amount = Item_AssAmt * Item_IgstRt/100
-				igst.amount = round(igst.amount, 2, 1)
-				cess.amount = Item_AssAmt * Item_CesRt/100
-				cess.amount = round(cess.amount, 2, 1)
-				stcess.amount = Item_AssAmt * Item_StateCes/100	
-				stcess.amount = round(stcess.amount, 2, 1)
-				Item_TotItemVal = Item_AssAmt + cgst.amount + sgst.amount + igst.amount		
-				Item_TotItemVal = round(Item_TotItemVal, 2, 1)						
-				
-				Pay_Nam = ""
-				Pay_Mode = tdisg825.mpay
-				Pay_FinInsBr = ""
-				Pay_PayTerm = ""
-				Pay_PayInstr = ""
-				Pay_CrTrn = ""
-				Pay_DirDr = ""
-				Pay_CrDay = 0
-				Pay_BalAmt = 0.00
-				Pay_PayDueDt = 0
-				Pay_AcctDet = ""
-				Ref_InvRmk = ""
-				Ref_InvStDt = 0
-				Ref_InvEndDt = 0
-| 				Ref_PrecInvNo = ""
-| 				Ref_PrecInvDt = 0
-				Ref_RecAdvRef = ""
-				Ref_TendRef = ""
-				Ref_ContrRef = ""
-				Ref_ExtRef = ""
-				Ref_ProjRef = ""
-				Ref_PORef = tpisg045.refr
-				Exp_ExpCat = ""|enum.descr$  ("ciisg.expc",tdisg831.expc)
-				Exp_WthPay = ""
-				Exp_InvForCur = tot_amount	|final.total
-				Exp_InvForCur = round(Exp_InvForCur, 2, 1)
-				Exp_ForCur = tppdm740.ccur
-	| 			Exp_CntCode = ""
-				select	tdisg842.scod:Exp_ShipBNo,
-					tdisg842.sdat:sdat,
-					tdisg842.port:Exp_Port			
-				from	tdisg842
-				where	tdisg842._index1 = {:tdisg831.sbno}
-				as set with 1 rows
-				selectdo
-				endselect						
-				local.to.utc(sdat,1, Exp_ShipBDt)
-				insert.data.ciisg803()
 			endselect
 		endselect
 		
-		sum.lc.amnt = 0.00
-		sum.lc.amnt.inr = 0.00
-		
-		select	tdisg860.desc:net.payable.line
-		from	tdisg860
-		where	tdisg860._index1 = {:tdisg831.lcno}
-		and	tdisg860.ptyp = tdisg.ptyp.netpay
+		select	tdisg861.head
+		from	tdisg861
+		where	tdisg861._index1 = {:tdisg825.temp,:tdisg831.motp}
 		selectdo
 		selectempty
-			net.payable.line = ""
+			tdisg861.head = ""
 		endselect
 		
-		select	tdisg860.desc, tdisg860.pval
-		from	tdisg860
-		where	tdisg860._index1 = {:tdisg831.lcno}
-		and	tdisg860.ptyp <> tdisg.ptyp.netpay
+		tot_amount = 0
+		tot.inr.amnt = 0
+		final.total = 0
+ 		
+											
+		select	tdisg832.*, tcibd001.cuni				
+		from	tdisg832,tcibd001
+		where	tdisg832._index1={:i.edrn}
+		and	tdisg832.bivl <> 0
+		and	tdisg832.item refers to tcibd001			
 		selectdo
-			lc.amnt = (tot_amount * tdisg860.pval) / 100
-			lc.amnt.inr = (tot.inr.amnt * tdisg860.pval) / 100
-			sum.lc.amnt = sum.lc.amnt + lc.amnt
-			sum.lc.amnt.inr = sum.lc.amnt.inr + lc.amnt.inr
-		endselect
-		
-		p = 18
-		final.total = tot_amount - sum.lc.amnt
-		tot.inr.amnt = round(tot.inr.amnt, 2, 0)
-		sum.lc.amnt.inr = round(sum.lc.amnt.inr, 2, 0)
+			if tdisg832.bivl > 0 then
+			tdisg832.tfcd = strip$(tdisg832.tfcd) & "B"		
+			hsn.description1 = tdisg832.desc(1;50)
+			hsn.description2 = tdisg832.desc(51;100)
+			hsn.description3 = tdisg832.desc(101;150)
+			hsn.description4 = tdisg832.desc(151;200)
+			
+			inr.amnt = tdisg832.bivl * exc.rate 
+										
+			tot_amount = tot_amount + tdisg832.bivl
+			tot.inr.amnt = tot.inr.amnt + inr.amnt
+			
+			dbk_description1 = tdisg832.tfds(1;50)
+			dbk_description2 = tdisg832.tfds(51;100)
+			dbk_description3 = tdisg832.tfds(101;150)		
+			dbk_description4 = tdisg832.tfds(151;200)		
+			
+			description1 = tdisg832.dsca(1;50)
+			description2 = tdisg832.dsca(51;100)
+			
+			spacecall2(tdisg832.dsca)		
+			
+			nill.val = "0.00"
+			if tdisg832.edbk <> tcyesno.yes then				
+				tdisg832.tfcd = ""
+				dbk_description1 = ""
+				dbk_description2 = ""
+				dbk_description3 = ""
+				dbk_description4 = ""
+			endif
 
-		final.total.inr = tot.inr.amnt - sum.lc.amnt.inr
+			if tdisg832.tobi  = tcyesno.no then
+				value_declare = ""
+			else
+				value_declare = "Value Declared for Custom Purpose Only"
+			endif	
+			
+			q = 0
+			select	tdisg876.efdt, tdisg876.lbno, tdisg876.type
+			from	tdisg876
+			where	tdisg876._index1 = {:tdisg831.lcod}
+			selectdo
+			selectempty
+				tdisg876.efdt = 0
+				tdisg876.lbno = ""
+			endselect
+			
+			lut.line = 	"EXPORT UNDER " & 
+					trim$(enum.descr$("tdisg.sec.typ", tdisg876.type, "2")) &
+					" No. " & trim$(tdisg876.lbno) & " DATED " &
+					trim$(sprintf$("%D(%02d %-03H %04Y)", tdisg876.efdt)) & "."
+			
+			select	tdisg007.type:v.type,sum(tdisg007.nopk):v.nopk
+			from	tdisg007
+			where	tdisg007._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+			and	tdisg007.slct = tcyesno.yes
+			group by tdisg007.type
+			selectdo
+				p = 4
+				q = q + 1
+| 				rprt_send()
+| 				print.stat = 1
+| 				v.type = ""
+| 				v.nopk = 0
+| 				tdisg832.pcun = ""
+| 				tdisg832.pqty = 0
+| 				tdisg832.bivl = 0
+| 				inr.amnt = 0
+| 				tdisg832.code = ""
+| 				nill.val = ""
+| 				tdisg832.tfcd = ""
+			selectempty
+				p = 4
+				q = q + 1
+			endselect
+| 			select	tccom100.cadr
+| 			from	tccom100
+| 			where	tccom100._index1 = {:bpid}
+| 			selectdo
+| 				select	tccom130.ccty
+| 				from	tccom130
+| 				where	tccom130._index1 = {:tccom100.cadr}
+| 				selectdo
+| 					Exp_CntCode = tccom130.ccty
+| 				selectempty
+| 					Exp_CntCode = ""
+| 				endselect
+| 			endselect
 
-		ityp = tdisg045.cdin(1;3)
-		str.doc = tdisg045.cdin(4;8)
-		select	ciisg803.*
-		from	ciisg803
-		where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc}
-		order by ciisg803.valu desc
-		as set with 1 rows
-		selectdo
-			Item_PrdNm = ciisg803.item
-			Item_PrdDesc = ciisg803.dsca
-			Item_HsnCd = ciisg803.hsnc
-			Item_Barcde = ciisg803.barc
-			Item_Qty = ciisg803.qnty
-			Item_FreeQty = ciisg803.fqty
-			Item_Unit = ciisg803.cuni
-			Item_UnitPrice = ciisg803.pric
-			Item_TotAmt = ciisg803.amnt
-			Item_Discount = ciisg803.disc
-			Item_OthChrg = ciisg803.othc
-			Item_AssAmt = ciisg803.assv
-			Item_CgstRt = ciisg803.cgst
-			Item_SgstRt = ciisg803.sgst
-			Item_IgstRt = ciisg803.igst
-			Item_CesRt = ciisg803.cess
-			Item_CesNonAdval = ciisg803.cnaa
-			Item_StateCes = ciisg803.scsr
-			Item_TotItemVal = ciisg803.valu
-			Item_Batch_Nm = ciisg803.batn
-			Item_Batch_ExpDt = ciisg803.bate
-			Item_Batch_WrDt = ciisg803.ward
+			select	tccom100.cadr
+			from	tccom100
+			where	tccom100._index1 = {:bpid}
+			selectdo
+				get.bp.data()
+				select	ciisg810.gcty					|RAvi.a.09102020
+				from	ciisg810
+				where	ciisg810._index1 = {:tccom130.ccty}
+				as set with 1 rows
+				selectdo
+				endselect
+| 				Exp_CntCode = tccom130.ccty
+				Exp_CntCode = ciisg810.gcty
+			endselect
+			
+			select	tctax400.fovn:gstn.b.no
+			from	tctax400
+			where	tctax400._index1 = {:bpid}
+			and	tctax400.catg.l = 9
+			selectdo
+			selectempty
+				gstn.b.no = "NA"
+			endselect
+			
+			srno = srno + 1
+			get.amount.in.word1(tot_amount)
+			
+			select	ciisg802.*
+			from	ciisg802
+			where	ciisg802._index1 = {:tdisg832.pcun}
+			selectdo
+			selectempty
+				
+			endselect
+			assv.val = tdisg832.sasa.l				|RAvi.a.21102020
+			
+			get.tax.data()						|RAvi.a.21102020
+			GSTIN = gstn.c.no
+			TaxSch = "GST"
+			Version = 1.0
+			Irn = ""
+| 			Tran_Catg = "EXP"					|RAvi.com.29092020
+			Tran_Catg = enum.descr$("tdisg.suptype", tdisg831.eist)	|RAvi.a.29092020
+| 			Tran_Catg = "EXPWOP"	|RAvi.a.29092020
+			Tran_RegRev = "RG"
+			if trim$(con1) = trim$(buyer1) or isspace(buyer1) then
+				Tran_Typ = "REG"
+			else
+				Tran_Typ = "SHP"
+			endif
+			Tran_EcmTrn = tcyesno.no
+			Tran_EcmGstin = ""
+			Doc_Typ = "INV"
+			Doc_No = tdisg831.invn
+			Doc_OrgInvNo = ""
+| 			Doc_Dt = tdisg831.invd
+			local.to.utc(tdisg831.invd,0, Doc_Dt) 
+			BillFrom_Gstin = gstn.c.no
+			BillFrom_TrdNm = exp1
+			BillFrom_Bno = exp2
+			BillFrom_Bnm = exp3
+			BillFrom_Flno = ""
+			BillFrom_Loc = desc3
+			BillFrom_Dst = desc3
+| 			BillFrom_Pin = tccom130.pstc
+			BillFrom_Pin = own.pincode
+			BillFrom_Stcd = gstn.c.no
+			BillFrom_Ph = ""
+			BillFrom_Em = ""
+			
+| 			BillTo_Gstin = gstn.b.no
+| 			BillTo_TrdNm = con1
+| 			BillTo_Bno = con2
+| 			BillTo_Bnm = con3
+| 			BillTo_Flno = ""
+| 			BillTo_Loc = tdisg825.plad
+| 			BillTo_Dst = tdisg825.plad
+| 			BillTo_Pin = ""
+| 			BillTo_Stcd = "NA"
+| 			BillTo_Ph = ""
+| 			BillTo_Em = ""
+			if isspace(buyer1) then
+				BillTo_Gstin = gstn.b.no
+				BillTo_TrdNm = trim$(con1)
+				BillTo_Bno = trim$(con2)&","&trim$(con3)
+				BillTo_Bnm = trim$(con4)&","&trim$(con5)
+				BillTo_Flno = ""
+| 				BillTo_Loc = trim$(tdisg825.plad)
+| 				BillTo_Dst = trim$(tdisg825.plad)
+				BillTo_Loc = trim$(billship.to.ccty.dsca)
+				BillTo_Dst = trim$(billship.to.ccty.dsca)
+		| 		BillTo_Pin = ""
+				BillTo_Stcd = "NA"
+				BillTo_Ph = ""
+				BillTo_Em = ""
+			else
+				BillTo_Gstin = gstn.b.no
+				BillTo_TrdNm = trim$(buyer1)
+				BillTo_Bno = trim$(buyer2) & "," & trim$(buyer3)
+				BillTo_Bnm = trim$(buyer4) & "," & trim$(buyer5)
+				BillTo_Flno = ""
+| 				BillTo_Loc = trim$(tdisg825.plad)
+| 				BillTo_Dst = trim$(tdisg825.plad)
+				BillTo_Loc = trim$(billship.to.ccty.dsca)
+				BillTo_Dst = trim$(billship.to.ccty.dsca)
+		| 		BillTo_Pin = ""
+				BillTo_Stcd = "NA"
+				BillTo_Ph = ""
+				BillTo_Em = ""
+			endif
+			
+			ShipFrom_Gstin = gstn.c.no
+			ShipFrom_TrdNm = exp1
+			ShipFrom_Bno = exp2
+			ShipFrom_Bnm = exp3
+			ShipFrom_Flno = ""
+			ShipFrom_Loc = desc3
+			ShipFrom_Dst = desc3
+			ShipFrom_Pin = BillFrom_Pin
+			ShipFrom_Stcd = gstn.c.no
+			ShipFrom_Ph = ""
+			ShipFrom_Em = ""
+			
+| 			ShipTo_Gstin = gstn.b.no
+| 			ShipTo_TrdNm = buyer1
+| 			ShipTo_Bno = buyer2
+| 			ShipTo_Bnm = buyer3
+| 			ShipTo_Flno = ""
+| 			ShipTo_Loc = tdisg825.plad
+| 			ShipTo_Dst = tdisg825.plad
+| 			ShipTo_Pin = ""
+| 			ShipTo_Stcd = "NA"
+| 			ShipTo_Ph = ""
+| 			ShipTo_Em = ""
+			ShipTo_Gstin = gstn.b.no
+			ShipTo_TrdNm = trim$(con1)
+			ShipTo_Bno = trim$(con2) & "," & trim$(con3)
+			ShipTo_Bnm = trim$(con4) & "," & trim$(con5)
+			ShipTo_Flno = ""
+| 			ShipTo_Loc = trim$(tdisg825.plad)
+| 			ShipTo_Dst = trim$(tdisg825.plad)
+			ShipTo_Loc = trim$(billship.to.ccty.dsca)
+			ShipTo_Dst = trim$(billship.to.ccty.dsca)
+			ShipTo_Pin = BillTo_Pin
+			ShipTo_Stcd = "NA"
+			ShipTo_Ph = ""
+			ShipTo_Em = ""
+			
+			Item_PrdNm = tdisg832.item|trim$(tdisg832.pkgd)
+			Item_PrdDesc = tdisg832.dsca|trim$(tdisg832.pkgd)
+			Item_HsnCd = tdisg832.code
+			Item_Barcde = ""
+			Item_Qty = tdisg832.pqty
+			Item_Qty = round(Item_Qty, 3, 1)
+			Item_FreeQty = 0
+			Item_Unit = ciisg802.guni	|unit
+			if tdisg832.pqty = 0 or inr.amnt = 0 then
+				Item_UnitPrice = 0
+			else
+				Item_UnitPrice = inr.amnt/tdisg832.pqty
+			endif
+			Item_UnitPrice = round(Item_UnitPrice, 3, 1)
+			Item_TotAmt = inr.amnt
+			Item_TotAmt = round(Item_TotAmt, 2, 1)
+			Item_Discount = 0.00
+			Item_OthChrg = 0.00
+			Item_AssAmt = Item_TotAmt-Item_Discount+Item_OthChrg
+| 			Item_AssAmt = round(Item_AssAmt, 0, 1)							|RAvi.a.s.21102020
+| 			Item_CgstRt = 0.00
+| 			Item_SgstRt = 0.00
+| 			Item_IgstRt = 0.00
+| 			Item_CesRt = 0.00
+			Item_CgstRt = cgst.rate
+			Item_SgstRt = sgst.rate
+			Item_IgstRt = igst.rate
+			Item_CesRt = cess.rate									|RAvi.a.e.21102020
+			Item_CesNonAdval = 0.00
+			Item_StateCes = 0.00
+| 			Item_TotItemVal = inr.amnt								|RAvi.com.21102020
+			Item_Batch_Nm = ""
+			Item_Batch_ExpDt = 0
+			Item_Batch_WrDt = 0
+			
+			cgst.amount = Item_AssAmt * Item_CgstRt/100						|RAvi.a.s.29092020
+			cgst.amount = round(cgst.amount, 2, 1)
+			sgst.amount = Item_AssAmt * Item_SgstRt/100
+			sgst.amount = round(sgst.amount, 2, 1)
+			igst.amount = Item_AssAmt * Item_IgstRt/100
+			igst.amount = round(igst.amount, 2, 1)
+			cess.amount = Item_AssAmt * Item_CesRt/100
+			cess.amount = round(cess.amount, 2, 1)
+			stcess.amount = Item_AssAmt * Item_StateCes/100	
+			stcess.amount = round(stcess.amount, 2, 1)
+			Item_TotItemVal = Item_AssAmt + cgst.amount + sgst.amount + igst.amount			|RAvi.a.21102020
+			Item_TotItemVal = round(Item_TotItemVal, 2, 1)						|RAvi.a.e.29092020
+			
+| 			Val_AssVal = inr.amnt
+| 			Val_CgstVal = 0.00
+| 			Val_SgstVal = 0.00
+| 			Val_IgstVal = 0.00
+| 			Val_CesVal = 0.00
+| 			Val_StCesVal = 0.00
+| 			Val_CesNonAdVal = 0.00
+| 			Val_Disc = 0.00
+| 			Val_OthChrg = 0.00
+| 			Val_TotInvVal = final.total.inr
+			Pay_Nam = ""
+			Pay_Mode = tdisg825.mpay
+			Pay_FinInsBr = ""
+			Pay_PayTerm = ""
+			Pay_PayInstr = ""
+			Pay_CrTrn = ""
+			Pay_DirDr = ""
+			Pay_CrDay = 0
+			Pay_BalAmt = 0.00
+			Pay_PayDueDt = 0
+			Pay_AcctDet = ""
+			Ref_InvRmk = ""
+			Ref_InvStDt = 0
+			Ref_InvEndDt = 0
+			Ref_PrecInvNo = ""
+			Ref_PrecInvDt = 0
+			Ref_RecAdvRef = ""
+			Ref_TendRef = ""
+			Ref_ContrRef = ""
+			Ref_ExtRef = ""
+			Ref_ProjRef = ""
+			Ref_PORef = tpisg045.refr
+			Exp_ExpCat = ""|enum.descr$  ("ciisg.expc",tdisg831.expc)
+			Exp_WthPay = ""
+| 			Exp_ShipBNo = ""
+| 			Exp_ShipBDt = 0
+| 			Exp_Port = ""
+			Exp_InvForCur = tot_amount	|final.total
+			Exp_InvForCur = round(Exp_InvForCur, 2, 1)
+			Exp_ForCur = tppdm740.ccur
+| 			Exp_CntCode = ""
+			select	tdisg842.scod:Exp_ShipBNo,
+				tdisg842.sdat:sdat,
+				tdisg842.port:Exp_Port			
+			from	tdisg842
+			where	tdisg842._index1 = {:tdisg831.sbno}
+			as set with 1 rows
+			selectdo
+			endselect							|#Paras.en
+			local.to.utc(sdat,1, Exp_ShipBDt)
+| 			num.to.date  (sdat,yearno,monthno,month_dayno)
+| 			Exp_ShipBDt = date.to.utc( yearno,monthno,month_dayno, 00,00,01 ) 
+			insert.data.ciisg803()
+			else
+				idoc = lval(tdisg831.invn(4;8))
+				ityp = tdisg831.invn(1;3)
+				message("@ Billing Amount should not be negative in invoice " & ityp &" " & str$(idoc))	
+			endif
 		endselect
-		
-		Val_AssVal = 0
-		Val_CgstVal = 0
-		Val_SgstVal = 0
-		Val_IgstVal = 0
-		Val_CesVal = 0
-		Val_StCesVal = 0
-		Val_CesNonAdVal = 0
-		Val_Disc = 0
-		Val_OthChrg = 0
-		Val_TotInvVal = 0
-		select	ciisg803.*
-		from	ciisg803
-		where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc}
-		selectdo	
-			Val_AssVal = Val_AssVal + ciisg803.assv			
-			Val_CgstVal = Val_CgstVal +  ciisg803.camt	|0.00
-			Val_SgstVal = Val_SgstVal +  ciisg803.samt	|0.00
-			Val_IgstVal = Val_IgstVal +  ciisg803.iamt	|0.00
-			Val_CesVal = Val_CesVal + ciisg803.cesa 	|0.00
-			Val_StCesVal = Val_StCesVal + ciisg803.cssa 	|0.00				
-			Val_CesNonAdVal = Val_CesNonAdVal + ciisg803.cnaa 	|0.00
-			Val_Disc = Val_Disc + ciisg803.disc|0.00
-			Val_OthChrg = Val_OthChrg + ciisg803.othc|0.00
-			Val_TotInvVal = Val_TotInvVal + ciisg803.valu|final.total.inr
-		endselect
-		Pay_Nam = ""
-		Pay_Mode = tdisg825.mpay
-		Pay_FinInsBr = ""
-		Pay_PayTerm = ""
-		Pay_PayInstr = ""
-		Pay_CrTrn = ""
-		Pay_DirDr = ""
-		Pay_CrDay = 0
-		Pay_BalAmt = 0.00
-		Pay_PayDueDt = 0
-		Pay_AcctDet = ""
-		Ref_InvRmk = ""
-		Ref_InvStDt = 0
-		Ref_InvEndDt = 0
-| 		Ref_PrecInvNo = ""
-| 		Ref_PrecInvDt = 0
-		Ref_RecAdvRef = ""
-		Ref_TendRef = ""
-		Ref_ContrRef = ""
-		Ref_ExtRef = ""
-		Ref_ProjRef = ""
-		Ref_PORef = tpisg045.refr
-		Exp_ExpCat = ""|enum.descr$  ("ciisg.expc",tdisg831.expc)
-		Exp_WthPay = ""
-		Exp_InvForCur = tot_amount
-		Exp_InvForCur = round(Exp_InvForCur, 2, 1)
-		Exp_ForCur = tppdm740.ccur
-		select	tdisg842.scod:Exp_ShipBNo,
-			tdisg842.sdat:sdat,
-			tdisg842.port:Exp_Port			
-		from	tdisg842
-		where	tdisg842._index1 = {:tdisg831.sbno}
-		as set with 1 rows
-		selectdo
-		endselect						
-		local.to.utc(sdat,1, Exp_ShipBDt)
-
-		insert.data.ciisg800()
-		p = 0
+| 		package_no_print()
 	endselect
+| 	p = 5
+| 	rprt_send()
+	
+| 	p = 10
+	
+| 	dbk_des3 = tdisg825.info1			
+| 	dbk_des5 = tdisg825.info2
+	
+| 	if tdisg832.edbk = tcyesno.yes then
+| 		dbk_des4 = "END USE CODE - GNX200"
+| 		dbk_des6 = "WE HEREBY DECLARE THAT WE DO NOT HAVE ANY OBJECTION TO THE DRAWBACK BENEFIT RESTRICTED"	
+| 		dbk_des7 = "BASED ON 150% VALUE OF TAX INVOICE OF VENDOR OR FOB VALUE WHICHEVER IS LOWER"		
+| 	else										
+| 		dbk_des1 = ""
+| 		dbk_des2 = ""
+| 		dbk_des4 = ""
+| 		dbk_des6 = ""	
+| 		dbk_des7 = ""	
+| 	endif	
+	
+| 	if tdisg832.efms = tcyesno.yes then
+| 		meis.des1 = "WE INTEND TO CLAIM REWARDS UNDER MERCHANDISE EXPORTS FROM INDIA SCHEME (MEIS)"
+| 		meis.des2 = "ALSO REWARD SCHEME MUST BE TICKED YES"
+| 	else
+| 		meis.des1 = ""
+| 		meis.des2 = ""
+| 	endif
+													
+| 	term.line = "SUPPLY MEANT FOR EXPORT UNDER LETTER OF UNDERTAKING WITHOUT PAYMENT OF INTEGERATED TAX"
+	
+| 	rprt_send()
+	
+| 	p = 15
+	
+	sum.lc.amnt = 0.00
+	sum.lc.amnt.inr = 0.00
+	
+	select	tdisg860.desc:net.payable.line
+	from	tdisg860
+	where	tdisg860._index1 = {:tdisg831.lcno}
+	and	tdisg860.ptyp = tdisg.ptyp.netpay
+	selectdo
+	selectempty
+		net.payable.line = ""
+	endselect
+	
+	select	tdisg860.desc, tdisg860.pval
+	from	tdisg860
+	where	tdisg860._index1 = {:tdisg831.lcno}
+	and	tdisg860.ptyp <> tdisg.ptyp.netpay
+	selectdo
+		lc.amnt = (tot_amount * tdisg860.pval) / 100
+		lc.amnt.inr = (tot.inr.amnt * tdisg860.pval) / 100
+		sum.lc.amnt = sum.lc.amnt + lc.amnt
+		sum.lc.amnt.inr = sum.lc.amnt.inr + lc.amnt.inr
+| 		rprt_send()
+	endselect
+	
+	p = 18
+	final.total = tot_amount - sum.lc.amnt
+	tot.inr.amnt = round(tot.inr.amnt, 2, 0)
+	sum.lc.amnt.inr = round(sum.lc.amnt.inr, 2, 0)
+
+	final.total.inr = tot.inr.amnt - sum.lc.amnt.inr
+| 	rprt_send()
+	| 	GSTIN = gstn.c.no
+	| 	TaxSch = "GST"
+	| 	Version = 1.0
+	| 	Irn = ""
+	| 	Tran_Catg = "EXP"
+	| 	Tran_RegRev = "RG"
+	| 	Tran_Typ = "REG"		|check for anne
+	| 	Tran_EcmTrn = tcyesno.no
+	| 	Tran_EcmGstin = ""
+	| 	Doc_Typ = "INV"
+	| 	Doc_No = tdisg831.invn
+	| 	Doc_OrgInvNo = ""
+	| 	Doc_Dt = tdisg831.invd
+	| 	BillFrom_Gstin = gstn.c.no
+	| 	BillFrom_TrdNm = exp1
+	| 	BillFrom_Bno = exp2
+	| 	BillFrom_Bnm = exp3
+	| 	BillFrom_Flno = ""
+	| 	BillFrom_Loc = desc3
+	| 	BillFrom_Dst = ""
+	| 	BillFrom_Pin = tccom130.pstc
+	| 	BillFrom_Stcd = gstn.c.cste
+	| 	BillFrom_Ph = ""
+	| 	BillFrom_Em = ""
+	| 	BillTo_Gstin = "NA"	|gstn.b.no
+	| 	BillTo_TrdNm = con1
+	| 	BillTo_Bno = con2
+	| 	BillTo_Bnm = ""
+	| 	BillTo_Flno = ""
+	| 	BillTo_Loc = con3
+	| 	BillTo_Dst = ""
+	| 	BillTo_Pin = ""
+	| 	BillTo_Stcd = "NA"
+	| 	BillTo_Ph = ""
+	| 	BillTo_Em = ""
+	| 	ShipFrom_Gstin = ""
+	| 	ShipFrom_TrdNm = ""
+	| 	ShipFrom_Bno = ""
+	| 	ShipFrom_Bnm = ""
+	| 	ShipFrom_Flno = ""
+	| 	ShipFrom_Loc = ""
+	| 	ShipFrom_Dst = ""
+	| 	ShipFrom_Pin = ""
+	| 	ShipFrom_Stcd = ""
+	| 	ShipFrom_Ph = ""
+	| 	ShipFrom_Em = ""
+	| 	ShipTo_Gstin = "NA"
+	| 	ShipTo_TrdNm = buyer1
+	| 	ShipTo_Bno = buyer2
+	| 	ShipTo_Bnm = ""
+	| 	ShipTo_Flno = ""
+	| 	ShipTo_Loc = buyer3
+	| 	ShipTo_Dst = ""
+	| 	ShipTo_Pin = ""
+	| 	ShipTo_Stcd = "NA"
+	| 	ShipTo_Ph = ""
+	| 	ShipTo_Em = ""
+	str.doc = str$(idoc)
+	select	ciisg803.*
+	from	ciisg803
+	where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc}
+	order by ciisg803.valu desc
+	as set with 1 rows
+	selectdo
+		Item_PrdNm = ciisg803.item
+		Item_PrdDesc = ciisg803.dsca
+		Item_HsnCd = ciisg803.hsnc
+		Item_Barcde = ciisg803.barc
+		Item_Qty = ciisg803.qnty
+		Item_FreeQty = ciisg803.fqty
+		Item_Unit = ciisg803.cuni
+		Item_UnitPrice = ciisg803.pric
+		Item_TotAmt = ciisg803.amnt
+		Item_Discount = ciisg803.disc
+		Item_OthChrg = ciisg803.othc
+		Item_AssAmt = ciisg803.assv
+		Item_CgstRt = ciisg803.cgst
+		Item_SgstRt = ciisg803.sgst
+		Item_IgstRt = ciisg803.igst
+		Item_CesRt = ciisg803.cess
+		Item_CesNonAdval = ciisg803.cnaa
+		Item_StateCes = ciisg803.scsr
+		Item_TotItemVal = ciisg803.valu
+		Item_Batch_Nm = ciisg803.batn
+		Item_Batch_ExpDt = ciisg803.bate
+		Item_Batch_WrDt = ciisg803.ward
+	endselect
+	
+	Val_AssVal = 0
+	Val_CgstVal = 0
+	Val_SgstVal = 0
+	Val_IgstVal = 0
+	Val_CesVal = 0
+	Val_StCesVal = 0
+	Val_CesNonAdVal = 0
+	Val_Disc = 0
+	Val_OthChrg = 0
+	Val_TotInvVal = 0
+	select	ciisg803.*
+	from	ciisg803
+	where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc}
+	selectdo	
+		Val_AssVal = Val_AssVal + ciisg803.assv		|inr.amnt
+| 		Val_CgstVal = Val_CgstVal + ciisg803.cgst 	|0.00
+| 		Val_SgstVal = Val_SgstVal + ciisg803.sgst 	|0.00
+| 		Val_IgstVal = Val_IgstVal + ciisg803.igst 	|0.00
+| 		Val_CesVal = Val_CesVal + ciisg803.cess 	|0.00
+| 		Val_StCesVal = Val_StCesVal + ciisg803.scsr 	|0.00
+		
+		Val_CgstVal = Val_CgstVal +  ciisg803.camt	|0.00
+		Val_SgstVal = Val_SgstVal +  ciisg803.samt	|0.00
+		Val_IgstVal = Val_IgstVal +  ciisg803.iamt	|0.00
+		Val_CesVal = Val_CesVal + ciisg803.cesa 	|0.00
+		Val_StCesVal = Val_StCesVal + ciisg803.cssa 	|0.00					|RAvi.a.e.29092020	
+		Val_CesNonAdVal = Val_CesNonAdVal + ciisg803.cnaa 	|0.00
+		Val_Disc = Val_Disc + ciisg803.disc|0.00
+		Val_OthChrg = Val_OthChrg + ciisg803.othc|0.00
+		Val_TotInvVal = Val_TotInvVal + ciisg803.valu|final.total.inr
+	endselect
+	Pay_Nam = ""
+	Pay_Mode = tdisg825.mpay
+	Pay_FinInsBr = ""
+	Pay_PayTerm = ""
+	Pay_PayInstr = ""
+	Pay_CrTrn = ""
+	Pay_DirDr = ""
+	Pay_CrDay = 0
+	Pay_BalAmt = 0.00
+	Pay_PayDueDt = 0
+	Pay_AcctDet = ""
+	Ref_InvRmk = ""
+	Ref_InvStDt = 0
+	Ref_InvEndDt = 0
+	Ref_PrecInvNo = ""
+	Ref_PrecInvDt = 0
+	Ref_RecAdvRef = ""
+	Ref_TendRef = ""
+	Ref_ContrRef = ""
+	Ref_ExtRef = ""
+	Ref_ProjRef = ""
+	Ref_PORef = tpisg045.refr
+	Exp_ExpCat = ""|enum.descr$  ("ciisg.expc",tdisg831.expc)
+	Exp_WthPay = ""
+| 			Exp_ShipBNo = ""
+| 			Exp_ShipBDt = 0
+| 			Exp_Port = ""
+	Exp_InvForCur = tot_amount
+	Exp_InvForCur = round(Exp_InvForCur, 2, 1)
+	Exp_ForCur = tppdm740.ccur
+| 	Exp_CntCode = ""
+	select	tdisg842.scod:Exp_ShipBNo,
+		tdisg842.sdat:sdat,
+		tdisg842.port:Exp_Port			
+	from	tdisg842
+	where	tdisg842._index1 = {:tdisg831.sbno}
+	as set with 1 rows
+	selectdo
+	endselect							|#Paras.en
+	local.to.utc(sdat,1, Exp_ShipBDt)
+| 	num.to.date  (sdat,yearno,monthno,month_dayno)
+| 	Exp_ShipBDt = date.to.utc( yearno,monthno,month_dayno, 00,00,01 ) 
+
+	insert.data.ciisg800()
+	p = 0
+	
 }
 
 function companydetails()
@@ -1122,7 +1432,7 @@ function	get_label()
 
 function description()
 {
-	select	tpisg037.desc
+	select tpisg037.desc
 	from	tpisg037
 	where	tpisg037._index1 = {:tdisg831.ptld}
 	selectdo
@@ -1185,7 +1495,29 @@ function description()
 		endselect
 	endif	
 }
+function spacecall2(domain tcmcs.str50 word1)		
+{
+	long	i, last
+	
+	last = 0
+	description2 = ""		
 
+	FOR i = 1 TO 50 step 1	
+		if word1(i;1) = " "  then
+			
+			last = i
+		endif
+	ENDFOR
+	if last <= 50 and last >= 20 then
+		description2 = strip$(tdisg832.dsca(last;60))
+		description1= tdisg832.dsca(1;last)
+	endif
+	if last = 0 then
+		description1 = tdisg832.dsca(1;50)
+		description2 = tdisg832.dsca(51;100)
+	endif
+	
+}						
 function  get.amount.in.word1(domain tcamnt tot.amth)	
 {
 	double	decc	
@@ -1221,20 +1553,54 @@ function  get.amount.in.word1(domain tcamnt tot.amth)
 	endif
 	endif
 }
-
+function package_no_print()
+{
+	select	tdisg864.type
+	from	tdisg864
+	selectdo
+		tot.nopk = 0
+		select	tdisg832.rcno,tdisg832.rcln					|#ISG001080.n
+		from	tdisg832
+		where	tdisg832._index1 = {:tdisg831.edrn}
+		selectdo
+			select	tdisg007.type,sum(tdisg007.nopk):tmp.nopk
+			from	tdisg007
+			where	tdisg007._index1 = {:tdisg832.rcno,:tdisg832.rcln}
+			and	tdisg007.type = :tdisg864.type
+			and	tdisg007.slct = tcyesno.yes
+			group by tdisg007.type
+			selectdo
+			selectempty
+				tmp.nopk = 0
+			endselect
+			tot.nopk = tot.nopk + tmp.nopk
+		endselect
+		if	tot.nopk <> 0	then
+			q = 0
+			p = 1
+			total.pack = total.pack + tot.nopk
+| 			rprt_send()	
+		endif	
+	endselect
+	q = 0
+	p = 2
+	total.pack = total.pack
+| 	rprt_send()
+}
 function insert.data.ciisg800()
 {
-	ityp = tdisg045.cdin(1;3)
-	str.doc = tdisg045.cdin(4;8)
+	idoc = lval(tdisg831.invn(4;8))
+	ityp = tdisg831.invn(1;3)
+	str.doc = str$(idoc)
 	select	ciisg800.*
 	from	ciisg800 for update
-	where	ciisg800._index1 = {:curr.comp, :ityp, :str.doc, 1}
+	where	ciisg800._index1 = {:curr.comp, :ityp, :str.doc,1}
 	as set with 1 rows
 	selectdo
 		if dal.change.object("ciisg800") = 0 then
 			dal.set.field("ciisg800.comp",curr.comp)
 			dal.set.field("ciisg800.tran",ityp)
-			dal.set.field("ciisg800.docn",str$(str.doc))
+			dal.set.field("ciisg800.docn",str$(idoc))
 			dal.set.field("ciisg800.line",1)
 			dal.set.field("ciisg800.ogst",GSTIN)
 			dal.set.field("ciisg800.taxs",TaxSch)
@@ -1364,10 +1730,135 @@ function insert.data.ciisg800()
 			endif
 		endif
 	selectempty
+| 			ciisg800.comp = curr.comp
+| 			ciisg800.tran = ""
+| 			ciisg800.docn = idoc
+| 			ciisg800.line = 1
+| 			ciisg800.ogst = GSTIN
+| 			ciisg800.taxs = TaxSch
+| 			ciisg800.vers = Version
+| 			ciisg800.irnn = Irn
+| 			ciisg800.catg = Tran_Catg
+| 			ciisg800.regr = Tran_RegRev
+| 			ciisg800.ttyp = Tran_Typ
+| 			ciisg800.etrn = Tran_EcmTrn
+| 			ciisg800.egst = Tran_EcmGstin
+| 			ciisg800.dtyp = Doc_Typ
+| 			ciisg800.ninv = Doc_No
+| 			ciisg800.odoc = Doc_OrgInvNo
+| 			ciisg800.odat = Doc_Dt
+| 			ciisg800.bfgn = BillFrom_Gstin
+| 			ciisg800.bfnm = BillFrom_TrdNm
+| 			ciisg800.bfbn = BillFrom_Bno
+| 			ciisg800.bfbm = BillFrom_Bnm
+| 			ciisg800.bffn = BillFrom_Flno
+| 			ciisg800.bflc = BillFrom_Loc
+| 			ciisg800.bfdt = BillFrom_Dst
+| 			ciisg800.bfpn = BillFrom_Pin
+| 			ciisg800.bfsc = BillFrom_Stcd
+| 			ciisg800.bfph = lval(BillFrom_Ph)
+| 			ciisg800.bfem = BillFrom_Em
+| 			ciisg800.btgn = BillTo_Gstin
+| 			ciisg800.btnm = BillTo_TrdNm
+| 			ciisg800.btbn = BillTo_Bno
+| 			ciisg800.btbm = BillTo_Bnm
+| 			ciisg800.btfn = BillTo_Flno
+| 			ciisg800.btlc = BillTo_Loc
+| 			ciisg800.btdt = BillTo_Dst
+| 			ciisg800.btpn = BillTo_Pin
+| 			ciisg800.btsc = BillTo_Stcd
+| 			ciisg800.btph = BillTo_Ph
+| 			ciisg800.btem = BillTo_Em
+| 			ciisg800.sfgn = ShipFrom_Gstin
+| 			ciisg800.sfnm = ShipFrom_TrdNm
+| 			ciisg800.sfbn = ShipFrom_Bno
+| 			ciisg800.sfbm = ShipFrom_Bnm
+| 			ciisg800.sffn = ShipFrom_Flno
+| 			ciisg800.sflc = ShipFrom_Loc
+| 			ciisg800.sfdt = ShipFrom_Dst
+| 			ciisg800.sfpn = ShipFrom_Pin
+| 			ciisg800.sfsc = ShipFrom_Stcd
+| 			ciisg800.sfph = lval(ShipFrom_Ph)
+| 			ciisg800.sfem = ShipFrom_Em
+| 			ciisg800.stgn = ShipTo_Gstin
+| 			ciisg800.stnm = ShipTo_TrdNm
+| 			ciisg800.stbn = ShipTo_Bno
+| 			ciisg800.stbm = ShipTo_Bnm
+| 			ciisg800.stfn = ShipTo_Flno
+| 			ciisg800.stlc = ShipTo_Loc
+| 			ciisg800.stdt = ShipTo_Dst
+| 			ciisg800.stpn = ShipTo_Pin
+| 			ciisg800.stsc = ShipTo_Stcd
+| 			ciisg800.stph = lval(ShipTo_Ph)
+| 			ciisg800.stem = ShipTo_Em
+| 			ciisg800.item = Item_PrdNm
+| 			ciisg800.dsca = Item_PrdDesc
+| 			ciisg800.hsnc = Item_HsnCd
+| 			ciisg800.barc = Item_Barcde
+| 			ciisg800.qnty = Item_Qty
+| 			ciisg800.fqty = Item_FreeQty
+| 			ciisg800.cuni = Item_Unit
+| 			ciisg800.pric = Item_UnitPrice
+| 			ciisg800.amnt = Item_TotAmt
+| 			ciisg800.disc = Item_Discount
+| 			ciisg800.othc = Item_OthChrg
+| 			ciisg800.assv = Item_AssAmt
+| 			ciisg800.cgst = Item_CgstRt
+| 			ciisg800.sgst = Item_SgstRt
+| 			ciisg800.igst = Item_IgstRt
+| 			ciisg800.cess = Item_CesRt
+| 			ciisg800.cnaa = Item_CesNonAdval
+| 			ciisg800.scsr = Item_StateCes
+| 			ciisg800.valu = Item_TotItemVal
+| 			ciisg800.batn = Item_Batch_Nm
+| 			ciisg800.bate = Item_Batch_ExpDt
+| 			ciisg800.ward = Item_Batch_WrDt
+| 			ciisg800.tval = Val_AssVal
+| 			ciisg800.tcgs = Val_CgstVal
+| 			ciisg800.tsgs = Val_SgstVal
+| 			ciisg800.tigs = Val_IgstVal
+| 			ciisg800.tces = Val_CesVal
+| 			ciisg800.tscs = Val_StCesVal
+| 			ciisg800.tsna = Val_CesNonAdVal
+| 			ciisg800.tdis = Val_Disc
+| 			ciisg800.othv = Val_OthChrg
+| 			ciisg800.fivl = Val_TotInvVal
+| 			ciisg800.payn = Pay_Nam
+| 			ciisg800.modp = Pay_Mode
+| 			ciisg800.ifsc = Pay_FinInsBr
+| 			ciisg800.tpay = Pay_PayTerm
+| 			ciisg800.payi = Pay_PayInstr
+| 			ciisg800.cret = Pay_CrTrn
+| 			ciisg800.dird = Pay_DirDr
+| 			ciisg800.cred = Pay_CrDay
+| 			ciisg800.blmt = Pay_BalAmt
+| 			ciisg800.ddop = Pay_PayDueDt
+| 			ciisg800.accd = Pay_AcctDet
+| 			ciisg800.invr = Ref_InvRmk
+| 			ciisg800.ipst = Ref_InvStDt
+| 			ciisg800.iped = Ref_InvEndDt
+| 			ciisg800.prin = Ref_PrecInvNo
+| 			ciisg800.prid = Ref_PrecInvDt
+| 			ciisg800.rean = Ref_RecAdvRef
+| 			ciisg800.lbrn = Ref_TendRef
+| 			ciisg800.cren = Ref_ContrRef
+| 			ciisg800.aore = Ref_ExtRef
+| 			ciisg800.pren = Ref_ProjRef
+| 			ciisg800.vprn = Ref_PORef
+| 			ciisg800.expc = Exp_ExpCat
+| 			ciisg800.expp = Exp_WthPay
+| 			ciisg800.shbn = Exp_ShipBNo
+| 			ciisg800.shbd = Exp_ShipBDt
+| 			ciisg800.port = Exp_Port
+| 			ciisg800.tivf = Exp_InvForCur
+| 			ciisg800.fcur = Exp_ForCur
+| 			ciisg800.ccty = Exp_CntCode
+| 			db.insert(tciisg800,db.retry,e)
+| 			commit.transaction()
 		if dal.new.object("ciisg800") = 0 then
 			dal.set.field("ciisg800.comp",curr.comp)
 			dal.set.field("ciisg800.tran",ityp)
-			dal.set.field("ciisg800.docn",str$(str.doc))
+			dal.set.field("ciisg800.docn",str$(idoc))
 			dal.set.field("ciisg800.line",1)
 			dal.set.field("ciisg800.ogst",GSTIN)
 			dal.set.field("ciisg800.taxs",TaxSch)
@@ -1499,35 +1990,27 @@ function insert.data.ciisg800()
 }
 function insert.data.ciisg803()
 {
-	domain	tcmcs.str1	isse.in						
+	domain	tcmcs.str1	isse.in						|RAvi.a.s.24092020
 	isse.in = ""
 	
-	select	tdisg832.ityp
-	from	tdisg832
-	where	tdisg832._index4 = {:tdisg046.rcno, :tdisg046.rcln}
-	as set with 1 rows
-	selectdo
-	selectempty
-		tdisg832.dsca = ""
-	endselect
-
 	if tdisg832.ityp = tpisg.cont.typ.goods then
 		isse.in = "N"
 	else
 		isse.in = "Y"
 	endif
-					
-	ityp = tdisg045.cdin(1;3)
-		str.doc = tdisg045.cdin(4;8)
+										|RAvi.a.e.24092020
+	idoc = lval(tdisg831.invn(4;8))
+	ityp = tdisg831.invn(1;3)
+	str.doc = str$(idoc)
 	select	ciisg803.*
 	from	ciisg803 for update
-	where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc, :srno}
+	where	ciisg803._index1 = {:curr.comp, :ityp, :str.doc,:srno}
 	as set with 1 rows
 	selectdo
 		if dal.change.object("ciisg803") = 0 then
 			dal.set.field("ciisg803.comp",curr.comp)
 			dal.set.field("ciisg803.tran",ityp)
-			dal.set.field("ciisg803.docn",str$(str.doc))
+			dal.set.field("ciisg803.docn",str$(idoc))
 			dal.set.field("ciisg803.line",srno)
 			dal.set.field("ciisg803.item",Item_PrdNm)
 			dal.set.field("ciisg803.dsca",Item_PrdDesc)
@@ -1556,7 +2039,7 @@ function insert.data.ciisg803()
 			dal.set.field("ciisg803.iamt",igst.amount)
 			dal.set.field("ciisg803.cesa",cess.amount)
 			dal.set.field("ciisg803.cssa",stcess.amount)
-			dal.set.field("ciisg803.isse",isse.in)					
+			dal.set.field("ciisg803.isse",isse.in)					|RAvi.a.24092020
 			if dal.save.object("ciisg803") = 0 then
 				commit.transaction()
 			else
@@ -1567,7 +2050,7 @@ function insert.data.ciisg803()
 		if dal.new.object("ciisg803") = 0 then
 			dal.set.field("ciisg803.comp",curr.comp)
 			dal.set.field("ciisg803.tran",ityp)
-			dal.set.field("ciisg803.docn",str$(str.doc))
+			dal.set.field("ciisg803.docn",str$(idoc))
 			dal.set.field("ciisg803.line",srno)
 			dal.set.field("ciisg803.item",Item_PrdNm)
 			dal.set.field("ciisg803.dsca",Item_PrdDesc)
@@ -1596,7 +2079,7 @@ function insert.data.ciisg803()
 			dal.set.field("ciisg803.iamt",igst.amount)
 			dal.set.field("ciisg803.cesa",cess.amount)
 			dal.set.field("ciisg803.cssa",stcess.amount)
-			dal.set.field("ciisg803.isse",isse.in)					
+			dal.set.field("ciisg803.isse",isse.in)					|RAvi.a.24092020
 			if dal.save.object("ciisg803") = 0 then
 				commit.transaction()
 			else
@@ -1604,6 +2087,26 @@ function insert.data.ciisg803()
 			endif
 		endif
 	endselect
+}
+function domain tcmcs.str2 get.statutory.code
+				(
+					domain	tcccty 		i.ccty,
+					domain	tcmcs.cste	i.cste
+				)
+			
+{
+	domain	tcmcs.str2	o.scod
+	
+	select	tcmcs143.cdf_scod
+	from	tcmcs143
+	where	tcmcs143._index1 = {:i.ccty, :i.cste}
+	selectdo
+		get.var(pid, "tcmcs143.cdf_scod", o.scod)
+	selectempty
+		o.scod = ""
+	endselect
+	
+	return(o.scod)
 }
 
 function get.bp.data()
@@ -1617,12 +2120,27 @@ function get.bp.data()
 		tccom130.pstc,
 		tccom130.telp,
 		tccom130.tefx,
+| 		tccom139.dsca
 		tcmcs010.dsca:billship.to.ccty.dsca
 	from	tccom130, tcmcs010
 	where	tccom130._index1 = {:tccom100.cadr}
+| 	and	tccom130.cmbb refers to tccom139 UNREF CLEAR
 	and	tccom130.ccty refers to tcmcs010 UNREF CLEAR
 	selectdo
+| 		bp.name = trim$(bp.name) & " " & trim$(tccom130.namb)
+| 		o.regn.ln01 = trim$(tccom130.namc) & "," & trim$(tccom139.dsca) & "," & trim$(tccom130.pstc) & "," & trim$(tccom130.cste)
+| 		o.regn.ln02 = "Telp : " & trim$(tccom130.telp) & ", Fax : " & trim$(tccom130.tefx)
+| 		gstn.b.code = get.statutory.code(tccom130.ccty,tccom130.cste)
+| 		bp.location = tccom139.dsca
+| 		bp.pin = tccom130.pstc
+| 		bp.ph = trim$(tccom130.telp)
 	selectempty
+| 		o.regn.ln01 = ""
+| 		o.regn.ln02 = ""
+| 		bp.name = ""
+| 		bp.location = ""
+| 		bp.pin = ""
+| 		bp.ph = ""
 		billship.to.ccty.dsca = ""
 	endselect	
 }
@@ -1633,13 +2151,14 @@ function bill.from.loc(domain	tccom.cadr	i.cadr.own.billfrom,
 	select	tccom130.pstc:o.billfromstate
 	from	tccom130
 	where	tccom130._index1 = {:i.cadr.own.billfrom}
-	selectdo	
+	selectdo
+| 		o.billfromstate = tccom139.dsca		
 	selectempty
 		o.billfromstate = ""
 	endselect	
 }
 
-function get.tax.data()										
+function get.tax.data()											|RAvi.a.s.21102020
 {
 	domain	tcamnt		line.tax.amount.array(1, 1)	based
 	domain	tcamnt		line.base.amount.array(1, 1)	based
@@ -1660,18 +2179,19 @@ function get.tax.data()
 	
 	domain	tctax.indt.l	o.indt.l
 	
-	tcs.amnt = 0.00			
+	tcs.amnt = 0.00			|TCS logic added on 08-03-2020 by TV0001
 	cgst.amnt = 0.00
 	sgst.amnt = 0.00
 	igst.amnt = 0.00
 	
-	tcs.rate = 0.00			
+	tcs.rate = 0.00			|TCS logic added on 08-03-2020 by TV0001
 	cgst.rate = 0.00
 	sgst.rate = 0.00
 	igst.rate = 0.00
 	
 	select	tppin020.ccty
 	from	tppin020
+| 	where	tppin020._index1 = {:tpisg039.cprj, :tpisg039.ofbp, :tpisg039.nins}
 	where	tppin020._index1 = {:tdisg831.cprj, :tdisg831.ofbp}
 	selectdo
 	selectempty
@@ -1690,7 +2210,8 @@ function get.tax.data()
 	
 	tctax.dll9141.determine.aggregate.tax.amounts.per.line( 
 					tppin020.ccty,				| domain tcccty i.tax.country, 
-					tdisg046.cvat,				| domain tccvat i.aggregate.tax.code, 
+| 					tdisg831.cvat,				| domain tccvat i.aggregate.tax.code,  	|GH489CR000.o
+					tdisg831.ccvt,				| domain tccvat i.aggregate.tax.code, 	|GH489CR000.n
 					utc.num(),				| domain tcdate i.tax.date, 
 					assv.val,				| domain tcamnt i.order.line.price, 
 					assv.val,				| domain tcamnt i.customs.value, 
@@ -1725,7 +2246,8 @@ function get.tax.data()
 					
 	select	tctax941.cvat,tctax941.layr,tctax941.seqn
 	from	tctax941
-	where	tctax941._index1 = {:tppin020.ccty, :tdisg046.cvat}
+| 	where	tctax941._index1 = {:tppin020.ccty, :tdisg831.cvat}			|GH489CR000.o
+	where	tctax941._index1 = {:tppin020.ccty, :tdisg831.ccvt}			|GH489CR000.n
 	and	tctax941.amor = tctax.amor.l.not.appl
 	selectdo
 		if not tcmcs.dll0036.get.indirect.tax.l(	tppin020.ccty, 
@@ -1733,38 +2255,40 @@ function get.tax.data()
 								o.indt.l) then	|* Indirect Tax Type	
 			
 		endif
-		select	tcmcs036.ttcs.l						
+		select	tcmcs036.ttcs.l						|TCS logic added on 08-03-2020 by TV0001
 		from	tcmcs036
-		where	tcmcs036._index1 = {:tppin020.ccty, :tctax941.cvat}
+		where	tcmcs036._index1 = {:tppin020.ccty,:tctax941.cvat}
 		and	tcmcs036.ttcs.l = 1
 		selectdo
-			tcs.rate = tcs.rate + o.tax.rates(tctax941.layr, tctax941.seqn)
-			tcs.amnt = tcs.amnt + line.tax.amount.array(tctax941.layr, tctax941.seqn)
+			tcs.rate = tcs.rate + o.tax.rates(tctax941.layr,tctax941.seqn)
+			tcs.amnt = tcs.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
 			tcs.amnt = round(tcs.amnt, 2, 1)		
-		endselect							
+		endselect							|TCS logic added on 08-03-2020 by TV0001
 		
 		on case o.indt.l
 		case	tctax.indt.l.cgst:
-			cgst.rate = cgst.rate + o.tax.rates(tctax941.layr, tctax941.seqn)
-			cgst.amnt = cgst.amnt + line.tax.amount.array(tctax941.layr, tctax941.seqn)
-			cgst.amnt = round(cgst.amnt, 2, 1)		
+			cgst.rate = cgst.rate + o.tax.rates(tctax941.layr,tctax941.seqn)
+			cgst.amnt = cgst.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+| 			cgst.amnt = round(cgst.amnt, 0, 1)			|#ISGEC002027.o
+			cgst.amnt = round(cgst.amnt, 2, 1)			|#ISGEC002027.n
 			
 			break
 			
 		case	tctax.indt.l.sgst:
 		case	tctax.indt.l.utgst:
-			sgst.rate = sgst.rate + o.tax.rates(tctax941.layr, tctax941.seqn)
-			sgst.amnt = sgst.amnt + line.tax.amount.array(tctax941.layr, tctax941.seqn)
-			sgst.amnt = round(sgst.amnt, 2, 1)			
+			sgst.rate = sgst.rate + o.tax.rates(tctax941.layr,tctax941.seqn)
+			sgst.amnt = sgst.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+| 			sgst.amnt = round(sgst.amnt, 0, 1)			|#ISGEC002027.o
+			sgst.amnt = round(sgst.amnt, 2, 1)			|#ISGEC002027.n
 			
 			break	
 			
 		case	tctax.indt.l.igst:
-			igst.rate = igst.rate + o.tax.rates(tctax941.layr, tctax941.seqn)
-			igst.amnt = igst.amnt + line.tax.amount.array(tctax941.layr, tctax941.seqn)
-			igst.amnt = round(igst.amnt, 2, 1)			
+			igst.rate = igst.rate + o.tax.rates(tctax941.layr,tctax941.seqn)
+			igst.amnt = igst.amnt + line.tax.amount.array(tctax941.layr,tctax941.seqn)
+| 			igst.amnt = round(igst.amnt, 0, 1)			|#ISGEC002027.0
+			igst.amnt = round(igst.amnt, 2, 1)			|#ISGEC002027.n
 			break	
 		endcase
 	endselect
-}											
-
+}

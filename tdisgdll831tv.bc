@@ -520,33 +520,41 @@ function extern tdisgdll831tv.custom_invoice
 		
 									
 		if tdisg831.etyp = tdisg.advice.service then
-			num.to.date(tdisg831.invd, yr, mnth, day)
-			o.eff.date = date.to.utc(yr, mnth, day, 23 , 59, 59)
-							
-			if not tcmcs.dll0108.determine.currency.rate.and.rate.factor(	get.compnr(),
-											"INR",
-											tppdm740.ccur,
-											o.eff.date,		
-											"SAL",			
-											exc.rate,		
-											o.ratf,
-											o.yes.no.flag)	 then	
-			endif
+			if date.to.num(2021, 06, 07) > tdisg831.invd then
+				num.to.date(tdisg831.invd, yr, mnth, day)
+				o.eff.date = date.to.utc(yr, mnth, day, 23 , 59, 59)
+								
+				if not tcmcs.dll0108.determine.currency.rate.and.rate.factor(	get.compnr(),
+												"INR",
+												tppdm740.ccur,
+												o.eff.date,		
+												"SAL",			
+												exc.rate,		
+												o.ratf,
+												o.yes.no.flag)	 then	
+				endif
+			else
+				exc.rate = tdisg831.etct
+			endif		
 			rate.type.line = 	"(RBI DAILY EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
-						tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 							
-		else								
-			select	tdisg878.exrt:exc.rate
-			from	tdisg878
-			where	tdisg878._index1 = {:tppdm740.ccur}
-			and	tdisg878.efdt <= :tdisg831.invd
-			and	tdisg878.appr = tcyesno.yes 
-			selectdo
-			selectempty
-				exc.rate = 1
-			endselect
-			
+					tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 							
+		else	
+			if date.to.num(2021, 06, 07) > tdisg831.invd then
+				select	tdisg878.exrt:exc.rate
+				from	tdisg878
+				where	tdisg878._index1 = {:tppdm740.ccur}
+				and	tdisg878.efdt <= :tdisg831.invd
+				and	tdisg878.appr = tcyesno.yes 
+				selectdo
+				selectempty
+					exc.rate = 1
+				endselect
+			else
+				exc.rate = tdisg831.etct
+			endif
+				
 			rate.type.line = 	"(CUSTOM EXCHANGE RATE TAKEN FOR CONVERSION 1 " &
-						tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 
+					tppdm740.ccur & " = " & trim$(str$(exc.rate)) & " INR)" 
 		endif
 									|#ISGEC017006.en
 		get_label()

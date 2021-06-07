@@ -33,6 +33,9 @@
 |* 
 |* GH418CR752, RAvi Kumar, 09-10-2020
 |* EBA should not be returned to Projects when E-Invoice IRN generated
+|*
+|* GH470CR000, RAvi Kumar, 13-01-2021
+|* Exchange Rate correction in Custom Invoice HTML Print
 |* 
 |* GH480CR000, RAvi Kumar, 29-01-2021
 |* Issue in freeze custom invoice against Generation of Commercial Invoice with Cr Note
@@ -154,6 +157,11 @@ extern	domain	tcmcs.str100m	description3			|ISGEC01031.n
 	extern	domain	tcmcs.str70	irrn			|RAvi.a.01102020
 	extern	domain	tcdate		irn.date		|RAvi.a.01102020
 		domain	tcncmp		curr_comp.r	
+		domain	tcratc		etct.get		|GH470CR000.a
+		domain tcratf		o.ratf			|GH470CR000.a
+		domain tcyesno		o.yes.no.flag		|GH470CR000.a
+		domain tcmcs.long 	yr, mnth, day		|GH470CR000.a
+		domain tcdate 		o.eff.date		|GH470CR000.a	
 		domain	tcamnt		total.in.amnt.cr.dr	|GH480CR000.a
 |****************************** program section ********************************
 before.program:
@@ -301,17 +309,50 @@ on.choice:
 		temp.invn = tdisg831.invn
 	endif
 
+	select	tppdm740.ccur										|GH470CR000.a.s
+	from	tppdm740
+	where	tppdm740._index1 = {:tdisg831.cprj, :tdisg831.ofbp}
+	selectdo
+	endselect
+		
+	if tdisg831.etyp = tdisg.advice.service then						
+		num.to.date(tdisg831.invd, yr, mnth, day)
+		o.eff.date = date.to.utc(yr, mnth, day, 23 , 59, 59)
+						
+		if not tcmcs.dll0108.determine.currency.rate.and.rate.factor(	get.compnr(),
+										"INR",
+										tppdm740.ccur,
+										o.eff.date,		
+										"SAL",			
+										etct.get,		
+										o.ratf,
+										o.yes.no.flag)	 then	
+		endif							
+	else								
+		select	tdisg878.exrt:etct.get
+		from	tdisg878
+		where	tdisg878._index1 = {:tppdm740.ccur}
+		and	tdisg878.efdt <= :tdisg831.invd
+		and	tdisg878.appr = tcyesno.yes 
+		selectdo
+		selectempty
+			etct.get = 1
+		endselect
+	endif											|GH470CR000.a.e
+
 	select 	tdisg831.invn,
 		tdisg831.nvst
 		,tdisg831.cinb					|#ISGEC016036.n
-		,tdisg831.cino					|#ISGEC016036.n		
+		,tdisg831.cino,					|#ISGEC016036.n	
+		tdisg831.etct					|GH470CR000.a	
 	from	tdisg831 for update
 	where	tdisg831._index1 = {:tdisg831.edrn}
 	selectdo
 		tdisg831.invn = temp.invn
 		tdisg831.nvst = tdisg.nvst.preship
 		tdisg831.cinb	=	logname$		|#ISGEC016036.n
-		tdisg831.cino	=	utc.num()		|#ISGEC016036.n		
+		tdisg831.cino	=	utc.num()		|#ISGEC016036.n	
+		tdisg831.etct	=	etct.get		|GH470CR000.a			
 		db.update(ttdisg831,db.retry,e)
 	endselect
 		
