@@ -103,6 +103,9 @@
 |* 
 |* GH528CR878, RAvi Kumar, 26-03-2021
 |* Modification in Logistics PO Generation from Superprocure utility
+|*
+|* GH577CR000, RAvi Kumar, 11-06-2021
+|* 179339-PO Series restriction only for Purchase order created in ERP LN
 |******************************************************************************
 	table	ttdmsl400
 	table	ttpisg012
@@ -218,9 +221,11 @@ function extern long ue.before.before.save.object(long mode)
 			calling.prog = "tdpur4534m000" or		|GH481CR000.a
 			calling.prog = "tdpur4501m140" then		|GH481CR000.a
 		else
-			if not check.series.auth(tdpur400.orno(1;4), user.auto) then		
-				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
-				return(DALHOOKERROR)
+			if tdpur400.orno(1;1) = "P" then	|GH577CR000.a
+				if not check.series.auth(tdpur400.orno(1;4), user.auto) then		
+					dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+					return(DALHOOKERROR)
+				endif
 			endif
 		endif							|GH388CR709.a.e
 								|# PATCH001047.sn
@@ -256,9 +261,11 @@ function extern long ue.before.before.save.object(long mode)
 			calling.prog = "tdpur4106s100" or		|GH481CR000.a
 			calling.prog = "whinh3121s000"  then		|GH481CR000.a
 		else
-			if not check.series.auth(tdpur400.orno(1;4), user.auto) then	
-				dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
-				return(DALHOOKERROR)
+			if tdpur400.orno(1;1) = "P" then	|GH577CR000.a
+				if not check.series.auth(tdpur400.orno(1;4), user.auto) then	
+					dal.set.error.message("@User " & trim$(user.auto) & " not authorised for PO Series " & trim$(tdpur400.orno(1;4)))
+					return(DALHOOKERROR)
+				endif
 			endif
 		endif							|GH388CR709.a.e
 		
