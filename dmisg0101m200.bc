@@ -40,6 +40,9 @@
 |*
 |* ID: GH360CR657, RAvi Kumar, 08-07-2020
 |* Blocking Items in Drawing having unit LOT
+|*
+|* GH566CR000, RAvi Kumar, 07-06-2021
+|* IR178774-dmisg121 not updated sometimes while Vault to baan transfer
 |****************************** declaration section ***************************
 declaration:
 
@@ -662,39 +665,39 @@ function before_new_function_for_generate()
 
 function on_new_function_for_generate()
 {
-	
-	select	dmisg001.docs, dmisg001.wfst, dmisg001.sudt, dmisg001.aact.1, dmisg001.aact.2,
-		dmisg001.ract.1, dmisg001.ract.2, dmisg001.rdat, dmisg001.aact.3, dmisg001.adat
-	from	dmisg001 for update
-	where	dmisg001._index1 = {:dmisg001.docn,:dmisg001.revn}
-	selectdo
-		if not isspace(dmisg001.rusr) or not isspace(dmisg001.ausr) then
-			dmisg001.docs = tcyesno.yes
-			if not isspace(dmisg001.rusr) then
-				dmisg001.wfst = dmisg.wfst.underreview
-			else
-				dmisg001.wfst = dmisg.wfst.underapproval
+	if not check.documentlist() then				|GH566CR000.a
+		select	dmisg001.docs, dmisg001.wfst, dmisg001.sudt, dmisg001.aact.1, dmisg001.aact.2,
+			dmisg001.ract.1, dmisg001.ract.2, dmisg001.rdat, dmisg001.aact.3, dmisg001.adat
+		from	dmisg001 for update
+		where	dmisg001._index1 = {:dmisg001.docn,:dmisg001.revn}
+		selectdo
+			if not isspace(dmisg001.rusr) or not isspace(dmisg001.ausr) then
+				dmisg001.docs = tcyesno.yes
+				if not isspace(dmisg001.rusr) then
+					dmisg001.wfst = dmisg.wfst.underreview
+				else
+					dmisg001.wfst = dmisg.wfst.underapproval
+				endif
+				dmisg001.ract.1 = tcyesno.no
+				dmisg001.ract.2 = tcyesno.no			
+				dmisg001.rdat = 0
+				dmisg001.ract = dmisg.act.na
+				dmisg001.aact.1 = tcyesno.no
+				dmisg001.aact.2 = tcyesno.no
+				dmisg001.aact.3 = tcyesno.no
+				dmisg001.adat = 0
+				dmisg001.aact = dmisg.act.na
+				dmisg001.sudt = utc.num()		
+										|#sujeet20150513.sn
+				if send.email.alert() then
+					message("Sending Email Failed")
+				endif
+										|#sujeet20150513.en
 			endif
-			dmisg001.ract.1 = tcyesno.no
-			dmisg001.ract.2 = tcyesno.no			
-			dmisg001.rdat = 0
-			dmisg001.ract = dmisg.act.na
-			dmisg001.aact.1 = tcyesno.no
-			dmisg001.aact.2 = tcyesno.no
-			dmisg001.aact.3 = tcyesno.no
-			dmisg001.adat = 0
-			dmisg001.aact = dmisg.act.na
-			dmisg001.sudt = utc.num()		
-									|#sujeet20150513.sn
-			if send.email.alert() then
-				message("Sending Email Failed")
-			endif
-									|#sujeet20150513.en
-		endif
-		db.update(tdmisg001,db.retry,e)
-	endselect
-	commit.transaction()
-		
+			db.update(tdmisg001,db.retry,e)
+		endselect
+		commit.transaction()
+	endif	
 }
 							|#ISGEC004003.sn
 function create.xml.file()
@@ -1230,6 +1233,22 @@ function long check.cuni()
 	
 	return(flag.cuni)
 }													|GH360CR657.a.e
+
+function boolean check.documentlist()								|GH566CR000.a.s
+{
+	select	dmisg121.docn				
+	from	dmisg121
+	where	dmisg121._index1 = {:dmisg001.docn, :dmisg001.revn}
+	as set with 1 rows
+	selectdo
+	selectempty
+		message("Document " & trim$(dmisg001.docn) &" Revision " & trim$(dmisg001.revn) &" not found in document list, cannot submit document")
+| 		choice.again()
+		return(true)
+	endselect
+	return(false)
+}											|GH566CR000.a.e
+
 
 
 
