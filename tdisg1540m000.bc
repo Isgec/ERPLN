@@ -236,9 +236,10 @@ function generate.po.line(	domain	tcorno	orno.po.line)
 			dal.set.field("tdpur401.cspa", "99050500")
 			dal.set.field("tdpur401.cact", tppdm600.rsac)
 			dal.set.field("tdpur401.rnsb.l", tctax400.seqn.l)
+			dal.set.field("tdpur401.txta", tdisg140.txta)				|RAvi.a.12062021
 			if dal.save.object("tdpur401") = 0 then
 				commit.transaction()
-				create.text(orno.po.line)
+| 				create.text(orno.po.line)
 				generate.po.line.ex(orno.po.line)
 				generate.document.req(orno.po.line)
 				update.payment.term(orno.po.line)		|GH528CR878.a
@@ -374,7 +375,7 @@ function domain	tcmcs.str500m	get.text.line()
 	str.text = str.text & "Type of Vehicle - " & trim$(tdisg140.type) & ", "
 | 	str.text = str.text & "Weight - " & trim$(str$(tdisg140.wght)) & ", "						|GH528CR878.com
 	str.text = str.text & "Weight of Material - " & trim$(str$(tdisg140.wght)) & " " &trim$(tdisg140.wunt) & ", "	|GH528CR878.a
-	str.text = str.text & "Size of Vehicle - " & trim$(tdisg140.size) & ", "
+	str.text = str.text & "Size of Vehicle - " & trim$(tdisg140.size) & " " &trim$(tdisg140.uoms) & ", "
 	str.text = str.text & "No. of Vehicle - " & trim$(str$(tdisg140.novc)) & ", "
 	str.text = str.text & "Amount - Rs." & trim$(str$(tdisg140.amnt))
 	
