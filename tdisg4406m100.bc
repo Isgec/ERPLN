@@ -83,6 +83,9 @@
 |*
 |* GH551CR827, RAvi Kumar, 07-05-2021
 |* CR827-MSME Code required in Print Purchase Bill Approval Memo
+|*
+|* GH579CR000, RAvi Kumar, 01-06-2021
+|* Receipts Error (Error in reading sort file record: 9 field scanned, 104 expected ) and GR not print in service receipt
 |****************************** declaration section ***************************
 declaration:
 
@@ -851,7 +854,9 @@ function read.main.table()
 				deduction.val = tdisg209.npay
 			else
 				balance.payable()
-				deduction.val =(Balance_advance/bal.payable) * gros.amnt.total
+				if bal.payable <> 0 then			|GH579CR000.a
+					deduction.val =(Balance_advance/bal.payable) * gros.amnt.total
+				endif
 			endif							|#ISGEC01099.en
 					
 			tcmcs.dll0006.decode(g.totl,2,decode0,decode1,decode2,decode3, language)
