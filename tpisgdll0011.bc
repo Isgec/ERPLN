@@ -31,6 +31,9 @@
 |*
 |* ID: GH237CR000, RAvi Kumar, 28-12-2019
 |* IR135309-SanctionControl-Value of Element 1 increasing
+|*
+|* GH578CR000, RAvi Kumar, 14-06-2021
+|* 179380-In Sanction control L2 level element not updated properly on Contingency-S revise
 |******************************************************************************
 	table	ttpisg011
 	table	ttpisg012
@@ -1691,7 +1694,7 @@ function domain tcpono tpisgdll0011.get.transfer.from.element.levl
 domain	tccprj		main.proj
 domain	tcorno		main.vers
 domain	tppdm.cspa	main.elem,temp.elem
-domain	tcamnt		total.amount
+domain	tcamnt		total.amount, total.avail				|GH578CR000.a
 long l.count
 long 		            ret.val, sql.by.level(99999),sql.x 	 
 domain	tppdm.cspa	stack.elem(99999)
@@ -1733,6 +1736,7 @@ function extern tpisgdll0011.isgec_dream_for_distribution_amount
 		main.vers = i.vers
 		l.count = 1
 		total.amount = 0
+		total.avail = 0						|GH578CR000.a
 		o.totl = 0
 		temp.elem = ""
 		stack.elem(1,1) = old.elem
@@ -1752,16 +1756,31 @@ function extern tpisgdll0011.isgec_dream_for_distribution_amount
 			explore.child.element()
 		endif	
 		
-		select 	tpisg012.aamt,
-			tpisg012.amnt,
-			tpisg012.totl:o.totl
-		from	tpisg012 for update
-		where	tpisg012._index1 = {:i.cprj,:i.vers,:old.elem}
-		selectdo
-			tpisg012.aamt = total.amount
-			tpisg012.amnt = o.totl - tpisg012.aamt
-			db.update(ttpisg012,db.retry,e)
-		endselect
+		if old.levl = param.levl then			|GH578CR000.a
+			select 	tpisg012.aamt,
+				tpisg012.amnt,
+				tpisg012.totl:o.totl
+			from	tpisg012 for update
+			where	tpisg012._index1 = {:i.cprj,:i.vers,:old.elem}
+			selectdo
+				tpisg012.aamt = total.amount
+				tpisg012.amnt = o.totl - tpisg012.aamt
+				db.update(ttpisg012,db.retry,e)
+			endselect
+		else							|GH578CR000.a.s
+			select 	tpisg012.aamt,
+				tpisg012.amnt,
+				tpisg012.totl
+			from	tpisg012 for update
+			where	tpisg012._index1 = {:i.cprj,:i.vers,:old.elem}
+			selectdo
+				tpisg012.totl = total.amount
+				tpisg012.avai = total.avail		|GH578CR000.a
+				tpisg012.aamt = total.amount
+				tpisg012.amnt = total.amount - tpisg012.aamt
+				db.update(ttpisg012,db.retry,e)
+			endselect
+		endif							|GH578CR000.a
 		
 		for k = 1 to 100 
 			stack.elem(1,k) = ""
@@ -1782,6 +1801,7 @@ function extern explore.child.element()
 	
 	sql.x = sql.parse("	select 	tpisg012.totl,
 ^					tpisg012.elem,
+^					tpisg012.avai,
 ^					tpisg012.cspa:5
 ^				from	tpisg012
 ^				where	tpisg012._index1 = {:1,:2}
@@ -1806,6 +1826,7 @@ function extern explore.child.element()
 			endif
 			
 			total.amount = total.amount + tpisg012.totl
+			total.avail = total.avail + tpisg012.avai			|GH578CR000.a
 			
 			temp.elem = tpisg012.elem
 			stack.elem(1,l.count) = tpisg012.elem
