@@ -11,7 +11,9 @@
 |* 
 |* GH403CR730, RAvi Kumar, 23-09-2020
 |* Modification in Payable Retention report
-                                                                                
+|*
+|* GH562CR856, RAvi Kumar, 26-05-2021
+|* Modification in report Detail of Supplier wise and PO wise Payable/Retention Amount for MSME suppliers                                
 |****************************** declaration section ***************************
 declaration:
 
@@ -25,6 +27,7 @@ declaration:
   table	ttcemm030
   table	ttfisg001		|GH403CR730.a
   table	ttcisg001		|GH403CR730.a
+  table	ttcmcs045		|GH562CR856.a
   
 
    extern  domain  tccom.bpid	bpid.f, bpid.t
@@ -56,6 +59,7 @@ declaration:
 	extern	domain	tfgld.desc	rep.cloc.dsca
 	extern	domain	tfgld.sess	session.i				|GH368CR666.a
 	extern	domain	tcorno		orno.i					|GH368CR666.a
+	extern	domain	tccreg		creg.f, creg.t				|GH562CR856.a
 	
 	
 	domain	tfgld.docn	ir.no
@@ -113,6 +117,10 @@ when.field.changes:
 field.cprj.f:
 when.field.changes:
    cprj.t = cprj.f
+   
+field.creg.f:									|GH562CR856.a
+when.field.changes:
+   creg.t = creg.f
    
 field.fcom.f:									|GH403CR730.a.s
 when.field.changes:
@@ -185,8 +193,10 @@ function read.main.table()
 				tdpur401.orno,
 				tdpur401.pono,
 				tdpur401.sqnb,
-				tcmcs052.dsca
-			from	tfacp201, tccom100, tfacp251, tdpur401, tcmcs052
+				tcmcs052.dsca,
+				tccom120.creg, 
+				tcmcs045.dsca							|GH562CR856.a
+			from	tfacp201, tccom100, tfacp251, tdpur401, tcmcs052, tccom120, tcmcs045	|GH562CR856.a
 	| 		where	tfacp201._index3 inrange {:bpid.f} and {:bpid.t}
 			where	tfacp201.ifbp inrange {:bpid.f} and {:bpid.t}
 			and	tfacp201.cdf_bloc inrange :bloc.f and :bloc.t
@@ -199,9 +209,12 @@ function read.main.table()
 			and	tdpur401.pono = tfacp251.pono
 			and	tdpur401.sqnb = tfacp251.sqnb
 			and	tdpur401.cprj inrange :cprj.f and :cprj.t
+			and	tccom120.creg inrange :creg.f and :creg.t			|GH562CR856.a
+			and	tccom120.otbp = tdpur401.otbp					|GH562CR856.a
 			and	tdpur401._compnr = :tcemm030.lcmp
 			and	tdpur401.cprj refers to tcmcs052
 			and	tfacp201.ifbp refers to tccom100
+			and	tccom120.creg refers to tcmcs045				|GH562CR856.a
 	| 		order by tfacp251.icom, tfacp201.ttyp, tfacp201.ninv
 			order by tfacp251.icom, tfacp201._index2
 			selectdo
@@ -290,6 +303,13 @@ function read.main.table()
 		endselect
 	else
 | 		switch.to.company(tcemm030.fcmp)
+		select	tcemm030.fcmp,
+			tcemm030.lcmp
+		from	tcemm030
+		where	tcemm030.lcmp = :curr_comp
+		as set with 1 rows
+		selectdo
+		endselect
 		select	tfacp201.ttyp,
 			tfacp201.ninv,
 			tfacp201.schn,
@@ -311,8 +331,10 @@ function read.main.table()
 			tdpur401.orno,
 			tdpur401.pono,
 			tdpur401.sqnb,
-			tcmcs052.dsca
-		from	tfacp201, tccom100, tfacp251, tdpur401, tcmcs052
+			tcmcs052.dsca,
+			tccom120.creg, 
+			tcmcs045.dsca								|GH562CR856.a
+		from	tfacp201, tccom100, tfacp251, tdpur401, tcmcs052, tccom120, tcmcs045	|GH562CR856.a
 | 		where	tfacp201._index3 inrange {:bpid.f} and {:bpid.t}
 		where	tfacp201.ifbp inrange {:bpid.f} and {:bpid.t}
 		and	tfacp201.cdf_bloc inrange :bloc.f and :bloc.t
@@ -325,9 +347,12 @@ function read.main.table()
 		and	tdpur401.pono = tfacp251.pono
 		and	tdpur401.sqnb = tfacp251.sqnb
 		and	tdpur401.cprj inrange :cprj.f and :cprj.t
+		and	tccom120.creg inrange :creg.f and :creg.t			|GH562CR856.a
+		and	tccom120.otbp = tdpur401.otbp					|GH562CR856.a
 | 		and	tdpur401._compnr = :tcemm030.lcmp
 		and	tdpur401.cprj refers to tcmcs052
 		and	tfacp201.ifbp refers to tccom100
+		and	tccom120.creg refers to tcmcs045				|GH562CR856.a
 | 		order by tfacp251.icom, tfacp201.ttyp, tfacp201.ninv
 		order by tfacp251.icom, tfacp201._index2
 		selectdo
