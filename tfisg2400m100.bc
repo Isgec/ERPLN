@@ -82,6 +82,9 @@
 |*
 |* GH409CR737, RAvi Kumar, 15-10-2020
 |* Upgrade Quick Payment Session
+|*
+|* GH561CR855, RAvi Kumar, 25-05-2021
+|* CR855-Modification in Print Purchase order Summary for MSME Suppliers
 |****************************** declaration section ***************************
 declaration:
 
@@ -112,6 +115,8 @@ declaration:
 	table	ttfgld001		|#ISGEC015041.n
  
 	table 	ttfisg185
+	table 	ttccom120		|GH561CR855.a
+	table 	ttcmcs045		|GH561CR855.a
 |**************  FORM FIELDS ***********************************
 
   extern  domain  tccprj      		proj.f  
@@ -229,6 +234,7 @@ extern	domain	tfisg.curr.typ	curr.type	|#ISGEC01153.n
 
 extern	domain	tfgld.sess		calling.session
 extern  domain  tcmcs.str10m		t.iprq
+extern	domain	tccreg	creg.f, creg.t					|GH561CR855.a
 long	brp_open
 |****************************** program section ***********************************
 before.program:
@@ -261,6 +267,8 @@ before.program:
 			set.fmax(proj.t)
 			set.fmin(suno.f)
 			set.fmax(suno.t)
+			set.fmin(creg.f)				|GH561CR855.a
+			set.fmax(creg.t)				|GH561CR855.a
 			curr.type = ltoe(1)
 			execute(cont.process)
 			
@@ -347,6 +355,10 @@ when.field.changes:
 field.orno.f:
 when.field.changes:
 	orno.t = orno.f
+	
+field.creg.f:						|GH561CR855
+when.field.changes:
+	creg.t = creg.f
 |****************************** function section ******************************
 functions:
 
@@ -354,11 +366,13 @@ function po.summary.detail()
 {
 	comp = get.compnr()
 	
-	select	tdpur401.*, tccom100.nama:sunama.m, tcmcs052.dsca:projdesc.m			
-	from	tdpur401, tccom100, tcmcs052 
+	select	tdpur401.*, tccom100.nama:sunama.m, tcmcs052.dsca:projdesc.m, tccom120.creg	|GH561CR855.a			
+	from	tdpur401, tccom100, tcmcs052, tccom120						|GH561CR855.a 
 	where 	tdpur401._index5 inrange {:proj.f}	and	{:proj.t}
 	and	tdpur401._index1 inrange {:orno.f}	and	{:orno.t}
 	and	tdpur401._index4 inrange {:suno.f}	and	{:suno.t}
+	and	tccom120.creg inrange {:creg.f}	and	{:creg.t}				|GH561CR855.a
+	and	tdpur401.otbp = tccom120.otbp
 	and	tdpur401.oltp <> tdgen.oltp.total
 	and	tdpur401.otbp refers to tccom100 Unref Clear
 	selectdo
@@ -427,9 +441,11 @@ function print.detail.report()
 	
 								|#ISGEC001061.sn
 	select 	tdpur401.orno
-	from	tdpur401
+	from	tdpur401, tccom120
 	where	tdpur401._index5 inrange {:proj.f,:orno.f} and {:proj.t,:orno.t}
 	and	tdpur401.otbp inrange :suno.f and :suno.t
+	and	tccom120.creg inrange :creg.f and :creg.t				|GH561CR855.a
+	and	tdpur401.otbp = tccom120.otbp
 	group by tdpur401.orno
 	selectdo
 								|#ISGEC001061.en
@@ -440,6 +456,17 @@ function print.detail.report()
 	where	tdpur400._index1 = {:tdpur401.orno}					|#ISGEC001061.n
 	and	tdpur400.cofc refers to tcmcs065 Unref Clear
 	selectdo 
+		select	tccom120.creg, 							|GH561CR855.a.s
+			tcmcs045.dsca
+		from	tccom120, tcmcs045
+		where	tccom120._index1 = {:tdpur400.otbp}
+		and	tccom120.creg refers to tcmcs045
+		as set with 1 rows
+		selectdo
+		selectempty
+			tccom120.creg = ""
+			tcmcs045.dsca = ""
+		endselect								|GH561CR855.a.e
 		if curr.type = tfisg.curr.typ.hc then
 	
 			select	tfacp251.ityp, tfacp251.idoc, tfacp251.orno, sum(tfacp251.amth(1)):bas.val
@@ -457,13 +484,15 @@ function print.detail.report()
 				tds.tfacp200.whti = tcyesno.no
 				
 				select	tdpur401.orno
-				from	tdpur401, tdpur400
+				from	tdpur401, tdpur400, tccom120			|GH561CR855.a
 				where	tdpur401._index5 inrange {:proj.f}	and	{:proj.t}
 				and	tdpur401._index4 inrange {:suno.f}	and	{:suno.t}
 				and	tdpur401._index1 = {:tfacp251.orno}
 				and	tdpur401.oltp <> tdgen.oltp.total
 				and	tdpur401.orno refers to tdpur400
 				and	tdpur400.hdst <> tdpur.hdst.cancelled
+				and	tccom120.creg inrange :creg.f and :creg.t				|GH561CR855.a
+				and	tdpur401.otbp = tccom120.otbp						|GH561CR855.a
 				group by tdpur401.orno
 				selectdo
 					tdpur400.orno = tdpur401.orno
@@ -737,13 +766,15 @@ function print.detail.report()
 				tds.tfacp200.whti = tcyesno.no
 				
 				select	tdpur401.orno
-				from	tdpur401, tdpur400
+				from	tdpur401, tdpur400, tccom120					|GH561CR855.a
 				where	tdpur401._index5 inrange {:proj.f}	and	{:proj.t}
 				and	tdpur401._index4 inrange {:suno.f}	and	{:suno.t}
 				and	tdpur401._index1 = {:tfacp251.orno}
 				and	tdpur401.oltp <> tdgen.oltp.total
+				and	tdpur401.otbp = tccom120.otbp					|GH561CR855.a
 				and	tdpur401.orno refers to tdpur400
 				and	tdpur400.hdst <> tdpur.hdst.cancelled
+				and	tccom120.creg inrange {:creg.f} and {:creg.t}			|GH561CR855.a
 				group by tdpur401.orno
 				selectdo
 					tdpur400.orno = tdpur401.orno
@@ -1179,9 +1210,11 @@ function print.summary.report()
 	domain	tcamnt		tot.oth2								
 	
 	select 	tdpur401.orno
-	from	tdpur401
+	from	tdpur401, tccom120					|GH561CR855.a
 	where	tdpur401._index5 inrange {:proj.f,:orno.f} and {:proj.t,:orno.t}
 	and	tdpur401.otbp inrange :suno.f and :suno.t
+	and	tccom120.creg inrange :creg.f and :creg.t				|GH561CR855.a
+	and	tdpur401.otbp = tccom120.otbp
 	group by tdpur401.orno
 	selectdo
 								|#ISGEC001061.en
@@ -1192,6 +1225,17 @@ function print.summary.report()
 		and	tdpur400.hdst <> tdpur.hdst.cancelled
 		and	tdpur400.otbp refers to tccom100 Unref Clear
 		selectdo
+			select	tccom120.creg, 							|GH561CR855.a.s
+				tcmcs045.dsca
+			from	tccom120, tcmcs045
+			where	tccom120._index1 = {:tdpur400.otbp}
+			and	tccom120.creg refers to tcmcs045
+			as set with 1 rows
+			selectdo
+			selectempty
+				tccom120.creg = ""
+				tcmcs045.dsca = ""
+			endselect								|GH561CR855.a.e
 			if curr.type = tfisg.curr.typ.hc then
 				suno.m = tdpur400.otbp
 				select	max(tdmsl400.vrsn):rvno.m
@@ -1372,11 +1416,12 @@ function get.data.from.tfmsl020
 		tfacp200.bala,	|#ISGEC01030.n	
 		tfacp200.amti	|#ISGEC01030.n
 				
-	from	tfacp200
+	from	tfacp200, tccom120					|GH561CR855.a
 	where	tfacp200.cdf_cprj inrange :i.cprj.f and :i.cprj.t
 	and	tfacp200.cdf_prno = :i.orno
 	and	tfacp200.ifbp inrange :suno.f and :suno.t
-											
+	and	tccom120.creg inrange :creg.f and :creg.t		|GH561CR855.a
+	and	tfacp200.otbp = tccom120.otbp				|GH561CR855.a				
 | 		and	tfacp200.docn = 0
 | 		and	tfacp200.lino = 0
 	and	tfacp200._compnr = :i.ncmp		|#ISGEC001153.n
@@ -2008,14 +2053,19 @@ function Print.purchase.order.for.cost.invoice()
 			tfacp200.payd,
 			tfacp200.rate,
 			tfacp200.payl,
-			tfacp200.tdoc
-		from	tfacp200
+			tfacp200.tdoc,
+			tccom120.creg,					|GH561CR855.a
+			tcmcs045.dsca					|GH561CR855.a
+		from	tfacp200, tccom120, tcmcs045			|GH561CR855.a
 		where	tfacp200.cdf_cprj inrange :proj.f and :proj.t
 		and	tfacp200.cdf_prno inrange :orno.f and :orno.t
 		and	tfacp200.ifbp inrange :suno.f and :suno.t
 		and	tfacp200.docn = 0
 		and	tfacp200.tpay = tfacp.tpay.invoice
 		and	tfacp200.appr = tfacp.inv.expence
+		and	tfacp200.otbp = tccom120.otbp			|GH561CR855.a
+		and	tccom120.creg inrange :creg.f and :creg.t	|GH561CR855.a
+		and	tccom120.creg refers to tcmcs045		|GH561CR855.a
 	| 	and	tfacp200.lino = 0				|#SUJEET20150330.o
 		selectdo
 			linking_document = false			|#SUJEET20150330.n
