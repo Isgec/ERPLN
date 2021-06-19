@@ -33,7 +33,9 @@ declaration:
 	table	ttccom100
 	table	ttccom130
 	table	ttfacr200					|ISGEC001119.sn
-	table	ttpisg045					|ISGEC001119.en
+	table	ttpisg045					|ISGEC001119.en					
+	table	ttccom139					
+	table	ttccom000
 
 	|**************** Form Variable ***************
 	extern	domain	tfgld.docn	var.docn
@@ -55,6 +57,13 @@ declaration:
 	|************** Script Variable ****************
 	extern	domain	tcncmp		curr.comp
 	extern	domain	tfgld.refc	tran.refr		|GH450CR803.a
+	extern	domain	tcmcs.str35	company.name
+		domain	tccom.cadr	own.cadr
+	extern	domain	tcmcs.str50	own.line1, own.line2
+	extern	domain tcmcs.str30	pan.no
+	extern	domain tcmcs.str30	cin.no
+		domain	tcncmp		get.ncmp
+	extern	domain	tcmcs.str50	reg.name1, reg.name2
 	
 
 |****************************** program section ********************************
@@ -135,6 +144,7 @@ function read.main.table()
 			var.cadr = ""
 			get.project.code()
 			var.cadr = tpisg045.cadr			|#ISGEC001166.n
+			get.company.data()
 		endif							|ISGEC001119.en
 		
 		
@@ -419,3 +429,70 @@ function get.project.code()
 
 }
 							|ISGEC001119.en
+
+function get.company.data()
+{
+	get.ncmp = get.compnr()
+	on case get.ncmp
+	case 651:
+		pan.no = "AAACI1229C"
+		cin.no = "U52109DL1986PLC025908"
+		reg.name1 = "D-860, NFC"
+		reg.name2 = "New Delhi - 110065 - India"
+		break		
+	case 700:
+		pan.no = "AAECI3897A"
+		cin.no = "U29308HR2017PTC067285"
+		reg.name1 = "Radaur Road."
+		reg.name2 = "Yamunanagar - 135001 (Haryana) India"
+		break
+	case 200:
+	case 210:
+	case 220:
+	case 230:
+	case 240:
+	case 250:
+		pan.no = "AAACT5540K"
+		cin.no = "L23423HR1933PLC000097"
+		reg.name1 = "Radaur Road."
+		reg.name2 = "Yamunanagar - 135001 (Haryana) India"
+		break
+	endcase
+	
+| 	select	tpisg122.gstn.c
+| 	from	tpisg122
+| 	where	tpisg122._index1 = {:project.code}
+| 	as set with 1 rows
+| 	selectdo
+| 	endselect
+| 	tcisgdll0100.get.financial.company.address.CDF.from.seqn(tpisg122.gstn.c, own.cadr)
+	select	tccom000.cadr
+	from	tccom000
+	where	tccom000._index1 = {0, :var.ncmp}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	select	tccom130.nama:company.name,
+	 	tccom130.namc,
+		tccom130.namb,
+		tccom130.ccit,
+		tccom130.cste,
+		tccom130.ccty,
+		tccom130.pstc,
+		tccom130.telp,
+		tccom130.tefx,
+		tccom139.dsca
+	from	tccom130, tccom139
+	where	tccom130._index1 = {:tccom000.cadr}
+	and	tccom130.cmbb refers to tccom139 UNREF CLEAR
+	selectdo
+		company.name = trim$(company.name) & " " & trim$(tccom130.namb)
+		own.line1 = trim$(tccom130.namc) & "," & trim$(tccom139.dsca) & "," & trim$(tccom130.pstc) & "," & trim$(tccom130.cste)
+		own.line2 = "Telp : " & trim$(tccom130.telp) & ", Fax : " & trim$(tccom130.tefx)
+	selectempty
+		own.line1 = ""
+		own.line2 = ""
+		company.name = ""
+	endselect
+}
