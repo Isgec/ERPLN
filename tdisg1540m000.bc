@@ -8,7 +8,10 @@
 |******************************************************************************
 |*
 |* GH528CR878, RAvi Kumar, 26-03-2021
-|* Modification in Logistics PO Generation from Superprocure utility      
+|* Modification in Logistics PO Generation from Superprocure utility
+|*
+|* GH585CR908, RAvi Kumar, 18-06-2021
+|* Changes in Superprocure PO generation for multiple Projects in Single Load 
 |****************************** declaration section ***************************
 declaration:
 
@@ -104,7 +107,7 @@ function generate.po()
 	
 	select	tdisg140.*
 	from	tdisg140
-	where	tdisg140._index1 = {:tdisg140.load}
+	where	tdisg140._index1 = {:tdisg140.load, :tdisg140.cprj}		|GH585CR908.a
 	as set with 1 rows
 	selectdo
 		select	tccom100.cadr
@@ -151,7 +154,7 @@ function generate.po()
 				select	tdisg140.orno,
 					tdisg140.proc
 				from	tdisg140 for update
-				where	tdisg140._index1 = {:tdisg140.load}
+				where	tdisg140._index1 = {:tdisg140.load, :tdisg140.cprj}		|GH585CR908.a
 				as set with 1 rows
 				selectdo
 					tdisg140.proc = tcyesno.yes
