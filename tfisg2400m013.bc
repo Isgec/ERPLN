@@ -23,6 +23,9 @@
 |* 
 |* GH450CR803, RAvi Kumar, 03-12-2020
 |* Please print transaction reference in Debit Credit Note(Non GST) print
+|*
+|* ID:ISGEC017012,Manav Singh,05-06-2021
+|* Modification as per the check box Reference Check box
 |****************************** declaration section ***************************
 declaration:
 
@@ -36,6 +39,7 @@ declaration:
 	table	ttpisg045					|ISGEC001119.en					
 	table	ttccom139					
 	table	ttccom000
+	table	ttctax400			|#ISGEC017012.n
 
 	|**************** Form Variable ***************
 	extern	domain	tfgld.docn	var.docn
@@ -64,6 +68,9 @@ declaration:
 	extern	domain tcmcs.str30	cin.no
 		domain	tcncmp		get.ncmp
 	extern	domain	tcmcs.str50	reg.name1, reg.name2
+	extern	domain	tcyesno		refr.f		|#ISGEC017012.sn
+	extern	domain	tctax.txnb	gstin,pan	
+	extern	domain	tfgld.refc	refr		|#ISGEC017012.en
 	
 
 |****************************** program section ********************************
@@ -177,18 +184,22 @@ function print.main.tfgld106()
 		Get_Document(tfgld106.catg, tfgld106.dbcr, docn.type)
 		Get_Amount_Finalized(var.ttyp, var.docn, repo.amnt)
 		Get_Amount_In_Words(repo.amnt, repo.amt.words)
+		
 		if	isspace(var.cadr)	then
 			var.cadr = tccom100.cadr
 		endif
 		adr.line01 = ""
 		db.set.to.default(ttccom130)	
 		select	tccom130.ln01, tccom130.ln02, tccom130.ln03, tccom130.ln04,
-			tccom130.ln05, tccom130.ln06
+			tccom130.ln05, tccom130.ln06,
+			tccom130.ccty,tccom130.cste		|#ISGEC017012.n
 		from	tccom130
 		where	tccom130._index1 = {:var.cadr}
 		selectdo
 			adr.line01 = trim$(tccom130.ln01) & " " & trim$(tccom130.ln02)
+			
 		endselect
+		get_gst_pan(tfgld106.bpid)				|#ISGEC017012.n
 		tran.refr = tfgld106.refr			|GH450CR803.a
 		rprt_send()	
 	endselect
@@ -229,12 +240,13 @@ function print.main.tfgld102()
 		adr.line01 = ""
 		db.set.to.default(ttccom130)	
 		select	tccom130.ln01, tccom130.ln02, tccom130.ln03, tccom130.ln04,
-			tccom130.ln05, tccom130.ln06
+			tccom130.ln05, tccom130.ln06,tccom130.ccty,tccom130.cste
 		from	tccom130
 		where	tccom130._index1 = {:var.cadr}
 		selectdo
 			adr.line01 = trim$(tccom130.ln01) & " " & trim$(tccom130.ln02)
 		endselect
+		get_gst_pan(tfgld102.bpid)				|#ISGEC017012.n
 		tran.refr = tfgld102.refr				|GH450CR803.a
 		rprt_send()
 	endselect
@@ -407,14 +419,24 @@ function Get_Amount_In_Words(domain 	tfgld.amnt	i.amnt,
 							|ISGEC001119.sn
 function get.project.code()
 {
-	select	tfacr200.cdf_cprj:project.code
+	refr = ""		|#ISGEC017012.n
+	select	tfacr200.cdf_cprj:project.code,
+		tfacr200.refr				|#ISGEC017012.n
 	from	tfacr200
 	where	tfacr200._index1 = {:var.ttyp, :var.docn}
 	and	tfacr200.docn = 0
 	selectdo
+		if refr.f = tcyesno.yes then		|#ISGEC017012.sn
+			refr  = tfacr200.refr
+		else
+			refr  = ""	
+		endif					|#ISGEC017012.en
+			
 	selectempty
 		project.code = ""
 	endselect
+	
+	switch.to.company(curr.comp)
 	
 	select	tpisg045.refr,
 		tpisg045.cadr			|#ISGEC001166.n
@@ -425,7 +447,7 @@ function get.project.code()
 		tpisg045.refr = ""
 		tpisg045.cadr = ""
 	endselect
-	
+	switch.to.company(var.ncmp)
 
 }
 							|ISGEC001119.en
@@ -496,3 +518,31 @@ function get.company.data()
 		company.name = ""
 	endselect
 }
+
+function get_gst_pan(domain tccom.bpid  i.bpid	)						|#ISGEC017012.sn
+{
+	gstin = ""
+	pan = ""
+| 	if not isspace(tccom100.cadr) then					
+	if not isspace(var.cadr) then					
+		select	tctax400.fovn:gstin
+		from	tctax400
+		where	tctax400._index1 = {:i.bpid,:tccom130.ccty}
+		and	tctax400.stpv.l = :tccom130.cste
+		and	tctax400.catg.l = tctax.catg.l.gst
+		selectdo
+		selectempty
+			gstin = ""	
+		endselect
+		
+		select	tctax400.fovn:pan
+		from	tctax400
+		where	tctax400._index1 = {:i.bpid,:tccom130.ccty}
+| 		and	tctax400.stpv.l = :tccom130.cste
+		and	tctax400.catg.l = tctax.catg.l.pan
+		selectdo
+		selectempty
+			pan = ""	
+		endselect		
+	endif									
+}								|#ISGEC017012.en
