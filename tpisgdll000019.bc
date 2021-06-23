@@ -21,6 +21,9 @@
 |* #Adarsh.17.12.19, 17-12-2019, VRC B61U a7 isg
 |* Logic addition for not considering Provisons GL in Non-Integrated Cost
 |* against Cost Heads
+|*
+|* GH582CR900, RAvi Kumar, 16-06-2021
+|* Modification in Cost Sheet module 
 |****************************** declaration section ***************************
 
 	table	ttpisg054 | Cost Sheet Project Master
@@ -71,6 +74,8 @@
 	table	ttpppc270
 	table	ttpppc275
 	table	ttpppc215
+	table	ttpisg312			|GH582CR900.a			
+	table	ttpisg318			|GH582CR900.a
 	
   
 	extern	domain	tccprj		cprj
@@ -165,7 +170,8 @@ function extern tpisgdll000015.Update_Cost_Sheet(
 				tpisg056.stat = tpstat.open
 				tpisg056.ardc = get.addition.reduction.due.to.client.till.date(tpisg012.cprj,tpisg012.elem,tpisg012.levl,tpisg012.ardc)
 				tpisg056.ardi = get.addition.reduction.due.to.internal.transfer.till.date(tpisg012.cprj,tpisg012.elem,tpisg012.levl,tpisg012.ardi)
-				tpisg056.ritb = tpisg012.ritb
+| 				tpisg056.ritb = tpisg012.ritb						|GH582CR900.o
+				tpisg056.ritb = calculate.ritb(tpisg056.cprj, tpisg056.elem)		|GH582CR900.n
 				tpisg056.niba = 0
 				db.update(ttpisg056, db.retry,e)
 				if not e then
@@ -216,7 +222,8 @@ function extern tpisgdll000015.Update_Cost_Sheet(
 				tpisg056.stat = tpstat.open
 				tpisg056.ardc = get.addition.reduction.due.to.client.till.date(tpisg012.cprj,tpisg012.elem,tpisg012.levl,tpisg012.ardc)
 				tpisg056.ardi = get.addition.reduction.due.to.internal.transfer.till.date(tpisg012.cprj,tpisg012.elem,tpisg012.levl,tpisg012.ardi)
-				tpisg056.ritb = tpisg012.ritb
+| 				tpisg056.ritb = tpisg012.ritb						|GH582CR900.o
+				tpisg056.ritb = calculate.ritb(tpisg012.cprj, tpisg012.elem)			|GH582CR900.n
 				tpisg056.niba = 0
 				db.insert(ttpisg056, db.skip.dupl,e)
 				if not e then
@@ -3587,3 +3594,107 @@ function get.provisions.against.bills(		domain	tccprj		i.cprj,
 	endselect
 }
 												|#Adarsh.17.12.19.en
+
+function domain tcamnt calculate.ritb(	domain	tccprj	cprj.ritb,						|GH582CR900.a.s
+					domain	tccspa	cspa.ritb)
+{
+	domain	tcamnt	cal.ritb, tot1.rev1, tot.inc.client, tot.dec.client, tot.inc.int, tot.dec.int 
+	domain	tcorno	rev.ritb
+	cal.ritb = 0
+	tot1.rev1 = 0
+	tot.inc.client = 0
+	tot.dec.client = 0
+	tot.inc.int = 0
+	tot.dec.int = 0
+	rev.ritb = "1.0"
+	
+	select	tpisg008.totl:tot1.rev1
+	from	tpisg008
+	where	tpisg008._index1 = {:cprj.ritb, :rev.ritb, :cspa.ritb}
+	as set with 1 rows
+	selectdo
+	endselect
+	
+	select	tpisg312.cprj,
+		tpisg312.elem,
+		tpisg312.vers,
+		tpisg312.ctyp,
+		tpisg312.valu
+	from	tpisg312
+	where	tpisg312._index1 = {:cprj.ritb}
+	and	tpisg312.elem = :cspa.ritb
+	selectdo
+		select	tpisg011.act1
+		from	tpisg011
+		where	tpisg011._index1 = {:cprj.ritb, :tpisg312.vers}
+		and	tpisg011.act1 = tpisg.sanction.approved
+		selectdo
+			if tpisg312.ctyp = tpchng.type.increase then
+				tot.inc.client = tot.inc.client + tpisg312.valu
+			endif
+			
+			if tpisg312.ctyp = tpchng.type.decrease then
+				tot.dec.client = tot.dec.client + tpisg312.valu
+			endif
+		endselect
+		
+		select	tpisg007.act1
+		from	tpisg007
+		where	tpisg007._index1 = {:cprj.ritb, :tpisg312.vers}
+		and	tpisg007.act1 = tpisg.sanction.approved
+		selectdo
+			if tpisg312.ctyp = tpchng.type.increase then
+				tot.inc.client = tot.inc.client + tpisg312.valu
+			endif
+			
+			if tpisg312.ctyp = tpchng.type.decrease then
+				tot.dec.client = tot.dec.client + tpisg312.valu
+			endif
+		endselect
+	endselect
+	
+	select	tpisg318.cprj,
+		tpisg318.elem,
+		tpisg318.vers,
+		tpisg318.ctyp,
+		tpisg318.valu
+	from	tpisg318
+	where	tpisg318._index1 = {:cprj.ritb}
+	and	tpisg318.elem = :cspa.ritb
+	selectdo
+		select	tpisg011.act1
+		from	tpisg011
+		where	tpisg011._index1 = {:cprj.ritb, :tpisg318.vers}
+		and	tpisg011.act1 = tpisg.sanction.approved
+		selectdo
+			if tpisg318.ctyp = tpchng.type.increase then
+				tot.inc.int = tot.inc.int + tpisg318.valu
+			endif
+			
+			if tpisg318.ctyp = tpchng.type.decrease then
+				tot.dec.int = tot.dec.int + tpisg318.valu
+			endif
+		endselect
+		
+		select	tpisg007.act1
+		from	tpisg007
+		where	tpisg007._index1 = {:cprj.ritb, :tpisg318.vers}
+		and	tpisg007.act1 = tpisg.sanction.approved
+		selectdo
+			if tpisg318.ctyp = tpchng.type.increase then
+				tot.inc.int = tot.inc.int + tpisg318.valu
+			endif
+			
+			if tpisg318.ctyp = tpchng.type.decrease then
+				tot.dec.int = tot.dec.int + tpisg318.valu
+			endif
+		endselect
+	endselect
+	
+	cal.ritb = tot1.rev1 + (tot.inc.client - tot.dec.client) + (tot.inc.int - tot.dec.int)
+	return(cal.ritb)
+}
+														|GH582CR900.a.e
+
+
+
