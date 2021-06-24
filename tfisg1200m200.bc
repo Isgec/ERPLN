@@ -66,7 +66,8 @@ function generate.reconiliation()
 		tfcmg100.doco,
 		tfcmg100.amnt
 	from	tfcmg100
-	where	tfcmg100._index1 inrange {"SCB", "RTG", :cheq.f} and {"SCB", "RTG", :cheq.t}
+| 	where	tfcmg100._index1 inrange {"SCB", "RTG", :cheq.f} and {"SCB", "RTG", :cheq.t}
+	where	tfcmg100._index1 = {"SCB", "RTG"}
 	and	tfcmg100.chst = tfcmg.chst.anticipated
 	selectdo
 		i.cusr = str$(tfcmg100.typo) & " " & str$(tfcmg100.doco)
