@@ -8,6 +8,9 @@
 |******************************************************************************
 |* ID: ISGEC01197, Gokul Chaurasia, 10-08-2019, VRC B61U a7 isg 
 |* NEw Development to update Tax data.
+|* 
+|* GH591CR000, Ravi Kumar, 25-06-2021
+|* 180321- Union Territory Tax code not update in warehouse receipt in session tax updation- whisg3110m000
 |****************************** declaration section ***************************
 declaration:
 
@@ -307,7 +310,7 @@ function boolean update.tax.tables()
 				:whisg310.nvat}
 	and	tctax941.type = tctax.type.l.tax
 	and	tctax941.cmbb refers to tcmcs036
-	and	tcmcs036.indt.l in (40,41,42)
+	and	tcmcs036.indt.l in (40,41,42,43, 30)			|RAvi.a.30.11112020	|GH591CR000.a
 	selectdo
 		select	tcmcs032.pvat,tcmcs032.edat
 		from	tcmcs032
