@@ -6,7 +6,9 @@
 |******************************************************************************
 |* Main table tfacp200 Open Items (Purchase Invoices &amp; Payments), Form Type 4
 |******************************************************************************
-                                                                                
+|*
+|* GH575CR874, RAvi Kumar, 25-06-2021
+|* Modification in Utility to update Project and PO in PTF Documents 
 |****************************** declaration section ***************************
 declaration:
 
@@ -28,12 +30,13 @@ before.program:
 	import("tfacp200.ninv", ninv.imp)
 	
 	if calling.session = "tfacp2520m000" then
-		if ttyp.imp = "PTR" then
+| 		if ttyp.imp = "PTR" then				|GH575CR874.o
+		if ttyp.imp = "PTR" or ttyp.imp = "PTF" then		|GH575CR874.n
 			ttyp = ttyp.imp
 			ninv.f = ninv.imp
 			ninv.t = ninv.imp
 		else
-			message("This is not a PTR Document")
+			message("This is not a PTR/PTF Document")	|GH575CR874.a
 			exit()
 		endif
 	endif
@@ -75,7 +78,7 @@ function extern process()
 		tfacp200.cdf_prno,
 		tfacp200.cdf_cprj
 	from	tfacp200 for update
-	where	tfacp200.ttyp = "PTR"
+	where	(tfacp200.ttyp = "PTR" or tfacp200.ttyp = "PTF")			|GH575CR874.a
 	and	tfacp200.tpay = tfacp.tpay.invoice
 	and	tfacp200.ttyp = :ttyp
 	and	tfacp200.ninv inrange :ninv.f and :ninv.t
