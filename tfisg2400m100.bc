@@ -1421,7 +1421,7 @@ function get.data.from.tfmsl020
 	and	tfacp200.cdf_prno = :i.orno
 	and	tfacp200.ifbp inrange :suno.f and :suno.t
 	and	tccom120.creg inrange :creg.f and :creg.t		|GH561CR855.a
-	and	tfacp200.otbp = tccom120.otbp				|GH561CR855.a				
+	and	tfacp200.ifbp = tccom120.otbp				|GH561CR855.a				
 | 		and	tfacp200.docn = 0
 | 		and	tfacp200.lino = 0
 	and	tfacp200._compnr = :i.ncmp		|#ISGEC001153.n
@@ -2063,7 +2063,7 @@ function Print.purchase.order.for.cost.invoice()
 		and	tfacp200.docn = 0
 		and	tfacp200.tpay = tfacp.tpay.invoice
 		and	tfacp200.appr = tfacp.inv.expence
-		and	tfacp200.otbp = tccom120.otbp			|GH561CR855.a
+		and	tfacp200.ifbp = tccom120.otbp			|GH561CR855.a
 		and	tccom120.creg inrange :creg.f and :creg.t	|GH561CR855.a
 		and	tccom120.creg refers to tcmcs045		|GH561CR855.a
 	| 	and	tfacp200.lino = 0				|#SUJEET20150330.o
