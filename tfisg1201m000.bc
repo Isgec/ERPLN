@@ -53,7 +53,12 @@
 |* Update tfacp200 with project and purchase order no.
 |* TV13476-sanjeev-27-07-2020 commented-SN
 |* Price difference amount and ledger comes automatically after matching. Batch generated is also not balanced
+|* 
+|* GH586CR916, RAvi Kumar, 23-06-2021
+|* Identification whether Supplier was timely IT compliant or not
 |*
+|* ID:ISGEC002022,Manav Singh,29-06-2021,VRC B61U a7 isg
+|* Modifications
 |****************************** declaration section ***************************
 declaration:
 
@@ -88,13 +93,15 @@ declaration:
 	table	ttfacp500	|#TV Tanuj
 
 |****************************** form fields ************************************
-	extern	domain	tfgld.amnt	v.amnt, v.pric, v.tdsa
+| 	extern	domain	tfgld.amnt	v.amnt, v.pric, v.tdsa		|#ISGEC002022.o
+	extern	domain	tfgld.amnt	v.amnt, v.pric, v.tdsa,n.tdsa	|#ISGEC002022.n
 	extern	domain	tfgld.docn	v.docn
 	extern	domain	tfgld.date	v.docd
 	extern	domain	tcccur		v.ccur
 	extern	domain	tcorno		v.orno
 	extern	domain	tccprj		v.cprj
 	extern	domain	tccvat		v.cvat
+	extern	domain	tccvat		n.cvat				|#ISGEC002022.n
 	extern	domain	tcmcs.str1	labl.1, labl.2, labl.3, labl.4, labl.5, labl.6,
 					labl.7, labl.8, labl.9, labl.10, labl.11, v.matc,
 					v.appr, v.uppr, v.fina, v.umat, print.batch
@@ -134,6 +141,9 @@ declaration:
 	extern  domain tcmcs.str1 test		|#TV Tanuj
 
 	extern	domain	tcmcs.str1	f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12		|sh.n
+	
+	extern	domain	tcyesno		i.rcom			|GH586CR916.a
+	extern	domain	tctax.txnb		pan.no			|GH586CR916.a
 	#pragma used dll ottstpapihand
 	#include<bic_dam>
 
@@ -230,8 +240,28 @@ check.input:
 			selectdo
 			endselect					|ISGEC01070.en
 		endif
+		
+		select	tcisg012.rcom:i.rcom				|GH586CR916.a.s
+		from	tcisg012
+		where	tcisg012._index1 = {:bpid.f}
+		as set with 1 rows
+		selectdo
+		selectempty
+			i.rcom = tcyesno.no
+		endselect					
+		select	tctax400.fovn:pan.no
+		from	tctax400
+		where	tctax400._index1 = {:bpid.f}
+		and	tctax400.catg.l = tctax.catg.l.pan
+		as set with 1 rows
+		selectdo
+		selectempty
+			pan.no = ""
+		endselect						|GH586CR916.a.e
 
 		display("bpid.f")
+		display("i.rcom")
+		display("pan.no")
 		display("bpid.nama")
 
 
@@ -314,9 +344,30 @@ when.field.changes:
 			selectdo
 			endselect					|ISGEC01070.en
 		endif
+		
+		select	tcisg012.rcom:i.rcom				|GH586CR916.a.s
+		from	tcisg012
+		where	tcisg012._index1 = {:bpid.f}
+		as set with 1 rows
+		selectdo
+		selectempty
+			i.rcom = tcyesno.no
+		endselect	
+		
+		select	tctax400.fovn:pan.no
+		from	tctax400
+		where	tctax400._index1 = {:bpid.f}
+		and	tctax400.catg.l = tctax.catg.l.pan
+		as set with 1 rows
+		selectdo
+		selectempty
+			pan.no = ""
+		endselect						|GH586CR916.a.e
 
 
 		display("bpid.f")
+		display("i.rcom")					|GH586CR916.a
+		display("pan.no")					|GH586CR916.a
 		display("bpid.nama")
 
 
@@ -458,8 +509,13 @@ before.zoom:
 	str	=	str&" and tcmcs036.gtax = "&str$(1)&" and tcmcs036.appr = "&str$(1)&")"
 	query.extend.where.in.zoom(str)
 
-
-| check.input:
+field.n.cvat:			|#ISGEC002022.sn
+before.zoom:
+	i.ccty	=	"IN"
+	str	=	"tcmcs037.cvat in(select tcmcs036.cvat from tcmcs036 where tcmcs036._index1 = '"&i.ccty&"'"
+	str	=	str&" and tcmcs036.gtax = "&str$(1)&" and tcmcs036.appr = "&str$(1)&")"
+	query.extend.where.in.zoom(str)		|#ISGEC002022.en
+| check.input:	
 | 	if	not	isspace(v.cvat)	then
 | 		v.tdsa	=	tfacp100.amth(1)
 | 		display("v.tdsa")
@@ -1354,6 +1410,32 @@ function	tax.transactions()
 | 		stpapi.recover("tfacp1112m000",i.erro)
 	endif
 	stpapi.end.session("tfacp1112m000")
+	
+								|#ISGEC002022.sn
+	stpapi.form.command("tfacp1110s000",5,"start.session.tfacp1112", i.erro)
+	stpapi.synchronize.dialog("tfacp1112m000","ADD",i.erro)
+	stpapi.put.field("tfacp1112m000","tfgld102.ccty","IN")
+	stpapi.put.field("tfacp1112m000","tfgld102.cvat",n.cvat)
+	stpapi.put.field("tfacp1112m000","screen.amnt",str$(n.tdsa))
+	stpapi.put.field("tfacp1112m000","tfgld102.rnso.l",str$(tctax940.seqn))
+	ret_val	=	stpapi.insert("tfacp1112m000",true,i.erro)
+	if	ret_val	<>	1	then
+		handle.error.message("tfacp1112m000")
+	endif
+	stpapi.end.session("tfacp1112m000")
+
+	stpapi.form.command("tfacp1110s000",5,"start.session.tfacp1112", i.erro)
+	stpapi.synchronize.dialog("tfacp1112m000","ADD",i.erro)
+	stpapi.put.field("tfacp1112m000","tfgld102.ccty","IN")
+	stpapi.put.field("tfacp1112m000","tfgld102.cvat",tfisg000.cvat)
+	stpapi.put.field("tfacp1112m000","screen.amnt",str$(n.tdsa))
+	stpapi.put.field("tfacp1112m000","tfgld102.rnso.l",str$(tctax940.seqn))
+	ret_val	=	stpapi.insert("tfacp1112m000",true,i.erro)
+	if	ret_val	<>	1	then
+		handle.error.message("tfacp1112m000")
+	endif
+	stpapi.end.session("tfacp1112m000")
+								|#ISGEC002022.en	
 }
 
 function	invoice.tax.lines(domain	tcamnt	i.amnt)
@@ -2246,6 +2328,24 @@ function long start.match.process
 						return(-1)
 					endif
 				endif
+				
+											|#ISGEC002022.sn
+				if n.tdsa <> 0 and not isspace(n.cvat) then
+					if not tax.transactions.line("IN",n.cvat,n.tdsa,tctax940.seqn,tfgld.dbcr.debit) then
+					else
+						stpapi.end.session("tfacp1110s000")
+						stpapi.end.session("tfgld1101m100")
+						return(-1)
+					endif
+
+					if not tax.transactions.line("IN",tfisg000.cvat,n.tdsa,tctax940.seqn,tfgld.dbcr.credit) then
+					else
+						stpapi.end.session("tfacp1110s000")
+						stpapi.end.session("tfgld1101m100")
+						return(-1)
+					endif
+				endif
+											|#ISGEC002022.en
 
 				|*Match With Receipt
 				match.with.receipt(str$(v.docn),i.pric)
@@ -2926,7 +3026,8 @@ function afs.finalization(	domain	tfgld.year	i.year,		|GH336CR627.a.s
 
 function enable.disable.fields()								|GH370CR678.a.s
 {
-	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+| 	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")			|#ISGEC002022.o
+	enable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat","n.tdsa", "n.cvat")	|#ISGEC002022.n
 
 	select	tfacp200.stap
 	from	tfacp200
@@ -2934,7 +3035,8 @@ function enable.disable.fields()								|GH370CR678.a.s
 	and	(tfacp200.stap = tfacp.stap.linked or tfacp200.stap = tfacp.stap.approved)
 	as set with 1 rows
 	selectdo
-		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")
+| 		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat")	|#ISGEC002022.o
+		disable.fields("v.docd", "v.amnt", "v.pric", "v.pdif", "v.tdsa", "v.cvat","n.tdsa", "n.cvat")	|#ISGEC002022.n
 	endselect
 }
 											|GH370CR678.a.e
