@@ -435,7 +435,8 @@ function create.text.footer(domain	tcorno	orno.po.footer.text)
 	where	tdpur400._index1 = {:orno.po.footer.text}
 	as set with 1 rows
 	selectdo
-		temp.file2 = get.text.footer()
+| 		temp.file2 = get.text.footer()
+		temp.file2 = get.text.footer.new()			|RAvi.cng in 05-07-2021
 	
 		write.return = text.write("tdpur400.txtb", "2", kw1, kw2, kw3, kw4, "text", "", temp.file2)
 		db.update(ttdpur400, db.retry)
@@ -550,4 +551,28 @@ function update.payment.term(	domain	tcorno	orno.po.line.pay)				|GH528CR878.a.s
 	endselect
 }												|GH528CR878.a.e
 
-
+function string get.text.footer.new()
+{
+	string	temp.file2(5000)
+	long	input.file, seq
+	
+	temp.file2 = creat.tmp.file$(bse.tmp.dir$())
+	input.file = seq.open(temp.file2, "w")
+	temp.file2 = strip$(temp.file2)
+	
+	seq = seq.puts("SPOT FINALISATION - TERMS & CONDITIONS AS PER Ref: DL/STC/2021/0102, Dated: 01st February, 2021", input.file)
+	seq = seq.puts("========================================================================", input.file)
+	seq = seq.puts("", input.file)
+	seq = seq.puts("========================================================================", input.file)
+	seq = seq.puts("INFORMATION FOR USE BY LOGISTICS DEPARTMENT.", input.file)
+	seq = seq.puts("============================================", input.file)
+	seq = seq.puts("1.Reason for SPOT Finalization: OC05- NO CONTRACT", input.file)
+	seq = seq.puts("2.Reference Rate Contract:", input.file)
+	seq = seq.puts("3.Reference Rate- Rs.NA.", input.file)
+	seq = seq.puts("4.Excess by       Rs.NA.", input.file)
+	seq = seq.puts("5.Lesser by       Rs.NA.", input.file)
+	seq = seq.puts("6.Debit Action to if any: NA ", input.file)
+	seq = seq.puts("========================================================================", input.file)
+	seq = seq.close(input.file)
+	return(temp.file2)
+}
