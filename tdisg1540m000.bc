@@ -88,10 +88,12 @@ function generate.po()
 		orno.series = "P601"
 	else
 		if comp = 700 then
-			orno.series = "P701"
+| 			orno.series = "P701"
+			orno.series = "P771"			|GH585CR908.cng
 		else
 			if comp = 651 then
-				orno.series = "P651"
+| 				orno.series = "P651"
+				orno.series = "P656"		|GH585CR908.cng
 			endif
 		endif
 	endif
