@@ -52,7 +52,9 @@
 |*
 |* GH451CR000, RAvi Kumar, 30-11-2020
 |* Exclude WHR correction session from Purchase Receipt blocking on month end
-
+|*
+|* GH602CR000, RAvi Kumar, 07-07-2021
+|* Purchase Receipt Correction can be done only with zero quantity
 |******************************************************************************
                                                                                 
 #include <bic_dal>
@@ -153,21 +155,23 @@ function extern long ue.before.before.save.object(long mode)
 | 				dal.set.error.message("@Receipt Correction are not allowed..")
 | 				return(DALHOOKERROR)
 | 			endif												|GH294CR597.a.e
-			select	tccom001.emno
-			from	tccom001
-			where	tccom001._index4 = {:curr.user}
-			as set with 1 rows
-			selectdo
-				select	tdisg015.emno
-				from	tdisg015
-				where	tdisg015._index1 = {:tccom001.emno}
+			if tdpur406.qidl <> 0 then				|GH602CR000.a
+				select	tccom001.emno
+				from	tccom001
+				where	tccom001._index4 = {:curr.user}
 				as set with 1 rows
 				selectdo
-				selectempty
-					dal.set.error.message("@Receipt Correction are not allowed..")
-					return(DALHOOKERROR)
+					select	tdisg015.emno
+					from	tdisg015
+					where	tdisg015._index1 = {:tccom001.emno}
+					as set with 1 rows
+					selectdo
+					selectempty
+						dal.set.error.message("@Receipt Correction are not allowed..")
+						return(DALHOOKERROR)
+					endselect
 				endselect
-			endselect
+			endif
 		endif
 														|GH294CR597.a.e
 														
@@ -665,6 +669,7 @@ function boolean check.irno.exist(	domain	whinh.pksp	dino.i,					|GH319CR616.a.s
 			select	tdpur406.rcno:rno.irno
 			from	tdpur406
 			where	tdpur406.dino = :dino.i
+			and	tdpur406.qidl <> 0 			|GH602CR000.a
 			and	tdpur406._index2 <> :tdpur406.rcno
 			as set with 1 rows
 			selectdo
